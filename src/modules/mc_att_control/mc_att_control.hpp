@@ -46,6 +46,7 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/rate_ctrl_status.h>
@@ -149,6 +150,7 @@ private:
 	uORB::Subscription _v_control_mode_sub{ORB_ID(vehicle_control_mode)};		/**< vehicle control mode subscription */
 	uORB::Subscription _params_sub{ORB_ID(parameter_update)};			/**< parameter updates subscription */
 	uORB::Subscription _manual_control_sp_sub{ORB_ID(manual_control_setpoint)};	/**< manual control setpoint subscription */
+	uORB::Subscription _manual_control_switches_sub{ORB_ID(manual_control_switches)};	/**< manual control switches subscription */
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};			/**< vehicle status subscription */
 	uORB::Subscription _motor_limits_sub{ORB_ID(multirotor_motor_limits)};		/**< motor limits subscription */
 	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};			/**< battery status subscription */
@@ -178,6 +180,7 @@ private:
 	struct vehicle_attitude_setpoint_s	_v_att_sp {};		/**< vehicle attitude setpoint */
 	struct vehicle_rates_setpoint_s		_v_rates_sp {};		/**< vehicle rates setpoint */
 	struct manual_control_setpoint_s	_manual_control_sp {};	/**< manual control setpoint */
+	struct manual_control_switches_s	_manual_control_switches {};	/**< manual control setpoint */
 	struct vehicle_control_mode_s		_v_control_mode {};	/**< vehicle control mode */
 	struct actuator_controls_s		_actuators {};		/**< actuator controls */
 	struct vehicle_status_s			_vehicle_status {};	/**< vehicle status */

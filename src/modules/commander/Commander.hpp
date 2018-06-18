@@ -56,6 +56,8 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/iridiumsbd_status.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include <uORB/topics/sensor_bias.h>
@@ -247,9 +249,15 @@ private:
 
 	bool _print_avoidance_msg_once{false};
 
+	manual_control_setpoint_s	_last_sp_man{};			///< the manual control setpoint valid at the last mode switch
+	manual_control_switches_s	_last_sp_man_switches{};	///< the manual control setpoint valid at the last mode switch
+	uint8_t				_last_sp_man_arm_switch{0};
+
 	// Subscriptions
 	uORB::SubscriptionData<airspeed_s>			_airspeed_sub{ORB_ID(airspeed)};
 	uORB::SubscriptionData<estimator_status_s>		_estimator_status_sub{ORB_ID(estimator_status)};
+	uORB::SubscriptionData<manual_control_setpoint_s>	_manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
+	uORB::SubscriptionData<manual_control_switches_s>	_manual_control_switches_sub{ORB_ID(manual_control_switches)};
 	uORB::SubscriptionData<mission_result_s>		_mission_result_sub{ORB_ID(mission_result)};
 	uORB::SubscriptionData<offboard_control_mode_s>		_offboard_control_mode_sub{ORB_ID(offboard_control_mode)};
 	uORB::SubscriptionData<sensor_bias_s>			_sensor_bias_sub{ORB_ID(sensor_bias)};

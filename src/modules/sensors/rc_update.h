@@ -44,7 +44,11 @@
 #include <drivers/drv_hrt.h>
 #include <mathlib/mathlib.h>
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/rc_parameter_map.h>
 
@@ -105,23 +109,25 @@ private:
 	uORB::Subscription	_rc_sub{ORB_ID(input_rc)};				/**< raw rc channels data subscription */
 	uORB::Subscription	_rc_parameter_map_sub{ORB_ID(rc_parameter_map)};	/**< rc parameter map subscription */
 
-	orb_advert_t	_rc_pub = nullptr;		/**< raw r/c control topic */
-	orb_advert_t	_manual_control_pub = nullptr;	/**< manual control signal topic */
-	orb_advert_t	_actuator_group_3_pub = nullptr;/**< manual control as actuator topic */
+	uORB::Publication<actuator_controls_s>		_actuator_group_3_pub{ORB_ID(actuator_controls_3)};
+	uORB::Publication<manual_control_setpoint_s>	_manual_control_pub{ORB_ID(manual_control_setpoint), ORB_PRIO_HIGH};
+	uORB::Publication<manual_control_switches_s>	_manual_switches_pub{ORB_ID(manual_control_switches)};
+	uORB::Publication<rc_channels_s>		_rc_channels_pub{ORB_ID(rc_channels)};
 
-	rc_channels_s _rc {};			/**< r/c channel data */
+	rc_channels_s			_rc{};			/**< r/c channel data */
+	manual_control_switches_s	_manual_switches{};
+	rc_parameter_map_s		_rc_parameter_map {};
 
-	rc_parameter_map_s _rc_parameter_map {};
 	float _param_rc_values[rc_parameter_map_s::RC_PARAM_MAP_NCHAN] {};	/**< parameter values for RC control */
 
-	const Parameters &_parameters;
+	const Parameters &_p;
 
-	hrt_abstime _last_rc_to_param_map_time = 0;
+	hrt_abstime _last_rc_to_param_map_time{0};
 
-	math::LowPassFilter2p _filter_roll; /**< filters for the main 4 stick inputs */
-	math::LowPassFilter2p _filter_pitch; /** we want smooth setpoints as inputs to the controllers */
-	math::LowPassFilter2p _filter_yaw;
-	math::LowPassFilter2p _filter_throttle;
+	math::LowPassFilter2p _filter_roll{50.0f, 10.f}; /**< filters for the main 4 stick inputs */
+	math::LowPassFilter2p _filter_pitch{50.0f, 10.f}; /** we want smooth setpoints as inputs to the controllers */
+	math::LowPassFilter2p _filter_yaw{50.0f, 10.f};
+	math::LowPassFilter2p _filter_throttle{50.0f, 10.f};
 
 };
 

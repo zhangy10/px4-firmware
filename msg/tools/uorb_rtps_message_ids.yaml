@@ -90,6 +90,8 @@ rtps:
     id: 36
   - msg: manual_control_setpoint
     id: 37
+  - msg: manual_control_switches
+    id: 134
   - msg: mavlink_log
     id: 38
   - msg: mission

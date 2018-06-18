@@ -84,7 +84,6 @@
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/cpuload.h>
 #include <uORB/topics/geofence_result.h>
-#include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/mavlink_log.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/parameter_update.h>
@@ -139,14 +138,10 @@ static float min_stick_change = 0.25f;
 static struct vehicle_status_s status = {};
 static struct actuator_armed_s armed = {};
 static struct safety_s safety = {};
-static int32_t _flight_mode_slots[manual_control_setpoint_s::MODE_SLOT_NUM];
+static int32_t _flight_mode_slots[manual_control_switches_s::MODE_SLOT_NUM];
 static struct commander_state_s internal_state = {};
 
 static uint8_t main_state_before_rtl = commander_state_s::MAIN_STATE_MAX;
-
-static manual_control_setpoint_s sp_man = {};		///< the current manual control setpoint
-static manual_control_setpoint_s _last_sp_man = {};	///< the manual control setpoint valid at the last mode switch
-static uint8_t _last_sp_man_arm_switch = 0;
 
 static struct vtol_vehicle_status_s vtol_status = {};
 static struct cpuload_s cpuload = {};
@@ -799,7 +794,7 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 						|| status_local->nav_state == vehicle_status_s::NAVIGATION_STATE_ACRO
 						|| status_local->nav_state == vehicle_status_s::NAVIGATION_STATE_STAB
 						|| status_local->nav_state == vehicle_status_s::NAVIGATION_STATE_RATTITUDE)
-					    && (sp_man.z > 0.1f)) {
+					    && (_manual_control_setpoint_sub.get().z > 0.1f)) {
 
 						mavlink_log_critical(&mavlink_log_pub, "Arming denied! Manual throttle not zero");
 						cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_DENIED;
@@ -1261,7 +1256,6 @@ Commander::run()
 	uORB::Subscription land_detector_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription param_changed_sub{ORB_ID(parameter_update)};
 	uORB::Subscription safety_sub{ORB_ID(safety)};
-	uORB::Subscription sp_man_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription subsys_sub{ORB_ID(subsystem_info)};
 	uORB::Subscription system_power_sub{ORB_ID(system_power)};
 	uORB::Subscription vtol_vehicle_status_sub{ORB_ID(vtol_vehicle_status)};
@@ -1490,7 +1484,12 @@ Commander::run()
 			}
 		}
 
-		sp_man_sub.update(&sp_man);
+		// manual input
+		_manual_control_setpoint_sub.update();
+		const manual_control_setpoint_s &sp_man = _manual_control_setpoint_sub.get();
+
+		_manual_control_switches_sub.update();
+		const manual_control_switches_s &sp_man_switches = _manual_control_switches_sub.get();
 
 		offboard_control_update(status_changed);
 
@@ -1811,8 +1810,8 @@ Commander::run()
 			_geofence_violated_prev = geofence_result.geofence_violated;
 
 			// reset if no longer in LOITER or if manually switched to LOITER
-			const bool in_loiter_mode = internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_LOITER;
-			const bool manual_loiter_switch_on = sp_man.loiter_switch == manual_control_setpoint_s::SWITCH_POS_ON;
+			const bool in_loiter_mode = (internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_LOITER);
+			const bool manual_loiter_switch_on = (sp_man_switches.loiter_switch == manual_control_switches_s::SWITCH_POS_ON);
 
 			if (!in_loiter_mode || manual_loiter_switch_on) {
 				_geofence_loiter_on = false;
@@ -1821,7 +1820,7 @@ Commander::run()
 
 			// reset if no longer in RTL or if manually switched to RTL
 			const bool in_rtl_mode = internal_state.main_state == commander_state_s::MAIN_STATE_AUTO_RTL;
-			const bool manual_return_switch_on = sp_man.return_switch == manual_control_setpoint_s::SWITCH_POS_ON;
+			const bool manual_return_switch_on = (sp_man_switches.return_switch == manual_control_switches_s::SWITCH_POS_ON);
 
 			if (!in_rtl_mode || manual_return_switch_on) {
 				_geofence_rtl_on = false;
@@ -1910,20 +1909,19 @@ Commander::run()
 			status.rc_signal_lost = false;
 
 			const bool in_armed_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
-			const bool arm_switch_or_button_mapped = sp_man.arm_switch != manual_control_setpoint_s::SWITCH_POS_NONE;
-			const bool arm_button_pressed = arm_switch_is_button == 1
-							&& sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON;
+			const bool arm_switch_or_button_mapped = (sp_man_switches.arm_switch != manual_control_switches_s::SWITCH_POS_NONE);
+			const bool arm_button_pressed = (arm_switch_is_button == 1)
+							&& (sp_man_switches.arm_switch == manual_control_switches_s::SWITCH_POS_ON);
 
 			/* DISARM
 			 * check if left stick is in lower left position or arm button is pushed or arm switch has transition from arm to disarm
 			 * and we are in MANUAL, Rattitude, or AUTO_READY mode or (ASSIST mode and landed)
 			 * do it only for rotary wings in manual mode or fixed wing if landed.
 			 * Disable stick-disarming if arming switch or button is mapped */
-			const bool stick_in_lower_left = sp_man.r < -STICK_ON_OFF_LIMIT && sp_man.z < 0.1f
-							 && !arm_switch_or_button_mapped;
-			const bool arm_switch_to_disarm_transition =  arm_switch_is_button == 0 &&
-					_last_sp_man_arm_switch == manual_control_setpoint_s::SWITCH_POS_ON &&
-					sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_OFF;
+			const bool stick_in_lower_left = (sp_man.r < -STICK_ON_OFF_LIMIT) && (sp_man.z < 0.1f) && !arm_switch_or_button_mapped;
+			const bool arm_switch_to_disarm_transition = (arm_switch_is_button == 0) &&
+					(_last_sp_man_arm_switch == manual_control_switches_s::SWITCH_POS_ON) &&
+					(sp_man_switches.arm_switch == manual_control_switches_s::SWITCH_POS_OFF);
 
 			if (in_armed_state &&
 			    status.rc_input_mode != vehicle_status_s::RC_IN_MODE_OFF &&
@@ -1935,6 +1933,7 @@ Commander::run()
 				    internal_state.main_state != commander_state_s::MAIN_STATE_STAB &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_RATTITUDE &&
 				    !land_detector.landed) {
+
 					print_reject_arm("Not disarming! Not yet in manual mode or landed");
 
 				} else if ((stick_off_counter == rc_arm_hyst && stick_on_counter < rc_arm_hyst) || arm_switch_to_disarm_transition) {
@@ -1945,7 +1944,7 @@ Commander::run()
 
 				stick_off_counter++;
 
-			} else if (!(arm_switch_is_button == 1 && sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON)) {
+			} else if (!((arm_switch_is_button == 1) && (sp_man_switches.arm_switch == manual_control_switches_s::SWITCH_POS_ON))) {
 				/* do not reset the counter when holding the arm button longer than needed */
 				stick_off_counter = 0;
 			}
@@ -1954,19 +1953,21 @@ Commander::run()
 			 * check if left stick is in lower right position or arm button is pushed or arm switch has transition from disarm to arm
 			 * and we're in MANUAL mode.
 			 * Disable stick-arming if arming switch or button is mapped */
-			const bool stick_in_lower_right = sp_man.r > STICK_ON_OFF_LIMIT && sp_man.z < 0.1f
-							  && !arm_switch_or_button_mapped;
+			const bool stick_in_lower_right = (sp_man.r > STICK_ON_OFF_LIMIT) && (sp_man.z < 0.1f) && !arm_switch_or_button_mapped;
+
 			/* allow a grace period for re-arming: preflight checks don't need to pass during that time,
 			 * for example for accidential in-air disarming */
 			const bool in_arming_grace_period = last_disarmed_timestamp != 0 && hrt_elapsed_time(&last_disarmed_timestamp) < 5_s;
-			const bool arm_switch_to_arm_transition = arm_switch_is_button == 0 &&
-					_last_sp_man_arm_switch == manual_control_setpoint_s::SWITCH_POS_OFF &&
-					sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON &&
+
+			const bool arm_switch_to_arm_transition = (arm_switch_is_button == 0) &&
+					(_last_sp_man_arm_switch == manual_control_switches_s::SWITCH_POS_OFF) &&
+					(sp_man_switches.arm_switch == manual_control_switches_s::SWITCH_POS_ON) &&
 					(sp_man.z < 0.1f || in_arming_grace_period);
 
 			if (!in_armed_state &&
 			    status.rc_input_mode != vehicle_status_s::RC_IN_MODE_OFF &&
 			    (stick_in_lower_right || arm_button_pressed || arm_switch_to_arm_transition)) {
+
 				if ((stick_on_counter == rc_arm_hyst && stick_off_counter < rc_arm_hyst) || arm_switch_to_arm_transition) {
 
 					/* we check outside of the transition function here because the requirement
@@ -2001,12 +2002,12 @@ Commander::run()
 
 				stick_on_counter++;
 
-			} else if (!(arm_switch_is_button == 1 && sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON)) {
+			} else if (!((arm_switch_is_button == 1) && (sp_man_switches.arm_switch == manual_control_switches_s::SWITCH_POS_ON))) {
 				/* do not reset the counter when holding the arm button longer than needed */
 				stick_on_counter = 0;
 			}
 
-			_last_sp_man_arm_switch = sp_man.arm_switch;
+			_last_sp_man_arm_switch = sp_man_switches.arm_switch;
 
 			if (arming_ret == TRANSITION_DENIED) {
 				/*
@@ -2037,7 +2038,7 @@ Commander::run()
 			}
 
 			/* check throttle kill switch */
-			if (sp_man.kill_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			if (sp_man_switches.kill_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				/* set lockdown flag */
 				if (!armed.manual_lockdown) {
 					mavlink_log_emergency(&mavlink_log_pub, "Manual kill-switch engaged");
@@ -2045,7 +2046,7 @@ Commander::run()
 					armed.manual_lockdown = true;
 				}
 
-			} else if (sp_man.kill_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+			} else if (sp_man_switches.kill_switch == manual_control_switches_s::SWITCH_POS_OFF) {
 				if (armed.manual_lockdown) {
 					mavlink_log_emergency(&mavlink_log_pub, "Manual kill-switch disengaged");
 					status_changed = true;
@@ -2595,21 +2596,23 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 	// we want to allow rc mode change to take precidence.  This is a safety
 	// feature, just in case offboard control goes crazy.
 
+	const manual_control_switches_s &manual_switches = _manual_control_switches_sub.get();
+
 	const bool altitude_got_valid = !_last_condition_local_altitude_valid && status_flags.condition_local_altitude_valid;
 	const bool position_got_valid = !_last_condition_global_position_valid && status_flags.condition_global_position_valid;
-	const bool first_time_rc = _last_sp_man.timestamp == 0;
-	const bool rc_values_updated = _last_sp_man.timestamp != sp_man.timestamp;
+	const bool first_time_rc = (_last_sp_man_switches.timestamp == 0);
+	const bool rc_values_updated = (_last_sp_man_switches.timestamp != manual_switches.timestamp);
 	const bool some_switch_changed =
-		(_last_sp_man.offboard_switch != sp_man.offboard_switch)
-		|| (_last_sp_man.return_switch != sp_man.return_switch)
-		|| (_last_sp_man.mode_switch != sp_man.mode_switch)
-		|| (_last_sp_man.acro_switch != sp_man.acro_switch)
-		|| (_last_sp_man.rattitude_switch != sp_man.rattitude_switch)
-		|| (_last_sp_man.posctl_switch != sp_man.posctl_switch)
-		|| (_last_sp_man.loiter_switch != sp_man.loiter_switch)
-		|| (_last_sp_man.mode_slot != sp_man.mode_slot)
-		|| (_last_sp_man.stab_switch != sp_man.stab_switch)
-		|| (_last_sp_man.man_switch != sp_man.man_switch);
+		(_last_sp_man_switches.offboard_switch != manual_switches.offboard_switch)
+		|| (_last_sp_man_switches.return_switch != manual_switches.return_switch)
+		|| (_last_sp_man_switches.mode_switch != manual_switches.mode_switch)
+		|| (_last_sp_man_switches.acro_switch != manual_switches.acro_switch)
+		|| (_last_sp_man_switches.rattitude_switch != manual_switches.rattitude_switch)
+		|| (_last_sp_man_switches.posctl_switch != manual_switches.posctl_switch)
+		|| (_last_sp_man_switches.loiter_switch != manual_switches.loiter_switch)
+		|| (_last_sp_man_switches.mode_slot != manual_switches.mode_slot)
+		|| (_last_sp_man_switches.stab_switch != manual_switches.stab_switch)
+		|| (_last_sp_man_switches.man_switch != manual_switches.man_switch);
 
 	// only switch mode based on RC switch if necessary to also allow mode switching via MAVLink
 	const bool should_evaluate_rc_mode_switch = first_time_rc
@@ -2631,25 +2634,27 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 			internal_state.main_state == commander_state_s::MAIN_STATE_RATTITUDE ||
 			internal_state.main_state == commander_state_s::MAIN_STATE_STAB)) {
 
-			_last_sp_man.timestamp = sp_man.timestamp;
-			_last_sp_man.x = sp_man.x;
-			_last_sp_man.y = sp_man.y;
-			_last_sp_man.z = sp_man.z;
-			_last_sp_man.r = sp_man.r;
+			const manual_control_setpoint_s &manual_sp = _manual_control_setpoint_sub.get();
+
+			_last_sp_man.timestamp = manual_sp.timestamp;
+			_last_sp_man.x = manual_sp.x;
+			_last_sp_man.y = manual_sp.y;
+			_last_sp_man.z = manual_sp.z;
+			_last_sp_man.r = manual_sp.r;
 		}
 
 		/* no timestamp change or no switch change -> nothing changed */
 		return TRANSITION_NOT_CHANGED;
 	}
 
-	_last_sp_man = sp_man;
+	_last_sp_man_switches = manual_switches;
 
 	// reset the position and velocity validity calculation to give the best change of being able to select
 	// the desired mode
 	reset_posvel_validity(changed);
 
 	/* offboard switch overrides main switch */
-	if (sp_man.offboard_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	if (manual_switches.offboard_switch == manual_control_switches_s::SWITCH_POS_ON) {
 		res = main_state_transition(status_local, commander_state_s::MAIN_STATE_OFFBOARD, status_flags, &internal_state);
 
 		if (res == TRANSITION_DENIED) {
@@ -2663,7 +2668,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 	}
 
 	/* RTL switch overrides main switch */
-	if (sp_man.return_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	if (manual_switches.return_switch == manual_control_switches_s::SWITCH_POS_ON) {
 		res = main_state_transition(status_local, commander_state_s::MAIN_STATE_AUTO_RTL, status_flags, &internal_state);
 
 		if (res == TRANSITION_DENIED) {
@@ -2682,7 +2687,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 	}
 
 	/* Loiter switch overrides main switch */
-	if (sp_man.loiter_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	if (manual_switches.loiter_switch == manual_control_switches_s::SWITCH_POS_ON) {
 		res = main_state_transition(status_local, commander_state_s::MAIN_STATE_AUTO_LOITER, status_flags, &internal_state);
 
 		if (res == TRANSITION_DENIED) {
@@ -2694,14 +2699,14 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 	}
 
 	/* we know something has changed - check if we are in mode slot operation */
-	if (sp_man.mode_slot != manual_control_setpoint_s::MODE_SLOT_NONE) {
+	if (manual_switches.mode_slot != manual_control_switches_s::MODE_SLOT_NONE) {
 
-		if (sp_man.mode_slot > manual_control_setpoint_s::MODE_SLOT_NUM) {
+		if (manual_switches.mode_slot > manual_control_switches_s::MODE_SLOT_NUM) {
 			warnx("m slot overflow");
 			return TRANSITION_DENIED;
 		}
 
-		int new_mode = _flight_mode_slots[sp_man.mode_slot - 1];
+		int new_mode = _flight_mode_slots[manual_switches.mode_slot - 1];
 
 		if (new_mode < 0) {
 			/* slot is unused */
@@ -2833,19 +2838,19 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 	}
 
 	/* offboard and RTL switches off or denied, check main mode switch */
-	switch (sp_man.mode_switch) {
-	case manual_control_setpoint_s::SWITCH_POS_NONE:
+	switch (manual_switches.mode_switch) {
+	case manual_control_switches_s::SWITCH_POS_NONE:
 		res = TRANSITION_NOT_CHANGED;
 		break;
 
-	case manual_control_setpoint_s::SWITCH_POS_OFF:		// MANUAL
-		if (sp_man.stab_switch == manual_control_setpoint_s::SWITCH_POS_NONE &&
-		    sp_man.man_switch == manual_control_setpoint_s::SWITCH_POS_NONE) {
+	case manual_control_switches_s::SWITCH_POS_OFF:		// MANUAL
+		if (manual_switches.stab_switch == manual_control_switches_s::SWITCH_POS_NONE &&
+		    manual_switches.man_switch == manual_control_switches_s::SWITCH_POS_NONE) {
 			/*
 			 * Legacy mode:
 			 * Acro switch being used as stabilized switch in FW.
 			 */
-			if (sp_man.acro_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			if (manual_switches.acro_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				/* manual mode is stabilized already for multirotors, so switch to acro
 				 * for any non-manual mode
 				 */
@@ -2859,7 +2864,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 					res = main_state_transition(status_local, commander_state_s::MAIN_STATE_MANUAL, status_flags, &internal_state);
 				}
 
-			} else if (sp_man.rattitude_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			} else if (manual_switches.rattitude_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				/* Similar to acro transitions for multirotors.  FW aircraft don't need a
 				 * rattitude mode.*/
 				if (status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
@@ -2878,19 +2883,19 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 			 * - Acro is Acro
 			 * - Manual is not default anymore when the manaul switch is assigned
 			 */
-			if (sp_man.man_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			if (manual_switches.man_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				res = main_state_transition(status_local, commander_state_s::MAIN_STATE_MANUAL, status_flags, &internal_state);
 
-			} else if (sp_man.acro_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			} else if (manual_switches.acro_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				res = main_state_transition(status_local, commander_state_s::MAIN_STATE_ACRO, status_flags, &internal_state);
 
-			} else if (sp_man.rattitude_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			} else if (manual_switches.rattitude_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				res = main_state_transition(status_local, commander_state_s::MAIN_STATE_RATTITUDE, status_flags, &internal_state);
 
-			} else if (sp_man.stab_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+			} else if (manual_switches.stab_switch == manual_control_switches_s::SWITCH_POS_ON) {
 				res = main_state_transition(status_local, commander_state_s::MAIN_STATE_STAB, status_flags, &internal_state);
 
-			} else if (sp_man.man_switch == manual_control_setpoint_s::SWITCH_POS_NONE) {
+			} else if (manual_switches.man_switch == manual_control_switches_s::SWITCH_POS_NONE) {
 				// default to MANUAL when no manual switch is set
 				res = main_state_transition(status_local, commander_state_s::MAIN_STATE_MANUAL, status_flags, &internal_state);
 
@@ -2903,8 +2908,8 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 		// TRANSITION_DENIED is not possible here
 		break;
 
-	case manual_control_setpoint_s::SWITCH_POS_MIDDLE:		// ASSIST
-		if (sp_man.posctl_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	case manual_control_switches_s::SWITCH_POS_MIDDLE:		// ASSIST
+		if (manual_switches.posctl_switch == manual_control_switches_s::SWITCH_POS_ON) {
 			res = main_state_transition(status_local, commander_state_s::MAIN_STATE_POSCTL, status_flags, &internal_state);
 
 			if (res != TRANSITION_DENIED) {
@@ -2921,7 +2926,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 			break;	// changed successfully or already in this mode
 		}
 
-		if (sp_man.posctl_switch != manual_control_setpoint_s::SWITCH_POS_ON) {
+		if (manual_switches.posctl_switch != manual_control_switches_s::SWITCH_POS_ON) {
 			print_reject_mode("ALTITUDE CONTROL");
 		}
 
@@ -2930,7 +2935,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 		// TRANSITION_DENIED is not possible here
 		break;
 
-	case manual_control_setpoint_s::SWITCH_POS_ON:			// AUTO
+	case manual_control_switches_s::SWITCH_POS_ON:			// AUTO
 		res = main_state_transition(status_local, commander_state_s::MAIN_STATE_AUTO_MISSION, status_flags, &internal_state);
 
 		if (res != TRANSITION_DENIED) {
