@@ -369,11 +369,8 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	vehicle_attitude_setpoint_poll();
 	_thrust_sp = _v_att_sp.thrust;
 
-	/* prepare yaw weight from the ratio between roll/pitch and yaw gains */
-	Vector3f attitude_gain = _attitude_p;
-	const float roll_pitch_gain = (attitude_gain(0) + attitude_gain(1)) / 2.f;
-	const float yaw_w = math::constrain(attitude_gain(2) / roll_pitch_gain, 0.f, 1.f);
-	attitude_gain(2) = roll_pitch_gain;
+	/* prepare yaw weight */
+	const float yaw_w = _param_mc_yaw_weight.get();
 
 	/* get estimated and desired vehicle attitude */
 	Quatf q(_v_att.q);
@@ -415,7 +412,7 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	Vector3f eq = 2.f * math::signNoZero(qe(0)) * qe.imag();
 
 	/* calculate angular rates setpoint */
-	_rates_sp = eq.emult(attitude_gain);
+	_rates_sp = eq.emult(_attitude_p);
 
 	/* Feed forward the yaw setpoint rate.
 	 * The yaw_feedforward_rate is a commanded rotation around the world z-axis,

@@ -194,6 +194,7 @@ private:
 		(ParamFloat<px4::params::MC_PITCHRATE_FF>) _pitch_rate_ff,
 
 		(ParamFloat<px4::params::MC_YAW_P>) _yaw_p,
+		(ParamFloat<px4::params::MC_YAW_WEIGHT>) _param_mc_yaw_weight,
 		(ParamFloat<px4::params::MC_YAWRATE_P>) _yaw_rate_p,
 		(ParamFloat<px4::params::MC_YAWRATE_I>) _yaw_rate_i,
 		(ParamFloat<px4::params::MC_YR_INT_LIM>) _yaw_rate_integ_lim,
