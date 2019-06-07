@@ -41,12 +41,12 @@ using namespace time_literals;
 static bool bind_spektrum(int arg);
 #endif /* SPEKTRUM_POWER */
 
-work_s RCInput::_work = {};
 constexpr char const *RCInput::RC_SCAN_STRING[];
 
-RCInput::RCInput(bool run_as_task, char *device) :
-	_cycle_perf(perf_alloc(PC_ELAPSED, "rc_input cycle time")),
-	_publish_interval_perf(perf_alloc(PC_INTERVAL, "rc_input publish interval"))
+RCInput::RCInput(const char *device) :
+	ScheduledWorkItem(px4::serial_port_to_wq(device)),
+	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle time")),
+	_publish_interval_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": publish interval"))
 {
 	// rc input, published to ORB
 	_rc_in.input_source = input_rc_s::RC_INPUT_SOURCE_PX4FMU_PPM;
@@ -71,8 +71,6 @@ RCInput::RCInput(bool run_as_task, char *device) :
 
 RCInput::~RCInput()
 {
-	orb_unadvertise(_to_input_rc);
-
 #ifdef RC_SERIAL_PORT
 	dsm_deinit();
 #endif
@@ -122,7 +120,6 @@ RCInput::init()
 int
 RCInput::task_spawn(int argc, char *argv[])
 {
-	bool run_as_task = false;
 	bool error_flag = false;
 
 	int myoptind = 1;
@@ -130,12 +127,8 @@ RCInput::task_spawn(int argc, char *argv[])
 	const char *myoptarg = nullptr;
 	const char *device = RC_SERIAL_PORT;
 
-	while ((ch = px4_getopt(argc, argv, "td:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
-		case 't':
-			run_as_task = true;
-			break;
-
 		case 'd':
 			device = myoptarg;
 			break;
@@ -155,69 +148,20 @@ RCInput::task_spawn(int argc, char *argv[])
 		return -1;
 	}
 
+	RCInput *instance = new RCInput(device);
 
-	if (!run_as_task) {
-
-		/* schedule a cycle to start things */
-		int ret = work_queue(HPWORK, &_work, (worker_t)&RCInput::cycle_trampoline_init, (void *)device, 0);
-
-		if (ret < 0) {
-			return ret;
-		}
-
-		// we need to wait, otherwise 'device' could go out of scope while still being accessed
-		wait_until_running();
-
-		_task_id = task_id_is_work_queue;
-
-	} else {
-
-		/* start the IO interface task */
-
-		const char *const args[] = { device, nullptr };
-		_task_id = px4_task_spawn_cmd("rc_input",
-					      SCHED_DEFAULT,
-					      SCHED_PRIORITY_SLOW_DRIVER,
-					      1000,
-					      (px4_main_t)&run_trampoline,
-					      (char *const *)args);
-
-		if (_task_id < 0) {
-			_task_id = -1;
-			return -errno;
-		}
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		delete instance;
+		return PX4_ERROR;
 	}
+
+	_object.store(instance);
+	_task_id = task_id_is_work_queue;
+
+	instance->ScheduleOnInterval(4_ms); // 250 Hz
 
 	return PX4_OK;
-}
-
-void
-RCInput::cycle_trampoline_init(void *arg)
-{
-	RCInput *dev = new RCInput(false, (char *)arg);
-
-	if (!dev) {
-		PX4_ERR("alloc failed");
-		return;
-	}
-
-	int ret = dev->init();
-
-	if (ret != 0) {
-		PX4_ERR("init failed (%i)", ret);
-		delete dev;
-		return;
-	}
-
-	_object.store(dev);
-
-	dev->cycle();
-}
-void
-RCInput::cycle_trampoline(void *arg)
-{
-	RCInput *dev = reinterpret_cast<RCInput *>(arg);
-	dev->cycle();
 }
 
 void
@@ -304,23 +248,22 @@ void RCInput::rc_io_invert(bool invert)
 #endif
 
 void
-RCInput::run()
+RCInput::Run()
 {
-	int ret = init();
-
-	if (ret != 0) {
-		PX4_ERR("init failed (%i)", ret);
+	if (should_exit()) {
 		exit_and_cleanup();
-		return;
 	}
 
-	cycle();
-}
+	if (!_initialized) {
+		if (init() == PX4_OK) {
+			_initialized = true;
 
-void
-RCInput::cycle()
-{
-	while (true) {
+		} else {
+			PX4_ERR("init failed");
+			exit_and_cleanup();
+		}
+
+	} else {
 
 		perf_begin(_cycle_perf);
 
@@ -405,17 +348,14 @@ RCInput::cycle()
 
 		int newBytes = 0;
 
-		if (_run_as_task) {
-			// TODO: needs work (poll _rcs_fd)
-			// int ret = poll(fds, sizeof(fds) / sizeof(fds[0]), 100);
-			// then update priority to SCHED_PRIORITY_FAST_DRIVER
-			// read all available data from the serial RC input UART
-			newBytes = ::read(_rcs_fd, &_rcs_buf[0], SBUS_BUFFER_SIZE);
+		// TODO: needs work (poll _rcs_fd)
+		// int ret = poll(fds, sizeof(fds) / sizeof(fds[0]), 100);
+		// then update priority to SCHED_PRIORITY_FAST_DRIVER
+		// read all available data from the serial RC input UART
+		//newBytes = ::read(_rcs_fd, &_rcs_buf[0], SBUS_BUFFER_SIZE);
 
-		} else {
-			// read all available data from the serial RC input UART
-			newBytes = ::read(_rcs_fd, &_rcs_buf[0], SBUS_BUFFER_SIZE);
-		}
+		// read all available data from the serial RC input UART
+		newBytes = ::read(_rcs_fd, &_rcs_buf[0], SBUS_BUFFER_SIZE);
 
 		switch (_rc_scan_state) {
 		case RC_SCAN_SBUS:
@@ -674,28 +614,10 @@ RCInput::cycle()
 		if (rc_updated) {
 			perf_count(_publish_interval_perf);
 
-			int instance;
-			orb_publish_auto(ORB_ID(input_rc), &_to_input_rc, &_rc_in, &instance, ORB_PRIO_DEFAULT);
+			_to_input_rc.publish(_rc_in);
 
 		} else if (!rc_updated && ((hrt_absolute_time() - _rc_in.timestamp_last_signal) > 1_s)) {
 			_rc_scan_locked = false;
-		}
-
-		if (_run_as_task) {
-			if (should_exit()) {
-				break;
-			}
-
-		} else {
-			if (should_exit()) {
-				exit_and_cleanup();
-
-			} else {
-				/* schedule next cycle */
-				work_queue(HPWORK, &_work, (worker_t)&RCInput::cycle_trampoline, this, USEC2TICK(_current_update_interval));
-			}
-
-			break;
 		}
 	}
 }
@@ -740,12 +662,6 @@ bool bind_spektrum(int arg)
 	return (ret == PX4_OK);
 }
 #endif /* SPEKTRUM_POWER */
-
-RCInput *RCInput::instantiate(int argc, char *argv[])
-{
-	// No arguments to parse. We also know that we should run as task
-	return new RCInput(true, argv[0]);
-}
 
 int RCInput::custom_command(int argc, char *argv[])
 {
@@ -810,11 +726,10 @@ When running on the work queue, it schedules at a fixed frequency.
 
 int RCInput::print_status()
 {
-	PX4_INFO("Running %s", (_run_as_task ? "as task" : "on work queue"));
+	PX4_INFO("Running");
 
-	if (!_run_as_task) {
-		PX4_INFO("Max update rate: %i Hz", 1000000 / _current_update_interval);
-	}
+	PX4_INFO("Max update rate: %i Hz", 1000000 / _current_update_interval);
+
 	if (_device[0] != '\0') {
 		PX4_INFO("Serial device: %s", _device);
 	}
