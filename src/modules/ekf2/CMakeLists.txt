@@ -34,8 +34,10 @@ px4_add_module(
 	MODULE modules__ekf2
 	MAIN ekf2
 	COMPILE_FLAGS
-	STACK_MAIN 2500
-	STACK_MAX 4000
+		-Wno-narrowing
+		-Wno-double-promotion
+	STACK_MAIN 4000
+	STACK_MAX 4700
 	SRCS
 		ekf2_main.cpp
 	DEPENDS
