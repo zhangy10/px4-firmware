@@ -36,5 +36,7 @@ px4_add_module(
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		bmm150.cpp
+		bmm150_main.cpp
+		BMM150.cpp
+		BMM150.hpp
 	)
