@@ -72,6 +72,7 @@ px4_add_board(
 		mc_pos_control
 		navigator
 		sensors
+		temperature_compensation
 		sih
 		vmount
 		wind_estimator

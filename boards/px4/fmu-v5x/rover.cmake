@@ -70,6 +70,7 @@ px4_add_board(
 		navigator
 		rover_pos_control
 		sensors
+		temperature_compensation
 		vmount
 
 	SYSTEMCMDS

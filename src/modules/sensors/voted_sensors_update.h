@@ -48,10 +48,12 @@
 #include <drivers/drv_hrt.h>
 
 #include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
 
 #include <lib/ecl/validation/data_validator.h>
 #include <lib/ecl/validation/data_validator_group.h>
 
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/sensor_preflight.h>
 #include <uORB/topics/sensor_correction.h>
@@ -62,7 +64,6 @@
 
 #include <DevMgr.hpp>
 
-#include "temperature_compensation.h"
 #include "common.h"
 
 namespace sensors
@@ -263,10 +264,8 @@ private:
 	float _mag_diff[3][2];		/**< filtered mag differences between sensor instances (Ga) */
 
 	/* sensor thermal compensation */
-	TemperatureCompensation _temperature_compensation;
-	struct sensor_correction_s _corrections; /**< struct containing the sensor corrections to be published to the uORB*/
-	orb_advert_t _sensor_correction_pub = nullptr; /**< handle to the sensor correction uORB topic */
-	bool _corrections_changed = false;
+	uORB::Subscription _corrections_sub{ORB_ID(sensor_correction)};
+	sensor_correction_s _corrections{}; /**< struct containing the sensor corrections to be subscribed from the uORB*/
 
 	/* sensor selection publication */
 	struct sensor_selection_s _selection = {}; /**< struct containing the sensor selection to be published to the uORB*/
