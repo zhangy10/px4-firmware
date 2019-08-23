@@ -33,6 +33,10 @@
 
 #include "SafetyButton.hpp"
 
+#ifndef GPIO_BTN_SAFETY
+#error "board needs to define a safety button gpio pin to use this module"
+#endif
+
 using namespace time_literals;
 
 static constexpr uint8_t CYCLE_COUNT{10}; /* safety switch must be held for 1 second to activate */
@@ -46,6 +50,16 @@ enum class LED_PATTERN : uint16_t {
 	IO_FMU_ARMED		= 0xffff,	/**< constantly on */
 };
 
+SafetyButton::SafetyButton() :
+	ScheduledWorkItem(px4::wq_configurations::hp_default)
+{
+	_safety_disabled = circuit_breaker_enabled("CBRK_IO_SAFETY", CBRK_IO_SAFETY_KEY);
+
+	if (_safety_disabled) {
+		_safety_btn_off = true;
+	}
+}
+
 SafetyButton::~SafetyButton()
 {
 	ScheduleClear();
@@ -54,8 +68,7 @@ SafetyButton::~SafetyButton()
 void
 SafetyButton::CheckButton()
 {
-	// Debounce the safety button, change state if it has been held for long enough.
-	bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
+	const bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
 
 	/*
 	 * Keep pressed for a while to arm.
@@ -101,7 +114,7 @@ SafetyButton::FlashButton()
 		// Select the appropriate LED flash pattern depending on the current arm state
 		LED_PATTERN pattern = LED_PATTERN::FMU_REFUSE_TO_ARM;
 
-		// cycle the blink state machine at 10Hz
+		// cycle the blink state machine
 		if (_safety_btn_off) {
 			if (armed.armed) {
 				pattern = LED_PATTERN::IO_FMU_ARMED;
@@ -133,56 +146,46 @@ SafetyButton::Run()
 {
 	if (should_exit()) {
 		exit_and_cleanup();
+		return;
 	}
 
-	// read safety switch input and control safety switch LED at 10Hz
 	CheckButton();
 
-	// Make the safety button flash anyway, no matter if it's used or not.
-	FlashButton();
+	// control safety switch LED & publish safety topic
+	if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
+		FlashButton();
 
-	safety_s safety{};
-	safety.timestamp = hrt_absolute_time();
-	safety.safety_switch_available = true;
-	safety.safety_off = _safety_btn_off;
+		safety_s safety{};
+		safety.timestamp = hrt_absolute_time();
+		safety.safety_switch_available = true;
+		safety.safety_off = _safety_btn_off || _safety_disabled;
 
-	// publish the safety status
-	_to_safety.publish(safety);
+		// publish the safety status
+		_to_safety.publish(safety);
+	}
 }
 
 int
 SafetyButton::task_spawn(int argc, char *argv[])
 {
-	if (PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
-		PX4_ERR("not starting (use px4io for safety button)");
+	SafetyButton *instance = new SafetyButton();
 
-		return PX4_ERROR;
-
-	} else if (circuit_breaker_enabled("CBRK_IO_SAFETY", CBRK_IO_SAFETY_KEY)) {
-		PX4_WARN("disabled by CBRK_IO_SAFETY, exiting");
-		return PX4_ERROR;
-
-	} else {
-		SafetyButton *instance = new SafetyButton();
-
-		if (instance) {
-			_object.store(instance);
-			_task_id = task_id_is_work_queue;
-
-			if (instance->Start() == PX4_OK) {
-				return PX4_OK;
-			}
-
-		} else {
-			PX4_ERR("alloc failed");
-		}
-
-		delete instance;
-		_object.store(nullptr);
-		_task_id = -1;
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return -1;
 	}
 
-	return PX4_ERROR;
+	int ret = instance->Start();
+
+	if (ret != PX4_OK) {
+		delete instance;
+		return ret;
+	}
+
+	_object.store(instance);
+	_task_id = task_id_is_work_queue;
+
+	return ret;
 }
 
 int
@@ -214,7 +217,8 @@ This module is responsible for the safety button.
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("safety_button", "driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start the safety button driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
 }
@@ -223,6 +227,7 @@ int
 SafetyButton::print_status()
 {
 	PX4_INFO("Safety State (from button): %s", _safety_btn_off ? "off" : "on");
+	PX4_INFO("Safety Disabled: %s", _safety_disabled ? "yes" : "no");
 
 	return 0;
 }

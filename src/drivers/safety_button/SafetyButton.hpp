@@ -50,7 +50,7 @@
 class SafetyButton : public ModuleBase<SafetyButton>, public px4::ScheduledWorkItem
 {
 public:
-	SafetyButton() : ScheduledWorkItem(px4::wq_configurations::hp_default) {}
+	SafetyButton();
 	virtual ~SafetyButton();
 
 	/** @see ModuleBase */
@@ -80,7 +80,7 @@ private:
 
 	uint8_t				_button_counter{0};
 	uint8_t				_blink_counter{0};
-	bool				_safety_off{false};		///< State of the safety button from the subscribed safety topic
+	bool				_safety_disabled{false}; ///< circuit breaker to disable the safety button
 	bool				_safety_btn_off{false};		///< State of the safety button read from the HW button
 
 };
