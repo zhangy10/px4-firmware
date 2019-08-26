@@ -336,7 +336,7 @@ if (CATKIN_DEVEL_PREFIX)
 	endif()
 endif()
 
-find_package(PythonInterp REQUIRED)
+find_package(PythonInterp 3 REQUIRED)
 
 option(PYTHON_COVERAGE "Python code coverage" OFF)
 if(PYTHON_COVERAGE)
