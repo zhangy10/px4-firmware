@@ -267,6 +267,28 @@ pipeline {
           }
         }
 
+        stage('SITL unit tests (Debug)') {
+          agent {
+            docker {
+              image 'px4io/px4-dev-base-bionic:2019-07-29'
+              args '-e CCACHE_BASEDIR=$WORKSPACE -v ${CCACHE_DIR}:${CCACHE_DIR}:rw'
+            }
+          }
+          steps {
+            sh 'export'
+            sh 'make distclean'
+            sh 'ccache -z'
+            sh 'git fetch --tags'
+            sh 'PX4_CMAKE_BUILD_TYPE=Debug make tests'
+            sh 'ccache -s'
+          }
+          post {
+            always {
+              sh 'make distclean'
+            }
+          }
+        }
+
         stage('Clang analyzer') {
           agent {
             docker {
