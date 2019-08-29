@@ -43,9 +43,11 @@
 #include <px4_module.h>
 #include <px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Publication.hpp>
+#include <uORB/PublicationQueued.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/safety.h>
+#include <uORB/topics/vehicle_command.h>
 
 class SafetyButton : public ModuleBase<SafetyButton>, public px4::ScheduledWorkItem
 {
@@ -73,14 +75,21 @@ private:
 
 	void CheckButton();
 	void FlashButton();
+	void CheckPairingRequest(bool button_pressed);
 
 
 	uORB::Subscription		_armed_sub{ORB_ID(actuator_armed)};
 	uORB::Publication<safety_s>	_to_safety{ORB_ID(safety)};
+	uORB::PublicationQueued<vehicle_command_s>	_to_command{ORB_ID(vehicle_command)};
 
 	uint8_t				_button_counter{0};
 	uint8_t				_blink_counter{0};
 	bool				_safety_disabled{false}; ///< circuit breaker to disable the safety button
 	bool				_safety_btn_off{false};		///< State of the safety button read from the HW button
+	bool				_safety_btn_prev_sate{false};	///< Previous state of the HW button
+
+	// Pairing request
+	hrt_abstime		_pairing_start{0};
+	int			_pairing_button_counter{0};
 
 };

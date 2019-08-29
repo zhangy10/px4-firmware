@@ -39,7 +39,7 @@
 
 using namespace time_literals;
 
-static constexpr uint8_t CYCLE_COUNT{10}; /* safety switch must be held for 1 second to activate */
+static constexpr uint8_t CYCLE_COUNT{30}; /* safety switch must be held for 1 second to activate */
 
 // Define the various LED flash sequences for each system state.
 enum class LED_PATTERN : uint16_t {
@@ -102,6 +102,45 @@ SafetyButton::CheckButton()
 	} else {
 		_button_counter = 0;
 	}
+
+	CheckPairingRequest(safety_button_pressed);
+
+	_safety_btn_prev_sate = safety_button_pressed;
+}
+
+void
+SafetyButton::CheckPairingRequest(bool button_pressed)
+{
+	// Need to press the button 3 times within 2 seconds
+	const hrt_abstime now = hrt_absolute_time();
+
+	if (now - _pairing_start > 2_s) {
+		// reset state
+		_pairing_start = 0;
+		_pairing_button_counter = 0;
+	}
+
+	if (!_safety_btn_prev_sate && button_pressed) {
+		if (_pairing_start == 0) {
+			_pairing_start = now;
+		}
+
+		++_pairing_button_counter;
+	}
+
+
+	if (_pairing_button_counter == 3) {
+		vehicle_command_s vcmd{};
+		vcmd.command = vehicle_command_s::VEHICLE_CMD_START_RX_PAIR;
+		vcmd.timestamp = now;
+		vcmd.param1 = 10.f; // GCS pairing request handled by a companion. TODO: requires mavlink spec
+		_to_command.publish(vcmd);
+		PX4_DEBUG("Sending GCS pairing request");
+
+		// reset state
+		_pairing_start = 0;
+		_pairing_button_counter = 0;
+	}
 }
 
 void
@@ -131,9 +170,9 @@ SafetyButton::FlashButton()
 		}
 
 		// Turn the LED on if we have a 1 at the current bit position
-		px4_arch_gpiowrite(GPIO_LED_SAFETY, !((uint16_t)pattern & (1 << _blink_counter++)));
+		px4_arch_gpiowrite(GPIO_LED_SAFETY, !((uint16_t)pattern & (1 << (_blink_counter++ / 3))));
 
-		if (_blink_counter > 15) {
+		if (_blink_counter > 45) {
 			_blink_counter = 0;
 		}
 	}
@@ -191,7 +230,7 @@ SafetyButton::task_spawn(int argc, char *argv[])
 int
 SafetyButton::Start()
 {
-	ScheduleOnInterval(100_ms); // run at 10 Hz
+	ScheduleOnInterval(33_ms); // run at 30 Hz
 
 	return PX4_OK;
 }
