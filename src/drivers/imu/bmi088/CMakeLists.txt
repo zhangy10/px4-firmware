@@ -34,7 +34,6 @@
 px4_add_module(
 	MODULE drivers__imu__bmi088
 	MAIN bmi088
-	STACK_MAIN 1500
 	COMPILE_FLAGS
 	SRCS
 		Bosch_BMI088_Accelerometer_Registers.hpp
