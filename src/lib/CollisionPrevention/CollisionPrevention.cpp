@@ -45,8 +45,8 @@ using namespace matrix;
 using namespace time_literals;
 namespace
 {
-static const int INTERNAL_MAP_INCREMENT_DEG = 10; //cannot be lower than 5 degrees, should divide 360 evenly
-static const int INTERNAL_MAP_USED_BINS = 360 / INTERNAL_MAP_INCREMENT_DEG;
+static constexpr int INTERNAL_MAP_INCREMENT_DEG = 10; //cannot be lower than 5 degrees, should divide 360 evenly
+static constexpr int INTERNAL_MAP_USED_BINS = 360 / INTERNAL_MAP_INCREMENT_DEG;
 
 float wrap_360(float f)
 {
@@ -235,6 +235,51 @@ void CollisionPrevention::_addDistanceSensorData(distance_sensor_s &distance_sen
 	}
 }
 
+float
+CollisionPrevention::_sensorOrientationToYawOffset(const distance_sensor_s &distance_sensor, float angle_offset) const
+{
+	float offset = angle_offset > 0.0f ? math::radians(angle_offset) : 0.0f;
+
+	switch (distance_sensor.orientation) {
+	case distance_sensor_s::ROTATION_FORWARD_FACING:
+		offset = 0.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_YAW_45:
+		offset = M_PI_F / 4.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_RIGHT_FACING:
+		offset = M_PI_F / 2.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_YAW_135:
+		offset = 3.0f * M_PI_F / 4.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_BACKWARD_FACING:
+		offset = M_PI_F;
+		break;
+
+	case distance_sensor_s::ROTATION_YAW_225:
+		offset = -3.0f * M_PI_F / 4.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_LEFT_FACING:
+		offset = -M_PI_F / 2.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_YAW_315:
+		offset = -M_PI_F / 4.0f;
+		break;
+
+	case distance_sensor_s::ROTATION_CUSTOM:
+		offset = matrix::Eulerf(matrix::Quatf(distance_sensor.q)).psi();
+		break;
+	}
+
+	return offset;
+}
 
 void CollisionPrevention::_calculateConstrainedSetpoint(Vector2f &setpoint,
 		const Vector2f &curr_pos, const Vector2f &curr_vel)
