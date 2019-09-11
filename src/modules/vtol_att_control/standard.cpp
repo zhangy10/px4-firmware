@@ -67,6 +67,9 @@ Standard::Standard(VtolAttitudeControl *attc) :
 	_params_handles_standard.pitch_setpoint_offset = param_find("FW_PSP_OFF");
 	_params_handles_standard.reverse_output = param_find("VT_B_REV_OUT");
 	_params_handles_standard.reverse_delay = param_find("VT_B_REV_DEL");
+
+	_params_handles_standard.mc_to_fw_gain_roll = param_find("VT_MC_AILE_GAIN");
+	_params_handles_standard.mc_to_fw_gain_pitch = param_find("VT_MC_ELEV_GAIN");
 }
 
 void
@@ -102,6 +105,12 @@ Standard::parameters_update()
 	/* reverse output */
 	param_get(_params_handles_standard.reverse_delay, &v);
 	_params_standard.reverse_delay = math::constrain(v, 0.0f, 10.0f);
+
+	param_get(_params_handles_standard.mc_to_fw_gain_roll, &v);
+	_params_standard.mc_to_fw_gain_roll = math::constrain(v, 0.0f, 100.0f);
+
+	param_get(_params_handles_standard.mc_to_fw_gain_pitch, &v);
+	_params_standard.mc_to_fw_gain_pitch = math::constrain(v, 0.0f, 100.0f);
 
 }
 
@@ -416,7 +425,7 @@ void Standard::fill_actuator_outputs()
 	_actuators_out_1->timestamp = hrt_absolute_time();
 	_actuators_out_1->timestamp_sample = _actuators_fw_in->timestamp_sample;
 
-	if (_vtol_schedule.flight_mode != vtol_mode::MC_MODE) {
+	if (_vtol_schedule.flight_mode == vtol_mode::FW_MODE) {
 		// roll
 		_actuators_out_1->control[actuator_controls_s::INDEX_ROLL] =
 			_actuators_fw_in->control[actuator_controls_s::INDEX_ROLL];
@@ -430,7 +439,7 @@ void Standard::fill_actuator_outputs()
 
 		_actuators_out_1->control[actuator_controls_s::INDEX_AIRBRAKES] = _reverse_output;
 
-	} else {
+	} else if (_vtol_schedule.flight_mode == vtol_mode::MC_MODE) {
 
 		if (_params->elevons_mc_lock) {
 			// zero outputs when inactive
@@ -442,15 +451,28 @@ void Standard::fill_actuator_outputs()
 		} else {
 			// roll
 			_actuators_out_1->control[actuator_controls_s::INDEX_ROLL] =
-				_actuators_fw_in->control[actuator_controls_s::INDEX_ROLL];
+				_actuators_mc_in->control[actuator_controls_s::INDEX_ROLL] * _params_standard.mc_to_fw_gain_roll;
 
 			// pitch
 			_actuators_out_1->control[actuator_controls_s::INDEX_PITCH] =
-				_actuators_fw_in->control[actuator_controls_s::INDEX_PITCH];
+				_actuators_mc_in->control[actuator_controls_s::INDEX_PITCH] * _params_standard.mc_to_fw_gain_pitch;
 
 			_actuators_out_1->control[actuator_controls_s::INDEX_YAW] = 0.0f;
 			_actuators_out_1->control[actuator_controls_s::INDEX_AIRBRAKES] = 0.0f;
 		}
+
+	} else {
+		// in transition mode
+		_actuators_out_1->control[actuator_controls_s::INDEX_ROLL] =
+			_actuators_fw_in->control[actuator_controls_s::INDEX_ROLL];
+
+		// pitch
+		_actuators_out_1->control[actuator_controls_s::INDEX_PITCH] =
+			_actuators_fw_in->control[actuator_controls_s::INDEX_PITCH];
+
+		_actuators_out_1->control[actuator_controls_s::INDEX_YAW] = 0.0f;
+		_actuators_out_1->control[actuator_controls_s::INDEX_AIRBRAKES] = 0.0f;
+
 	}
 
 	// set the fixed wing throttle control

@@ -112,3 +112,19 @@ PARAM_DEFINE_FLOAT(VT_B_REV_DEL, 0.0f);
  * @group VTOL Attitude Control
  */
 PARAM_DEFINE_FLOAT(VT_PSHER_RMP_DT, 3.0f);
+
+/**
+ * Gain for MC control output to FW roll actuators.
+ *
+ * @max 20
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VT_MC_AILE_GAIN, 1.0f);
+
+/**
+ * Gain for MC control output to FW pitch actuators.
+ *
+ * @max 20
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VT_MC_ELEV_GAIN, 1.0f);
