@@ -48,8 +48,8 @@
 	branch = px4
 [submodule "platforms/nuttx/NuttX/nuttx"]
 	path = platforms/nuttx/NuttX/nuttx
-	url = https://github.com/PX4/NuttX.git
-	branch = px4_firmware_nuttx-7.29+
+	url = https://github.com/modalai/NuttX.git
+	branch = px4-1.10-nuttx-7.29-sdmmc-pullup
 [submodule "platforms/nuttx/NuttX/apps"]
 	path = platforms/nuttx/NuttX/apps
 	url = https://github.com/PX4/NuttX-apps.git
