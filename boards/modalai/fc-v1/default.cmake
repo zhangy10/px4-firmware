@@ -89,6 +89,7 @@ px4_add_board(
 		i2cdetect
 		led_control
 		mixer
+		modalai
 		motor_ramp
 		motor_test
 		mtd
