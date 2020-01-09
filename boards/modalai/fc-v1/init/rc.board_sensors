@@ -26,3 +26,6 @@ qmc5883 -X start
 
 # Internal I2C Baro
 bmp388 -I start
+
+# LED test
+modalai led
