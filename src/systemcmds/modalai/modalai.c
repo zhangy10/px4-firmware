@@ -10,8 +10,6 @@
 #include <math.h>
 #include <stdbool.h>
 
-//#include <version/version.h> //TEST
-
 #include "chip.h"
 #include "stm32_gpio.h"
 #include "board_config.h"
