@@ -10,6 +10,8 @@
 #include <math.h>
 #include <stdbool.h>
 
+//#include <version/version.h> //TEST
+
 #include "chip.h"
 #include "stm32_gpio.h"
 #include "board_config.h"
@@ -492,29 +494,32 @@ static int buzz_test(void)
 {
 	PX4_INFO("test: buzz");
 	usleep(1000 * 100 * 10);
+	const char *board_type = board_get_hw_type_name();
 
+	if(strcmp(board_type, "V100") == 0){
+		PX4_INFO("Using Flight Core Config");
+		PX4_INFO(">> Testing J1");
+		stm32_configgpio(J1_PIN2_IN); // 2 [in] to 4 [out]
+		stm32_configgpio(J1_PIN3); // 3 [out] to 6 [in]
+		stm32_configgpio(J1_PIN4); // 4 [out] to 2 [in]
+		stm32_configgpio(J1_PIN6_IN); // 6 [in] to 3 [out]
 
-	PX4_INFO(">> Testing J1");
-	stm32_configgpio(J1_PIN2_IN); // 2 [in]  to 4 [out]
-	stm32_configgpio(J1_PIN3); // 3 [out] to 6 [in]
-	stm32_configgpio(J1_PIN4); // 4 [out] to 2 [in]
-	stm32_configgpio(J1_PIN6_IN); // 6 [in] to 3 [out]
+		if (test_pair(J1_PIN4, J1_PIN2_IN)) {
+			PX4_INFO("PASS: J1P4-J1P2");
 
-	if (test_pair(J1_PIN4, J1_PIN2_IN)) {
-		PX4_INFO("PASS: J1P4-J1P2");
+		} else {
+			PX4_ERR("FAIL: J1P4-J1P2 ----------------------------------------");
+		}
 
-	} else {
-		PX4_ERR("FAIL: J1P4-J1P2 ----------------------------------------");
+		if (test_pair(J1_PIN3, J1_PIN6_IN)) {
+			PX4_INFO("PASS: J1P3-J1P6");
+
+		} else {
+			PX4_ERR("FAIL: J1P3-J1P6 ----------------------------------------");
+		}
+	}else{
+		PX4_INFO("Using VOXL-Flight Config");
 	}
-
-	if (test_pair(J1_PIN3, J1_PIN6_IN)) {
-		PX4_INFO("PASS: J1P3-J1P6");
-
-	} else {
-		PX4_ERR("FAIL: J1P3-J1P6 ----------------------------------------");
-	}
-
-
 	PX4_INFO(">> Testing J5");
 	stm32_configgpio(J5_PIN2);    // 2 [out] 4 [in]
 	stm32_configgpio(J5_PIN3);    // 3 [out] 5 [in]
