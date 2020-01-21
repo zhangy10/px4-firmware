@@ -27,7 +27,7 @@ px4_add_board(
 		dshot
 		gps
 		imu/bmi088
-# TODO		imu/icm42688
+		imu/icm42688
 		imu/mpu6000
 		irlock
 		lights/blinkm
