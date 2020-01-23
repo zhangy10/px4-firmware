@@ -613,6 +613,7 @@ PARAM_DEFINE_FLOAT(EKF2_TAS_GATE, 3.0f);
  * 5 : Set to true to enable multi-rotor drag specific force fusion
  * 6 : set to true if the EV observations are in a non NED reference frame and need to be rotated before being used
  * 7 : Set to true to enable GPS yaw fusion. Cannot be used if bit position 4 is true.
+ * 8 : Set to true to enable vision velocity fusion. 
  *
  * @group EKF2
  * @min 0
