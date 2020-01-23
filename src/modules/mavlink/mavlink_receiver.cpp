@@ -1273,6 +1273,19 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
 			odometry.velocity_covariance[i] = odom.velocity_covariance[i];
 		}
+	} else if (odom.child_frame_id == MAV_FRAME_LOCAL_FRD) {
+		// data already in correct frame, just copy over
+		odometry.vx = odom.vx;
+		odometry.vy = odom.vx;
+		odometry.vz = odom.vx;
+
+		odometry.rollspeed = odom.rollspeed;
+		odometry.pitchspeed = odom.pitchspeed;
+		odometry.yawspeed = odom.yawspeed;
+
+		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
+			odometry.velocity_covariance[i] = odom.velocity_covariance[i];
+		}
 
 	} else {
 		PX4_ERR("Body frame %u not supported. Unable to publish velocity", odom.child_frame_id);
