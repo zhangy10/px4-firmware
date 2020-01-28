@@ -108,6 +108,7 @@ static void print_usage(void)
 	PRINT_MODULE_USAGE_COMMAND_DESCR("led", "LED Test");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("con", "Connector Output Test (as GPIO)");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("buzz", "Automated buzz out test");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("detect", "Detect board type");
 }
 
 static void print_usage_con_gpio_test(void)
@@ -488,13 +489,12 @@ static bool test_pair(uint32_t output_pin, uint32_t input_pin)
 	return true;
 }
 
-static int buzz_test(void)
+static int buzz_test(int hw_rev, int hw_ver)
 {
 	PX4_INFO("test: buzz");
 	usleep(1000 * 100 * 10);
-	const char *board_type = board_get_hw_type_name();
 
-	if(strcmp(board_type, "V100") == 0){
+	if(hw_rev == 0 && hw_ver == 0){
 		PX4_INFO("Using Flight Core Config");
 		PX4_INFO(">> Testing J1");
 		stm32_configgpio(J1_PIN2_IN); // 2 [in] to 4 [out]
@@ -515,9 +515,10 @@ static int buzz_test(void)
 		} else {
 			PX4_ERR("FAIL: J1P3-J1P6 ----------------------------------------");
 		}
-	}else{
+	} else if(hw_rev == 0 && hw_ver == 1){
 		PX4_INFO("Using VOXL-Flight Config");
 	}
+
 	PX4_INFO(">> Testing J5");
 	stm32_configgpio(J5_PIN2);    // 2 [out] 4 [in]
 	stm32_configgpio(J5_PIN3);    // 3 [out] 5 [in]
@@ -654,6 +655,11 @@ static int buzz_test(void)
 
 int modalai_main(int argc, char *argv[])
 {
+	int hw_rev = board_get_hw_revision();
+	int hw_ver = board_get_hw_version();
+
+
+
 	if (argc <= 1) {
 		print_usage();
 		return 1;
@@ -690,8 +696,18 @@ int modalai_main(int argc, char *argv[])
 		return con_gpio_test(con, pin, state);
 
 	} else if (!strcmp(argv[1], "buzz")) {
-		return buzz_test();
+		return buzz_test(hw_rev, hw_ver);
 
+	} else if (!strcmp(argv[1], "detect")) {
+		if (hw_rev == 0 && hw_ver == 0){
+			PX4_INFO("V100 - Flight Core");
+		} else if (hw_rev == 0 && hw_ver == 1){
+			PX4_INFO("V110 - VOXL-Flight");
+		} else {
+			PX4_ERR("Unknown hardware");
+			return -1;
+		}
+		return 0;
 	}
 
 	print_usage();
