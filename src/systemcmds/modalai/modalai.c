@@ -969,7 +969,7 @@ int modalai_main(int argc, char *argv[])
 	int hw_ver = board_get_hw_version();
 	eHW_TYPE hw_type = eHwNone;
 
-	if (hw_rev == 0 && hw_ver == 0) {
+	if (hw_rev == 6 && hw_ver == 0) {
 		hw_type = eHwFlightCore;
 
 	} else if (hw_rev == 0 && hw_ver == 1) {
@@ -1020,7 +1020,7 @@ int modalai_main(int argc, char *argv[])
 
 	} else if (!strcmp(argv[1], "detect")) {
 		if (hw_type == eHwFlightCore) {
-			PX4_INFO("V100 - Flight Core");
+			PX4_INFO("V106 - Flight Core");
 
 		} else if (hw_type == eHwVOXLFlight) {
 			PX4_INFO("V110 - VOXL-Flight");
