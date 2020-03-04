@@ -170,6 +170,9 @@ then
 		set OUTPUT_DEV /dev/tap_esc
 	fi
 
+	# modaltb TODO
+	set OUTPUT_DEV /dev/uart_esc
+
 	if mixer load ${OUTPUT_DEV} ${MIXER_FILE}
 	then
 		echo "INFO  [init] Mixer: ${MIXER_FILE} on ${OUTPUT_DEV}"

@@ -14,7 +14,6 @@ px4_add_board(
 		GPS1:/dev/ttyS0 # UART1  / J10
 		TEL1:/dev/ttyS6 # UART7  / J5
 		TEL2:/dev/ttyS4 # UART5  / J1
-		TEL3:/dev/ttyS1 # USART2 / J4
 
 	DRIVERS
 		adc
@@ -53,6 +52,7 @@ px4_add_board(
 		test_ppm
 		#tone_alarm
 		uavcan
+		uart_esc/modalai_esc
 
 	MODULES
 		attitude_estimator_q

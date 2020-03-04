@@ -3,6 +3,9 @@
 # ModalAI FC-v1 specific board sensors init
 #------------------------------------------------------------------------------
 
+# UART ESC
+modalai_esc -d /dev/ttyS1 start
+
 # Start Digital power monitors
 voxlpm -R start
 
