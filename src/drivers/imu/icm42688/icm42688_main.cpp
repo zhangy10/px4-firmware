@@ -132,6 +132,16 @@ start(enum ICM42688_BUS busid, Rotation rotation)
 	exit(0);
 }
 
+void
+sanity_test()
+{
+	for (uint8_t i = 0; i < NUM_BUS_OPTIONS; i++) {
+		if (bus_options[i].dev != NULL) {
+			bus_options[i].dev->sanity_test();
+		};
+	}
+}
+
 } // namespace
 
 
@@ -168,6 +178,11 @@ extern "C" int icm42688_main(int argc, char *argv[])
 	if (!strcmp(verb, "start")) {
 		icm42688::start(ICM42688_BUS_SPI_INTERNAL, rotation);
 		return 0;
+	}
+
+	if (!strcmp(verb, "test")) {
+		icm42688::sanity_test();
+		return -1;
 	}
 
 	if (!strcmp(verb, "stop")) {

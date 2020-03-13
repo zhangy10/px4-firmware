@@ -42,8 +42,8 @@
 #include "icm42688.h"
 
 /* SPI protocol address bits */
-#define DIR_READ			(1<<7)  //for set
-#define DIR_WRITE			~(1<<7) //for clear
+#define DIR_READ			0x80
+#define DIR_WRITE			0x00
 
 class ICM42688_SPI: public device::SPI, public IICM42688
 {
@@ -53,7 +53,11 @@ public:
 
 	int init();
 
-	uint8_t get_reg(uint8_t addr);
+	int 		set_reg_bank(uint8_t bank);
+	uint8_t 	get_reg(uint8_t addr);
+	int 		get_reg_bulk(uint8_t addr, void *data, uint8_t len);
+	int 		write(uint8_t addr, void *data, uint8_t len);
+	int	 	write_reg(uint8_t addr, uint8_t val);
 
 	uint32_t get_device_id() const override { return device::SPI::get_device_id(); }
 
@@ -73,12 +77,56 @@ ICM42688_SPI::ICM42688_SPI(uint8_t bus, uint32_t device) :
 int ICM42688_SPI::init()
 {
 	return SPI::init();
-};
+}
+
+int ICM42688_SPI::set_reg_bank(uint8_t bank)
+{
+	return write(MPUREG_REG_BANK_SEL, &bank, 1);
+}
 
 uint8_t ICM42688_SPI::get_reg(uint8_t addr)
 {
-	uint8_t cmd[2] = { (uint8_t)(addr | DIR_READ), 0}; //set MSB bit
-	transfer(&cmd[0], &cmd[0], 2);
+	uint8_t buf[2] = { (uint8_t)(addr | DIR_READ), 0}; //set MSB bit
+	transfer(&buf[0], &buf[0], 2);
 
-	return cmd[1];
+	return buf[1];
+}
+
+int ICM42688_SPI::get_reg_bulk(uint8_t addr, void *data, uint8_t len)
+{
+	uint8_t buf[32] = {};
+
+	if (32 < len + 1) {
+		return -EIO;
+	}
+
+	buf[0] = (addr | DIR_READ);
+	transfer(&buf[0], &buf[0], len);
+	memcpy(data, &buf[1], len);
+
+	return 1;
+}
+
+int ICM42688_SPI::write(uint8_t addr, void *data, uint8_t len)
+{
+	uint8_t buf[32];
+
+	if (32 < len + 1) {
+		return -EIO;
+	}
+
+	buf[0] = (addr | DIR_WRITE);
+	buf[1] = *(uint8_t *)data;
+
+	return transfer(&buf[0], &buf[0], len + 1);
+}
+
+int ICM42688_SPI::write_reg(uint8_t addr, uint8_t val)
+{
+	uint8_t buf[2];
+
+	buf[0] = (addr | DIR_WRITE);
+	buf[1] = val;
+
+	return transfer(&buf[0], &buf[0], 2);
 }

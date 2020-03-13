@@ -10,7 +10,7 @@ voxlpm -R start
 mpu6000 -R 6 -s -T 20602 start
 
 # Internal SPI bus ICM-42688
-# TODO
+icm42688 start
 
 # Internal SPI bus BMI088 accel
 bmi088 -A -R 4 start
