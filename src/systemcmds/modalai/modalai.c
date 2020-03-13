@@ -230,26 +230,35 @@ static int led_test(void)
 {
 	PX4_INFO("Running led test");
 
+	stm32_configgpio(GPIO_nLED_RED);
+	stm32_configgpio(GPIO_nLED_GREEN);
+	stm32_configgpio(GPIO_nLED_BLUE);
 	stm32_configgpio(GPIO_nLED_2_RED);
 	stm32_configgpio(GPIO_nLED_2_GREEN);
 	stm32_configgpio(GPIO_nLED_2_BLUE);
 
 	int i = 0;
 
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < 3; i++) {
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_RED, false);
 		stm32_gpiowrite(GPIO_nLED_2_RED, false);
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_RED, true);
 		stm32_gpiowrite(GPIO_nLED_2_RED, true);
 
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_GREEN, false);
 		stm32_gpiowrite(GPIO_nLED_2_GREEN, false);
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_GREEN, true);
 		stm32_gpiowrite(GPIO_nLED_2_GREEN, true);
 
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_BLUE, false);
 		stm32_gpiowrite(GPIO_nLED_2_BLUE, false);
 		usleep(1000 * 100);
+		stm32_gpiowrite(GPIO_nLED_BLUE, true);
 		stm32_gpiowrite(GPIO_nLED_2_BLUE, true);
 	}
 
