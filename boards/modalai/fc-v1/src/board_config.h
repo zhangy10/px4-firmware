@@ -83,11 +83,13 @@
  *  ICM-20602
  *    CS        PI9
  *    DRDY      PF2
+ *    FSYNC     PH10
  *
  * SPI2 is sensors2
  *  ICM-42688
  *    CS        PH5
  *    DRDY      PH12
+ *    FSYNC     PA0
  *
  * SPI3 is not used
  *
@@ -121,6 +123,7 @@
 /*  Define the SPI1 Data Ready interrupts */
 
 #define GPIO_SPI1_DRDY1_ICM20602    /* PF2  */  (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTF|GPIO_PIN2)
+#define GPIO_FYSNC_INT_ICM20602     /* PH10  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTH|GPIO_PIN10)
 
 /*  SPI1 off */
 
@@ -137,6 +140,8 @@
 /*  Define the SPI2 Data Ready interrupts */
 
 #define GPIO_SPI2_DRDY1_ICM_42688      /* PH12  */  (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTH|GPIO_PIN12)
+#define GPIO_FYSNC_INT_ICM_42688       /* PA0  */   (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN0)
+
 
 /*  SPI2 off */
 
@@ -479,7 +484,9 @@
 		GPIO_A71CH_nRST,                  \
 		GPIO_VOXL_STATUS_OUT,             \
 		GPIO_VOXL_STATUS_IN,              \
-		GPIO_SAFETY_SWITCH_IN             \
+		GPIO_SAFETY_SWITCH_IN,            \
+		GPIO_FYSNC_INT_ICM20602,          \
+		GPIO_FYSNC_INT_ICM_42688          \
 	}
 
 #define BOARD_ENABLE_CONSOLE_BUFFER
