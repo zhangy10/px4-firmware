@@ -81,6 +81,7 @@ public:
 	typedef enum {
 		UART_ESC_RESET,
 		UART_ESC_VERSION,
+		UART_ESC_TONE,
 		UART_ESC_LED
 	} uart_esc_cmd_t;
 
@@ -97,7 +98,7 @@ public:
 		void clear() { len = 0; }
 	};
 
-	int sendCommandThreadSafe(uart_esc_cmd_t cmd, uint8_t cmd_mask);
+	int sendCommandThreadSafe(Command *cmd);
 
 private:
 	ModalaiEscSerial 	*_uart_port;

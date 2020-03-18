@@ -142,38 +142,6 @@ int ModalaiEsc::task_spawn(int argc, char *argv[])
 	return PX4_ERROR;
 }
 
-int ModalaiEsc::populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd)
-{
-	if (!out_cmd) {
-		return -1;
-	}
-
-	switch (cmd_type) {
-	case UART_ESC_RESET:
-		out_cmd->len = qc_esc_create_reset_packet((cmd_mask & 0xFF), out_cmd->buf, sizeof(out_cmd->buf));
-		out_cmd->response = false;
-		break;
-
-	case UART_ESC_VERSION:
-		out_cmd->len = qc_esc_create_version_request_packet((cmd_mask & 0xFF), out_cmd->buf, sizeof(out_cmd->buf));
-		out_cmd->response = true;
-		break;
-
-	case UART_ESC_LED:
-		return -1;
-		break;
-
-	default:
-		return -1;
-		break;
-	}
-
-	/* increment counter for command ID */
-	out_cmd->id = _cmd_id++;
-
-	return 0;
-}
-
 int ModalaiEsc::readResponse(Command *out_cmd)
 {
 	px4_usleep(_current_cmd.resp_delay_us);
@@ -233,11 +201,10 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
 	return 0;
 }
 
-int ModalaiEsc::sendCommandThreadSafe(uart_esc_cmd_t cmd_type, uint8_t cmd_mask)
+int ModalaiEsc::sendCommandThreadSafe(Command *cmd)
 {
-	Command cmd;
-	populateCommand(cmd_type, cmd_mask, &cmd);
-	_pending_cmd.store(&cmd);
+	cmd->id = _cmd_id++;
+	_pending_cmd.store(cmd);
 
 	/* wait until main thread processed it */
 	while (_pending_cmd.load()) {
@@ -252,13 +219,18 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	int myoptind = 0;
 	int ch;
 	const char *myoptarg = nullptr;
+
+	Command cmd;
 	uint8_t esc_id = 255;
+	uint8_t period = 0;
+	uint8_t duration = 0;
+	uint8_t power = 0;
 
 	if (argc < 3) {
 		return print_usage("unknown command");
 	}
 
-	const char *verb = argv[2];
+	const char *verb = argv[argc - 1];
 
 	/* start the FMU if not running */
 	if (!strcmp(verb, "start")) {
@@ -273,10 +245,22 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 
 	}
 
-	while ((ch = px4_getopt(argc, argv, "i", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "i:p:d:v:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'i':
-			esc_id = atoi(argv[myoptind]);
+			esc_id = atoi(myoptarg);
+			break;
+
+		case 'p':
+			period = atoi(myoptarg);
+			break;
+
+		case 'd':
+			duration = atoi(myoptarg);
+			break;
+
+		case 'v':
+			power = atoi(myoptarg);
 			break;
 
 		default:
@@ -288,7 +272,9 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	if (!strcmp(verb, "reset")) {
 		if (esc_id < 3) {
 			PX4_INFO("Reset ESC: %i", esc_id);
-			return get_instance()->sendCommandThreadSafe(UART_ESC_RESET, esc_id);
+			cmd.len = qc_esc_create_reset_packet(esc_id, cmd.buf, sizeof(cmd.buf));
+			cmd.response = false;
+			return get_instance()->sendCommandThreadSafe(&cmd);
 
 		} else {
 			print_usage("Invalid ESC ID, use 0-3");
@@ -298,10 +284,24 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	} else if (!strcmp(verb, "version")) {
 		if (esc_id < 3) {
 			PX4_INFO("Request version for ESC: %i", esc_id);
-			return get_instance()->sendCommandThreadSafe(UART_ESC_VERSION, esc_id);
+			cmd.len = qc_esc_create_version_request_packet(esc_id, cmd.buf, sizeof(cmd.buf));
+			cmd.response = true;
+			return get_instance()->sendCommandThreadSafe(&cmd);
 
 		} else {
 			print_usage("Invalid ESC ID, use 0-3");
+			return 0;
+		}
+
+	} else if (!strcmp(verb, "tone")) {
+		if (0 < esc_id && esc_id < 16) {
+			PX4_INFO("Request tone for ESC mask: %i", esc_id);
+			cmd.len = qc_esc_create_sound_packet(period, duration, power, esc_id, cmd.buf, sizeof(cmd.buf));
+			cmd.response = false;
+			return get_instance()->sendCommandThreadSafe(&cmd);
+
+		} else {
+			print_usage("Invalid ESC mask, use 1-15");
 			return 0;
 		}
 	}
@@ -341,7 +341,6 @@ int ModalaiEsc::ioctl(file *filp, int cmd, unsigned long arg)
 
 	case MIXERIOCRESET:
 		_mixing_output.resetMixerThreadSafe();
-
 		break;
 
 	case MIXERIOCLOADBUF: {
@@ -563,10 +562,16 @@ $ todo
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start the task");
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("reset", "Send reset request to ESC");
-	PRINT_MODULE_USAGE_ARG("<id>", "ESC ID number (0-3)", true);
+	PRINT_MODULE_USAGE_PARAM_INT('i', 0, 0, 3, "ESC ID, 0-3", false);
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("version", "Send version request to ESC");
-	PRINT_MODULE_USAGE_ARG("<id>", "ESC ID number (0-3)", true);
+	PRINT_MODULE_USAGE_PARAM_INT('i', 0, 0, 3, "ESC ID, 0-3", false);
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("tone", "Send tone generation request to ESC");
+	PRINT_MODULE_USAGE_PARAM_INT('i', 1, 1, 15, "ESC ID bitmask, 1-15", false);
+	PRINT_MODULE_USAGE_PARAM_INT('p', 0, 0, 255, "Period of sound, inverse frequency, 0-255", false);
+	PRINT_MODULE_USAGE_PARAM_INT('d', 0, 0, 255, "Duration of the sound, 0-255, 1LSB = 13ms", false);
+	PRINT_MODULE_USAGE_PARAM_INT('v', 0, 0, 100, "Power (volume) of sound, 0-100, 1LSB = 13ms", false);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
