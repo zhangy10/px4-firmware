@@ -78,18 +78,28 @@ public:
 
 	virtual int	init();
 
-	int sendCommandThreadSafe(int esc_id);
+	typedef enum {
+		UART_ESC_RESET,
+		UART_ESC_VERSION,
+		UART_ESC_LED
+	} uart_esc_cmd_t;
 
-private:
 	struct Command {
-		int esc_id;
-		int num_repetitions{0};
-		uint8_t motor_mask{0xff};
+		uint16_t	id = 0;
+		uint8_t 	BUF_SIZE = 255;
+		uint8_t 	buf[255] = {0x00};
+		uint8_t 	len;
+		uint8_t         retries = 0;
+		bool		response = false;
+		uint16_t	resp_delay_us = 1000;
 
-		bool valid() const { return num_repetitions > 0; }
-		void clear() { num_repetitions = 0; }
+		bool valid() const { return len > 0; }
+		void clear() { len = 0; }
 	};
 
+	int sendCommandThreadSafe(uart_esc_cmd_t cmd, uint8_t cmd_mask);
+
+private:
 	ModalaiEscSerial 	*_uart_port;
 
 	unsigned		_output_count = MODALAI_ESC_OUTPUT_CHANNELS;
@@ -108,6 +118,11 @@ private:
 	uORB::Subscription 	_parameter_update_sub{ORB_ID(parameter_update)};
 	void			update_params();
 
-	Command _current_command;
-	px4::atomic<Command *> _new_command{nullptr};
+	uint16_t                _cmd_id{0};
+	Command 		_current_cmd;
+	px4::atomic<Command *>	_pending_cmd{nullptr};
+
+	int			populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd);
+	int 			readResponse(Command *out_cmd);
+	int 			parseResponse(uint8_t *buf, uint8_t len);
 };

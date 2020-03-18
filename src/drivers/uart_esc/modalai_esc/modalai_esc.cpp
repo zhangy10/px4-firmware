@@ -36,6 +36,7 @@
 #include "modalai_esc.hpp"
 #include "modalai_esc_serial.hpp"
 #include "qc_esc_packet.h"
+#include "qc_esc_packet_types.h"
 
 #define MODALAI_ESC_DEVICE_PATH 	"/dev/uart_esc"
 #define MODALAI_ESC_DEFAULT_PORT 	"/dev/ttyS1"
@@ -141,16 +142,105 @@ int ModalaiEsc::task_spawn(int argc, char *argv[])
 	return PX4_ERROR;
 }
 
-int ModalaiEsc::sendCommandThreadSafe(int esc_id)
+int ModalaiEsc::populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd)
 {
-	// Modal TB
+	if (!out_cmd) {
+		return -1;
+	}
+
+	switch (cmd_type) {
+	case UART_ESC_RESET:
+		out_cmd->len = qc_esc_create_reset_packet((cmd_mask & 0xFF), out_cmd->buf, sizeof(out_cmd->buf));
+		out_cmd->response = false;
+		break;
+
+	case UART_ESC_VERSION:
+		out_cmd->len = qc_esc_create_version_request_packet((cmd_mask & 0xFF), out_cmd->buf, sizeof(out_cmd->buf));
+		out_cmd->response = true;
+		break;
+
+	case UART_ESC_LED:
+		return -1;
+		break;
+
+	default:
+		return -1;
+		break;
+	}
+
+	/* increment counter for command ID */
+	out_cmd->id = _cmd_id++;
+
+	return 0;
+}
+
+int ModalaiEsc::readResponse(Command *out_cmd)
+{
+	px4_usleep(_current_cmd.resp_delay_us);
+
+	int res = _uart_port->uart_read(_current_cmd.buf, sizeof(_current_cmd.buf));
+
+	if (res > 0) {
+		if (parseResponse(_current_cmd.buf, res) < 0) {
+			PX4_ERR("Error parsing response");
+			return -1;
+		}
+
+	} else {
+		PX4_ERR("Read error: %i", res);
+		return -1;
+	}
+
+	_current_cmd.response = false;
+
+	return 0;
+}
+
+int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
+{
+	if (len < 4) {
+		PX4_ERR("Invalid packet length");
+		return -1;
+	}
+
+	if (buf[0] != ESC_PACKET_HEADER) {
+		PX4_ERR("Invalid packet start");
+		return -1;
+	}
+
+	switch (buf[2]) {
+	case ESC_PACKET_TYPE_VERSION_RESPONSE:
+		if (len != sizeof(QC_ESC_VERSION_INFO)) {
+			PX4_ERR("Invalid QC_ESC_VERSION_INFO length");
+			return -1;
+
+		} else {
+			QC_ESC_VERSION_INFO ver;
+			memcpy(&ver, buf, len);
+			PX4_INFO("ESC ID: %i", ver.id);
+			PX4_INFO("HW Version: %i", ver.hw_version);
+			PX4_INFO("SW Version: %i", ver.sw_version);
+			PX4_INFO("Unique ID: %i", ver.unique_id);
+		}
+
+		break;
+
+	default:
+		PX4_ERR("Unkown packet type: %i", buf[2]);
+		return -1;
+	}
+
+	return 0;
+}
+
+int ModalaiEsc::sendCommandThreadSafe(uart_esc_cmd_t cmd_type, uint8_t cmd_mask)
+{
 	Command cmd;
-	cmd.esc_id = esc_id;
-	cmd.num_repetitions = 1;
-	_new_command.store(&cmd);
+	populateCommand(cmd_type, cmd_mask, &cmd);
+	_pending_cmd.store(&cmd);
 
 	/* wait until main thread processed it */
-	while (_new_command.load()) {
+	while (_pending_cmd.load()) {
 		px4_usleep(1000);
 	}
 
@@ -162,7 +252,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	int myoptind = 0;
 	int ch;
 	const char *myoptarg = nullptr;
-	int esc_id = -1;
+	uint8_t esc_id = 255;
 
 	if (argc < 3) {
 		return print_usage("unknown command");
@@ -186,7 +276,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	while ((ch = px4_getopt(argc, argv, "i", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'i':
-			esc_id = atoi(myoptarg);
+			esc_id = atoi(argv[myoptind]);
 			break;
 
 		default:
@@ -196,7 +286,24 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	}
 
 	if (!strcmp(verb, "reset")) {
-		return get_instance()->sendCommandThreadSafe(esc_id);
+		if (esc_id < 3) {
+			PX4_INFO("Reset ESC: %i", esc_id);
+			return get_instance()->sendCommandThreadSafe(UART_ESC_RESET, esc_id);
+
+		} else {
+			print_usage("Invalid ESC ID, use 0-3");
+			return 0;
+		}
+
+	} else if (!strcmp(verb, "version")) {
+		if (esc_id < 3) {
+			PX4_INFO("Request version for ESC: %i", esc_id);
+			return get_instance()->sendCommandThreadSafe(UART_ESC_VERSION, esc_id);
+
+		} else {
+			print_usage("Invalid ESC ID, use 0-3");
+			return 0;
+		}
 	}
 
 	return print_usage("unknown command");
@@ -288,7 +395,7 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 		}
 
 		/* clear commands when motors are running */
-		_current_command.clear();
+		_current_cmd.clear();
 	}
 
 
@@ -374,7 +481,7 @@ void ModalaiEsc::Run()
 	_mixing_output.update();
 
 	/* update output status if armed or if mixer is loaded */
-	bool armed = _mixing_output.armed().armed || _mixing_output.mixers();
+	bool armed = _mixing_output.armed().armed;
 
 	if (armed != _outputs_on) {
 		_outputs_on = armed;
@@ -393,29 +500,35 @@ void ModalaiEsc::Run()
 		update_params();
 	}
 
-	// modaltb TODO - clean this up
-	/* new CLI command? */
-	if (!_current_command.valid()) {
-		Command *new_command = _new_command.load();
-
-		if (new_command) {
-			_current_command = *new_command;
-			_new_command.store(nullptr);
-		}
+	if (_outputs_on) {
 
 	} else {
-		if (!_outputs_on) {
-			uint8_t buf[128];
-			int len = qc_esc_create_reset_packet(_current_command.esc_id, buf, sizeof(buf));
+		if (_current_cmd.valid()) {
+			if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
+				_current_cmd.clear();
 
-			if (_uart_port->uart_write(buf, len) == len) {
-				PX4_INFO("Send reset request to ESC: %i", _current_command.esc_id);
+				if (_current_cmd.response) {
+					readResponse(&_current_cmd);
+				}
 
 			} else {
-				PX4_ERR("Failed to reset: %i", errno);
+				if (_current_cmd.retries == 0) {
+					_current_cmd.clear();
+					PX4_ERR("Failed to send command, errno: %i", errno);
+
+				} else {
+					_current_cmd.retries--;
+					PX4_ERR("Failed to send command, errno: %i", errno);
+				}
 			}
 
-			--_current_command.num_repetitions;
+		} else {
+			Command *new_cmd = _pending_cmd.load();
+
+			if (new_cmd) {
+				_current_cmd = *new_cmd;
+				_pending_cmd.store(nullptr);
+			}
 		}
 	}
 
@@ -450,6 +563,9 @@ $ todo
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start the task");
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("reset", "Send reset request to ESC");
+	PRINT_MODULE_USAGE_ARG("<id>", "ESC ID number (0-3)", true);
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("version", "Send version request to ESC");
 	PRINT_MODULE_USAGE_ARG("<id>", "ESC ID number (0-3)", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
