@@ -225,6 +225,8 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	uint8_t period = 0;
 	uint8_t duration = 0;
 	uint8_t power = 0;
+	uint16_t led_mask = 0;
+	int16_t rpms = 0;
 
 	if (argc < 3) {
 		return print_usage("unknown command");
@@ -245,7 +247,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 
 	}
 
-	while ((ch = px4_getopt(argc, argv, "i:p:d:v:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "i:p:d:v:l:r:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'i':
 			esc_id = atoi(myoptarg);
@@ -261,6 +263,14 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 
 		case 'v':
 			power = atoi(myoptarg);
+			break;
+
+		case 'l':
+			led_mask = atoi(myoptarg);
+			break;
+
+		case 'r':
+			rpms = atoi(myoptarg);
 			break;
 
 		default:
@@ -298,6 +308,42 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 			PX4_INFO("Request tone for ESC mask: %i", esc_id);
 			cmd.len = qc_esc_create_sound_packet(period, duration, power, esc_id, cmd.buf, sizeof(cmd.buf));
 			cmd.response = false;
+			return get_instance()->sendCommandThreadSafe(&cmd);
+
+		} else {
+			print_usage("Invalid ESC mask, use 1-15");
+			return 0;
+		}
+
+	} else if (!strcmp(verb, "led")) {
+		if (led_mask <= 0x0FFF) {
+			PX4_INFO("Request LED control for ESCs with mask: %i", led_mask);
+			uint8_t led_byte_1 = (led_mask & 0x00FF);
+			uint8_t led_byte_2 = (led_mask & 0xFF00) >> 8;
+			cmd.len = qc_esc_create_led_control_packet(led_byte_1, led_byte_2, cmd.buf, sizeof(cmd.buf));
+			cmd.response = false;
+			return get_instance()->sendCommandThreadSafe(&cmd);
+
+		} else {
+			print_usage("Invalid ESC mask, use 1-15");
+			return 0;
+		}
+
+	}  else if (!strcmp(verb, "rpm")) {
+		if (0 < esc_id && esc_id < 16) {
+			PX4_INFO("Request RPM for ESC mask: %i - RPM: %i", esc_id, rpms);
+			int16_t rpm0 = (esc_id & 1) ? rpms : 0;
+			int16_t rpm1 = (esc_id & 2) ? -rpms : 0; // my hardware needs this reversed?
+			int16_t rpm2 = (esc_id & 4) ? rpms : 0;
+			int16_t rpm3 = (esc_id & 8) ? rpms : 0;
+
+			cmd.len = qc_esc_create_rpm_packet4(rpm0, rpm1, rpm2, rpm3, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
+			cmd.response = false;
+
+			/* For safety, from non-spinning state, it is required to send at least 5 non-zero Power or RPM
+			 * commands in a row (with 2 ms intervals) before the ESC will start the motor
+			 */
+			cmd.repeats = 500;
 			return get_instance()->sendCommandThreadSafe(&cmd);
 
 		} else {
@@ -503,23 +549,29 @@ void ModalaiEsc::Run()
 
 	} else {
 		if (_current_cmd.valid()) {
-			if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
-				_current_cmd.clear();
+			do {
+				if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
+					if (_current_cmd.repeats == 0) {
+						_current_cmd.clear();
+					}
 
-				if (_current_cmd.response) {
-					readResponse(&_current_cmd);
-				}
-
-			} else {
-				if (_current_cmd.retries == 0) {
-					_current_cmd.clear();
-					PX4_ERR("Failed to send command, errno: %i", errno);
+					if (_current_cmd.response) {
+						readResponse(&_current_cmd);
+					}
 
 				} else {
-					_current_cmd.retries--;
-					PX4_ERR("Failed to send command, errno: %i", errno);
+					if (_current_cmd.retries == 0) {
+						_current_cmd.clear();
+						PX4_ERR("Failed to send command, errno: %i", errno);
+
+					} else {
+						_current_cmd.retries--;
+						PX4_ERR("Failed to send command, errno: %i", errno);
+					}
 				}
-			}
+
+				px4_usleep(_current_cmd.repeat_delay_us);
+			} while (_current_cmd.repeats-- > 0);
 
 		} else {
 			Command *new_cmd = _pending_cmd.load();
@@ -571,7 +623,15 @@ $ todo
 	PRINT_MODULE_USAGE_PARAM_INT('i', 1, 1, 15, "ESC ID bitmask, 1-15", false);
 	PRINT_MODULE_USAGE_PARAM_INT('p', 0, 0, 255, "Period of sound, inverse frequency, 0-255", false);
 	PRINT_MODULE_USAGE_PARAM_INT('d', 0, 0, 255, "Duration of the sound, 0-255, 1LSB = 13ms", false);
-	PRINT_MODULE_USAGE_PARAM_INT('v', 0, 0, 100, "Power (volume) of sound, 0-100, 1LSB = 13ms", false);
+	PRINT_MODULE_USAGE_PARAM_INT('v', 0, 0, 100, "Power (volume) of sound, 0-100", false);
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("led", "Send LED control request");
+	PRINT_MODULE_USAGE_PARAM_INT('l', 0, 0, 4095, "Bitmask 0x0FFF (12 bits) - ESC0 (RGB) ESC1 (RGB) ESC2 (RGB) ESC3 (RGB)", false);
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("rpm", "Closed-Loop RPM tet control request");
+	PRINT_MODULE_USAGE_PARAM_INT('i', 1, 1, 15, "ESC ID bitmask, 1-15", false);
+	PRINT_MODULE_USAGE_PARAM_INT('r', 0, 0, 3, "RPM, -32,7680 to 32,768", false);
+
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

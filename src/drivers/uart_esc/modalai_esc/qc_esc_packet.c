@@ -60,6 +60,12 @@ int32_t qc_esc_create_sound_packet(uint8_t frequency, uint8_t duration, uint8_t 
 	return qc_esc_create_packet(ESC_PACKET_TYPE_SOUND_CMD, (uint8_t *) & (data[0]), 4, out, out_size);
 }
 
+int32_t qc_esc_create_led_control_packet(uint8_t led_byte_1, uint8_t led_byte_2, uint8_t *out, uint16_t out_size)
+{
+	uint8_t data[2] = {led_byte_1, led_byte_2};
+	return qc_esc_create_packet(ESC_PACKET_TYPE_LED_CMD, (uint8_t *) & (data[0]), 2, out, out_size);
+}
+
 int32_t qc_esc_create_set_id_packet(uint8_t id, uint8_t *out, uint16_t out_size)
 {
 	return qc_esc_create_packet(ESC_PACKET_TYPE_SET_ID_CMD, (uint8_t *)&id, 1, out, out_size);

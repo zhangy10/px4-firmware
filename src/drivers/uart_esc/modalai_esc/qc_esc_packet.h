@@ -119,6 +119,14 @@ int32_t qc_esc_create_reset_packet(uint8_t id, uint8_t *out, uint16_t out_size);
 int32_t qc_esc_create_sound_packet(uint8_t frequency, uint8_t duration, uint8_t power, uint8_t mask, uint8_t *out,
 				   uint16_t out_size);
 
+// Create a packet for standalone LED control
+// Bit mask definition:
+// led_byte_1 - bit0 = ESC0 Red, bit1 = ESC0, Green, bit2 = ESC0 Blue, bit3 = ESC1 Red, bit4 = ESC1 Green,
+// bit5 = ESC1 Blue, bit6 = ESC2 Red, bit7 = ESC2 Green
+// led_byte_2 - bit0 = ESC2 Blue, bit1 = ESC3 Red, bit2 = ESC3 Green, bit3 = ESC3 Blue, bits 4:7 = unused
+// Note that control can only be sent when motor is not spinning
+int32_t qc_esc_create_led_control_packet(uint8_t led_byte_1, uint8_t led_byte_2, uint8_t *out, uint16_t out_size);
+
 // Create a packet for setting the ID of an ESC
 // Return value is the length of generated packet (if positive), otherwise error code
 // Note that all ESCs that will receive this command will be set to this ID

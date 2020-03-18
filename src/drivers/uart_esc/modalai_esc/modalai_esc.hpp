@@ -90,7 +90,9 @@ public:
 		uint8_t 	BUF_SIZE = 255;
 		uint8_t 	buf[255] = {0x00};
 		uint8_t 	len;
-		uint8_t         retries = 0;
+		uint16_t	repeats = 0;
+		uint16_t	repeat_delay_us = 2000;
+		uint8_t		retries = 0;
 		bool		response = false;
 		uint16_t	resp_delay_us = 1000;
 
