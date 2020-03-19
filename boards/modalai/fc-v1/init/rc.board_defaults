@@ -50,13 +50,6 @@ then
 			param set MAV_1_MODE 0	# normal
 			param set SER_TEL2_BAUD 921600 # VIO data
 		fi
-		if param compare MAV_2_CONFIG 0
-		then
-			echo "V106 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-			param set MAV_2_CONFIG 103 # TELEM3
-			param set MAV_2_MODE 0	# normal
-			param set SER_TEL3_BAUD 57600 # standard data
-		fi
 	fi
 
 	# User is setting defaults, so let's do it!
@@ -66,11 +59,6 @@ then
 		param set MAV_1_CONFIG 102 # TELEM2
 		param set MAV_1_MODE 0	# normal
 		param set SER_TEL2_BAUD 921600 # VIO data
-
-		echo "V106 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-		param set MAV_2_CONFIG 103 # TELEM3
-		param set MAV_2_MODE 0	# normal
-		param set SER_TEL3_BAUD 57600 # standard data
 	fi
 fi
 
@@ -96,16 +84,6 @@ then
 			param set MAV_1_MODE 0	# normal
 			param set SER_TEL2_BAUD 921600
 		fi
-		#
-		# J1002 is setup as a spare serial port, if not setup by the user let's default it to TELEM3
-		#
-		if param compare MAV_2_CONFIG 0
-		then
-			echo "V110 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-			param set MAV_2_CONFIG 103 # TELEM3
-			param set MAV_2_MODE 0	# normal
-			param set SER_TEL3_BAUD 57600 # standard data
-		fi
 	fi
 
 	# User is setting defaults, so let's do it!
@@ -115,11 +93,6 @@ then
 		param set MAV_1_CONFIG 102 # TELEM2
 		param set MAV_1_MODE 0	# normal
 		param set SER_TEL2_BAUD 921600
-
-		echo "V110 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-		param set MAV_2_CONFIG 103 # TELEM3
-		param set MAV_2_MODE 0	# normal
-		param set SER_TEL3_BAUD 57600
 	fi
 fi
 
