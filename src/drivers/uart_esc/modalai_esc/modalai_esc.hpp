@@ -44,8 +44,6 @@
 
 #include "modalai_esc_serial.hpp"
 
-#define MODALAI_ESC_OUTPUT_CHANNELS 4
-
 class ModalaiEsc : public cdev::CDev, public ModuleBase<ModalaiEsc>, public OutputModuleInterface
 {
 public:
@@ -100,19 +98,39 @@ public:
 		void clear() { len = 0; }
 	};
 
+	struct EscChans {
+		uint16_t rate0;
+		uint16_t rate1;
+		uint16_t rate2;
+		uint16_t rate3;
+		uint8_t led0;
+		uint8_t led1;
+		uint8_t led2;
+		uint8_t led3;
+	};
+
 	int sendCommandThreadSafe(Command *cmd);
 
 private:
+	static constexpr uint16_t DISARMED_VALUE = 0;
+	static constexpr uint16_t MODALAI_ESC_OUTPUT_CHANNELS = 4;
+	static constexpr uint16_t MODALAI_ESC_PWM_MIN = 0;
+	static constexpr uint16_t MODALAI_ESC_PWM_MAX = 800;
+	static constexpr uint16_t MODALAI_ESC_RPM_MIN = 5000;
+	static constexpr uint16_t MODALAI_ESC_RPM_MAX = 20000;
+
+	static constexpr uint16_t max_pwm(uint16_t pwm) { return math::min(pwm, MODALAI_ESC_PWM_MAX); }
+	static constexpr uint16_t max_rpm(uint16_t rpm) { return math::min(rpm, MODALAI_ESC_RPM_MAX); }
+
 	ModalaiEscSerial 	*_uart_port;
 
 	unsigned		_output_count = MODALAI_ESC_OUTPUT_CHANNELS;
 	MixingOutput 		_mixing_output{MODALAI_ESC_OUTPUT_CHANNELS, *this, MixingOutput::SchedulingPolicy::Auto, false, false};
 
-
 	int			_class_instance{-1};
 
-
 	perf_counter_t		_cycle_perf;
+	perf_counter_t		_output_update_perf;
 
 	bool			_outputs_on{false};
 
@@ -121,9 +139,12 @@ private:
 	uORB::Subscription 	_parameter_update_sub{ORB_ID(parameter_update)};
 	void			update_params();
 
-	uint16_t                _cmd_id{0};
+	uint16_t		_cmd_id{0};
 	Command 		_current_cmd;
 	px4::atomic<Command *>	_pending_cmd{nullptr};
+
+	EscChans		_esc_chans;
+	Command			_esc_cmd;
 
 	int			populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd);
 	int 			readResponse(Command *out_cmd);

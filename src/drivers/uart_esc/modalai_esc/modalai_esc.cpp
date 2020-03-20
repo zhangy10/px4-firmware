@@ -46,15 +46,16 @@ const char *_device;
 ModalaiEsc::ModalaiEsc() :
 	CDev(MODALAI_ESC_DEVICE_PATH),
 	OutputModuleInterface(MODULE_NAME, px4::wq_configurations::hp_default),
-	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
+	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
+	_output_update_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": output update interval"))
 {
 	_device = MODALAI_ESC_DEFAULT_PORT;
 
 	// modaltb TODO
-	_mixing_output.setAllFailsafeValues(1);
-	_mixing_output.setAllDisarmedValues(2);
-	_mixing_output.setAllMinValues(3);
-	_mixing_output.setAllMaxValues(100);
+	//_mixing_output.setAllFailsafeValues(0);
+	_mixing_output.setAllDisarmedValues(0);
+	_mixing_output.setAllMinValues(1);
+	_mixing_output.setAllMaxValues(2000);
 }
 
 ModalaiEsc::~ModalaiEsc()
@@ -72,6 +73,7 @@ ModalaiEsc::~ModalaiEsc()
 	unregister_class_devname(PWM_OUTPUT_BASE_DEVICE_PATH, _class_instance);
 
 	perf_free(_cycle_perf);
+	perf_free(_output_update_perf);
 }
 
 int ModalaiEsc::init()
@@ -226,7 +228,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 	uint8_t duration = 0;
 	uint8_t power = 0;
 	uint16_t led_mask = 0;
-	int16_t rpms = 0;
+	int16_t rate = 0;
 
 	if (argc < 3) {
 		return print_usage("unknown command");
@@ -270,7 +272,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 			break;
 
 		case 'r':
-			rpms = atoi(myoptarg);
+			rate = atoi(myoptarg);
 			break;
 
 		default:
@@ -331,18 +333,32 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 
 	}  else if (!strcmp(verb, "rpm")) {
 		if (0 < esc_id && esc_id < 16) {
-			PX4_INFO("Request RPM for ESC mask: %i - RPM: %i", esc_id, rpms);
-			int16_t rpm0 = (esc_id & 1) ? rpms : 0;
-			int16_t rpm1 = (esc_id & 2) ? -rpms : 0; // my hardware needs this reversed?
-			int16_t rpm2 = (esc_id & 4) ? rpms : 0;
-			int16_t rpm3 = (esc_id & 8) ? rpms : 0;
+			PX4_INFO("Request RPM for ESC mask: %i - RPM: %i", esc_id, rate);
+			int16_t rpm0 = (esc_id & 1) ? rate : 0;
+			int16_t rpm1 = (esc_id & 2) ? -rate : 0; // my hardware needs this reversed?
+			int16_t rpm2 = (esc_id & 4) ? rate : 0;
+			int16_t rpm3 = (esc_id & 8) ? rate : 0;
 
 			cmd.len = qc_esc_create_rpm_packet4(rpm0, rpm1, rpm2, rpm3, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
 			cmd.response = false;
+			cmd.repeats = 500;
+			return get_instance()->sendCommandThreadSafe(&cmd);
 
-			/* For safety, from non-spinning state, it is required to send at least 5 non-zero Power or RPM
-			 * commands in a row (with 2 ms intervals) before the ESC will start the motor
-			 */
+		} else {
+			print_usage("Invalid ESC mask, use 1-15");
+			return 0;
+		}
+
+	} else if (!strcmp(verb, "pwm")) {
+		if (0 < esc_id && esc_id < 16) {
+			PX4_INFO("Request PWM for ESC mask: %i - PWM: %i", esc_id, rate);
+			int16_t pwm0 = (esc_id & 1) ? rate : 0;
+			int16_t pwm1 = (esc_id & 2) ? -rate : 0; // my hardware needs this reversed?
+			int16_t pwm2 = (esc_id & 4) ? rate : 0;
+			int16_t pwm3 = (esc_id & 8) ? rate : 0;
+
+			cmd.len = qc_esc_create_pwm_packet4(pwm0, pwm1, pwm2, pwm3, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
+			cmd.response = false;
 			cmd.repeats = 500;
 			return get_instance()->sendCommandThreadSafe(&cmd);
 
@@ -420,81 +436,49 @@ void ModalaiEsc::mixerChanged()
 bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 			       unsigned num_outputs, unsigned num_control_groups_updated)
 {
-	static int test = 0;
-
-	if (!_outputs_on) {
+	if (!_outputs_on || num_outputs != MODALAI_ESC_OUTPUT_CHANNELS) {
 		return false;
 	}
 
 	if (stop_motors) {
-		for (int i = 0; i < (int)num_outputs; i++) {
-			//PX4_INFO("%i - %i", i, outputs[i]);
-		}
-	} else {
-		if (test++ > 50) {
-			for (int i = 0; i < (int)num_outputs; i++) {
-				PX4_INFO("%i - %i", i, outputs[i]);
-			}
-
-			test = 0;
-		}
-
-		/* clear commands when motors are running */
-		_current_cmd.clear();
-	}
-
-
-
-	// modaltb TODO
-	/*
-	int requested_telemetry_index = -1;
-
-	if (_telemetry) {
-		// check for an ESC info request. We only process it when we're not expecting other telemetry data
-		if (_request_esc_info.load() != nullptr && !_waiting_for_esc_info && stop_motors
-		    && !_telemetry->handler.expectingData() && !_current_command.valid()) {
-			requested_telemetry_index = requestESCInfo();
-
-		} else {
-			requested_telemetry_index = _mixing_output.reorderedMotorIndex(_telemetry->handler.getRequestMotorIndex());
-		}
-	}
-
-	if (stop_motors) {
-
-		// when motors are stopped we check if we have other commands to send
-		for (int i = 0; i < (int)num_outputs; i++) {
-			if (_current_command.valid() && (_current_command.motor_mask & (1 << i))) {
-				// for some reason we need to always request telemetry when sending a command
-				up_dshot_motor_command(i, _current_command.command, true);
-
-			} else {
-				up_dshot_motor_command(i, DShot_cmd_motor_stop, i == requested_telemetry_index);
-			}
-		}
-
-		if (_current_command.valid()) {
-			--_current_command.num_repetitions;
-		}
+		_esc_chans.rate0 = 0;
+		_esc_chans.rate1 = 0;
+		_esc_chans.rate2 = 0;
+		_esc_chans.rate3 = 0;
 
 	} else {
-		for (int i = 0; i < (int)num_outputs; i++) {
-			if (outputs[i] == DISARMED_VALUE) {
-				up_dshot_motor_command(i, DShot_cmd_motor_stop, i == requested_telemetry_index);
+		_esc_chans.rate0 = outputs[0] * 10; // max_rpm(outputs[0]*10);
+		_esc_chans.rate1 = outputs[1] * 10; //max_rpm(outputs[1]*10);
+		_esc_chans.rate2 = outputs[2] * 10; //max_rpm(outputs[2]*10);
+		_esc_chans.rate3 = outputs[3] * 10; //max_rpm(outputs[3]*10);
+		static int i = 0;
 
-			} else {
-				up_dshot_motor_data_set(i, math::min(outputs[i], (uint16_t)DSHOT_MAX_THROTTLE), i == requested_telemetry_index);
-			}
+		if (i++ == 1000) {
+			i = 0;
+			PX4_INFO("%i %i %i %i", outputs[0], outputs[1], outputs[2], outputs[3]);
+			PX4_INFO("-> %i %i %i %i", _esc_chans.rate0, _esc_chans.rate1, _esc_chans.rate2, _esc_chans.rate3);
 		}
-
-		// clear commands when motors are running
-		_current_command.clear();
 	}
 
-	if (stop_motors || num_control_groups_updated > 0) {
-		up_dshot_trigger();
+	Command cmd;
+	cmd.len = qc_esc_create_rpm_packet4(_esc_chans.rate0,
+					    _esc_chans.rate1,
+					    _esc_chans.rate2,
+					    _esc_chans.rate3,
+					    _esc_chans.led0,
+					    _esc_chans.led1,
+					    _esc_chans.led2,
+					    _esc_chans.led3,
+					    cmd.buf,
+					    sizeof(cmd.buf));
+
+
+	if (_uart_port->uart_write(cmd.buf, cmd.len) != cmd.len) {
+		PX4_ERR("Failed to send packet");
+		return false;
 	}
-	*/
+
+	perf_count(_output_update_perf);
 
 	return true;
 }
@@ -628,9 +612,13 @@ $ todo
 	PRINT_MODULE_USAGE_COMMAND_DESCR("led", "Send LED control request");
 	PRINT_MODULE_USAGE_PARAM_INT('l', 0, 0, 4095, "Bitmask 0x0FFF (12 bits) - ESC0 (RGB) ESC1 (RGB) ESC2 (RGB) ESC3 (RGB)", false);
 
-	PRINT_MODULE_USAGE_COMMAND_DESCR("rpm", "Closed-Loop RPM tet control request");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("rpm", "Closed-Loop RPM test control request");
 	PRINT_MODULE_USAGE_PARAM_INT('i', 1, 1, 15, "ESC ID bitmask, 1-15", false);
 	PRINT_MODULE_USAGE_PARAM_INT('r', 0, 0, 3, "RPM, -32,7680 to 32,768", false);
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("pwm", "Open-Loop PWM test control request");
+	PRINT_MODULE_USAGE_PARAM_INT('i', 1, 1, 15, "ESC ID bitmask, 1-15", false);
+	PRINT_MODULE_USAGE_PARAM_INT('r', 0, 0, 2200, "PWM value, 0 to 2200", false);
 
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
@@ -645,6 +633,8 @@ int ModalaiEsc::print_status()
 	PX4_INFO("UART open: %s", _uart_port->is_open() ? "yes" : "no");
 
 	perf_print_counter(_cycle_perf);
+	perf_print_counter(_output_update_perf);
+
 	_mixing_output.printStatus();
 
 	return 0;
