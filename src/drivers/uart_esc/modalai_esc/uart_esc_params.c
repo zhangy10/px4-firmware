@@ -31,29 +31,70 @@
  *
  ****************************************************************************/
 
-#pragma once
+#include <px4_config.h>
+#include <parameters/param.h>
 
-#include <px4_log.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <termios.h>
+/**
+ * UART ESC config
+ *
+ * @value 0 - None
+ * @value 1 - ModalAI
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_CONFIG, 0);
 
+/**
+ * UART ESC baud rate
+ *
+ * Default rate is 250Kbps, which is used in off-the-shelf MoadalAI ESC products.
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_BAUD, 250000);
 
-class ModalaiEscSerial
-{
-public:
-	ModalaiEscSerial();
-	virtual ~ModalaiEscSerial();
+/**
+ * UART ESC Motor 1 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_MOTOR1, 3);
 
-	int		uart_open(const char *dev, speed_t speed);
-	int		uart_set_baud(speed_t speed);
-	int		uart_close();
-	int		uart_write(FAR void *buf, size_t len);
-	int		uart_read(FAR void *buf, size_t len);
-	bool		is_open() { return _uart_fd >= 0; };
+/**
+ *UART ESC Motor 2 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_MOTOR2, 2);
 
-private:
-	int			_uart_fd = -1;
-	struct termios		_orig_cfg;
-	struct termios		_cfg;
-};
+/**
+ * UART ESC Motor 3 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_MOTOR3, 4);
+
+/**
+ * UART ESC Motor 4 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_MOTOR4, 1);
+
+/**
+ * UART ESC RPM Min
+ *
+ * Minimum RPM for ESC
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_RPM_MIN, 0);
+
+/**
+ * UART ESC RPM Max
+ *
+ * Maximum RPM for ESC
+ *
+ * @group UART ESC
+ */
+PARAM_DEFINE_INT32(UART_ESC_RPM_MAX, 18500);

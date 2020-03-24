@@ -39,6 +39,7 @@ px4_add_module(
 		qc_esc_packet.c
 		modalai_esc_serial.cpp
 		modalai_esc.cpp
+		uart_esc_params.c
 	DEPENDS
 		px4_work_queue
 	)

@@ -45,7 +45,7 @@ ModalaiEscSerial::~ModalaiEscSerial()
 	}
 }
 
-int ModalaiEscSerial::uart_open(const char *dev)
+int ModalaiEscSerial::uart_open(const char *dev, speed_t speed)
 {
 	if (_uart_fd >= 0) {
 		PX4_ERR("Port in use: %s (%i)", dev, errno);
@@ -85,9 +85,6 @@ int ModalaiEscSerial::uart_open(const char *dev)
 	/* setup for non-canonical mode */
 	_cfg.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
 	_cfg.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-
-	/* Set baud rate */
-	const speed_t speed = 250000;
 
 	if (cfsetispeed(&_cfg, speed) < 0 || cfsetospeed(&_cfg, speed) < 0) {
 		PX4_ERR("Error configuring port: %s: %d (cfsetispeed, cfsetospeed)", dev, termios_state);

@@ -51,11 +51,8 @@ ModalaiEsc::ModalaiEsc() :
 {
 	_device = MODALAI_ESC_DEFAULT_PORT;
 
-	// modaltb TODO
-	//_mixing_output.setAllFailsafeValues(0);
+	_mixing_output.setAllFailsafeValues(0);
 	_mixing_output.setAllDisarmedValues(0);
-	_mixing_output.setAllMinValues(1);
-	_mixing_output.setAllMaxValues(2000);
 }
 
 ModalaiEsc::~ModalaiEsc()
@@ -335,11 +332,12 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 		if (0 < esc_id && esc_id < 16) {
 			PX4_INFO("Request RPM for ESC mask: %i - RPM: %i", esc_id, rate);
 			int16_t rpm0 = (esc_id & 1) ? rate : 0;
-			int16_t rpm1 = (esc_id & 2) ? -rate : 0; // my hardware needs this reversed?
+			int16_t rpm1 = (esc_id & 2) ? rate : 0;
 			int16_t rpm2 = (esc_id & 4) ? rate : 0;
 			int16_t rpm3 = (esc_id & 8) ? rate : 0;
 
-			cmd.len = qc_esc_create_rpm_packet4(rpm0, rpm1, rpm2, rpm3, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
+			// PX4 default mapping
+			cmd.len = qc_esc_create_rpm_packet4(rpm2, -rpm1, rpm3, rpm0, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
 			cmd.response = false;
 			cmd.repeats = 500;
 			return get_instance()->sendCommandThreadSafe(&cmd);
@@ -353,11 +351,12 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 		if (0 < esc_id && esc_id < 16) {
 			PX4_INFO("Request PWM for ESC mask: %i - PWM: %i", esc_id, rate);
 			int16_t pwm0 = (esc_id & 1) ? rate : 0;
-			int16_t pwm1 = (esc_id & 2) ? -rate : 0; // my hardware needs this reversed?
+			int16_t pwm1 = (esc_id & 2) ? rate : 0;
 			int16_t pwm2 = (esc_id & 4) ? rate : 0;
 			int16_t pwm3 = (esc_id & 8) ? rate : 0;
 
-			cmd.len = qc_esc_create_pwm_packet4(pwm0, pwm1, pwm2, pwm3, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
+			// PX4 default mapping
+			cmd.len = qc_esc_create_pwm_packet4(pwm2, pwm1, pwm3, pwm0, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
 			cmd.response = false;
 			cmd.repeats = 500;
 			return get_instance()->sendCommandThreadSafe(&cmd);
@@ -375,10 +374,34 @@ void ModalaiEsc::update_params()
 {
 	updateParams();
 
-	// we use a minimum value of 1, since 0 is for disarmed
-	//_mixing_output.setAllMinValues(math::constrain((int)(_param_dshot_min.get() * (float)DSHOT_MAX_THROTTLE),
-	//			       DISARMED_VALUE + 1, DSHOT_MAX_THROTTLE));
+	param_get(param_find("UART_ESC_CONFIG"),  &_parameters.config);
+	param_get(param_find("UART_ESC_BAUD"),    &_parameters.baud_rate);
+	param_get(param_find("UART_ESC_MOTOR1"),  &_parameters.motor_map[0]);
+	param_get(param_find("UART_ESC_MOTOR2"),  &_parameters.motor_map[1]);
+	param_get(param_find("UART_ESC_MOTOR3"),  &_parameters.motor_map[2]);
+	param_get(param_find("UART_ESC_MOTOR4"),  &_parameters.motor_map[3]);
+	param_get(param_find("UART_ESC_RPM_MIN"), &_parameters.rpm_min);
+	param_get(param_find("UART_ESC_RPM_MAX"), &_parameters.rpm_max);
 
+	if (_parameters.rpm_min >= _parameters.rpm_max) {
+		PX4_ERR("Invalid parameter UART_ESC_RPM_MIN.  Setting RPM MIN to 0");
+		_parameters.rpm_min = 0;
+	}
+
+	for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
+		if (_parameters.motor_map[i] < -(MODALAI_ESC_OUTPUT_CHANNELS) ||
+		    _parameters.motor_map[i] > MODALAI_ESC_OUTPUT_CHANNELS) {
+			//PX4_ERR("Invalid parameter UART_ESC_MOTORX.  Disabling channel %i", i + 1);
+			//_parameters.motor_map[i] = 0;
+		}
+
+		/* Can map -4 to 4, 0 being disabled.  Negative represents reverse direction */
+		_output_map[i].number = abs(_parameters.motor_map[i]);
+		_output_map[i].direction = (_parameters.motor_map[i] > 0) ? 1 : -1;
+	}
+
+	_mixing_output.setAllMinValues(_parameters.rpm_min);
+	_mixing_output.setAllMaxValues(_parameters.rpm_max);
 }
 
 
@@ -440,35 +463,29 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 		return false;
 	}
 
-	if (stop_motors) {
-		_esc_chans.rate0 = 0;
-		_esc_chans.rate1 = 0;
-		_esc_chans.rate2 = 0;
-		_esc_chans.rate3 = 0;
+	memset(&_esc_chans, 0x00, sizeof(_esc_chans));
 
-	} else {
-		_esc_chans.rate0 = outputs[0] * 10; // max_rpm(outputs[0]*10);
-		_esc_chans.rate1 = outputs[1] * 10; //max_rpm(outputs[1]*10);
-		_esc_chans.rate2 = outputs[2] * 10; //max_rpm(outputs[2]*10);
-		_esc_chans.rate3 = outputs[3] * 10; //max_rpm(outputs[3]*10);
-		static int i = 0;
+	for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
+		if (stop_motors) {
+			_esc_chans.rate[i] = 0;
 
-		if (i++ == 1000) {
-			i = 0;
-			PX4_INFO("%i %i %i %i", outputs[0], outputs[1], outputs[2], outputs[3]);
-			PX4_INFO("-> %i %i %i %i", _esc_chans.rate0, _esc_chans.rate1, _esc_chans.rate2, _esc_chans.rate3);
+		} else {
+			if (_output_map[i].number > 0 && _output_map[i].number <= MODALAI_ESC_OUTPUT_CHANNELS) {
+				/* user defined mapping is 1-4, array is 0-3 */
+				_esc_chans.rate[_output_map[i].number - 1] = outputs[i] * _output_map[i].direction;
+			}
 		}
 	}
 
 	Command cmd;
-	cmd.len = qc_esc_create_rpm_packet4(_esc_chans.rate0,
-					    _esc_chans.rate1,
-					    _esc_chans.rate2,
-					    _esc_chans.rate3,
-					    _esc_chans.led0,
-					    _esc_chans.led1,
-					    _esc_chans.led2,
-					    _esc_chans.led3,
+	cmd.len = qc_esc_create_rpm_packet4(_esc_chans.rate[0],
+					    _esc_chans.rate[1],
+					    _esc_chans.rate[2],
+					    _esc_chans.rate[3],
+					    _esc_chans.led[0],
+					    _esc_chans.led[1],
+					    _esc_chans.led[2],
+					    _esc_chans.led[3],
 					    cmd.buf,
 					    sizeof(cmd.buf));
 
@@ -498,7 +515,7 @@ void ModalaiEsc::Run()
 
 	/* Open serial port in this thread */
 	if (!_uart_port->is_open()) {
-		if (_uart_port->uart_open(_device) == PX4_OK) {
+		if (_uart_port->uart_open(_device, _parameters.baud_rate) == PX4_OK) {
 			PX4_INFO("Opened UART ESC device");
 
 		} else {
@@ -631,6 +648,15 @@ int ModalaiEsc::print_status()
 	PX4_INFO("Outputs on: %s", _outputs_on ? "yes" : "no");
 	PX4_INFO("UART port: %s", _device);
 	PX4_INFO("UART open: %s", _uart_port->is_open() ? "yes" : "no");
+
+	PX4_INFO("Params: UART_ESC_CONFIG: %i", _parameters.config);
+	PX4_INFO("Params: UART_ESC_BAUD: %i", _parameters.baud_rate);
+	PX4_INFO("Params: UART_ESC_MOTOR1: %i", _parameters.motor_map[0]);
+	PX4_INFO("Params: UART_ESC_MOTOR2: %i", _parameters.motor_map[1]);
+	PX4_INFO("Params: UART_ESC_MOTOR3: %i", _parameters.motor_map[2]);
+	PX4_INFO("Params: UART_ESC_MOTOR4: %i", _parameters.motor_map[3]);
+	PX4_INFO("Params: UART_ESC_RPM_MIN: %i", _parameters.rpm_min);
+	PX4_INFO("Params: UART_ESC_RPM_MAX: %i", _parameters.rpm_max);
 
 	perf_print_counter(_cycle_perf);
 	perf_print_counter(_output_update_perf);

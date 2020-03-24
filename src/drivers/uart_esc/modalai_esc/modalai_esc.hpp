@@ -98,33 +98,47 @@ public:
 		void clear() { len = 0; }
 	};
 
-	struct EscChans {
-		uint16_t rate0;
-		uint16_t rate1;
-		uint16_t rate2;
-		uint16_t rate3;
-		uint8_t led0;
-		uint8_t led1;
-		uint8_t led2;
-		uint8_t led3;
-	};
+
 
 	int sendCommandThreadSafe(Command *cmd);
 
 private:
-	static constexpr uint16_t DISARMED_VALUE = 0;
+	static constexpr uint32_t MODALAI_ESC_UART_CONFIG = 1;
+	static constexpr uint32_t MODALAI_ESC_DEFAULT_BAUD = 250000;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_CHANNELS = 4;
+
+	static constexpr uint16_t DISARMED_VALUE = 0;
+
 	static constexpr uint16_t MODALAI_ESC_PWM_MIN = 0;
 	static constexpr uint16_t MODALAI_ESC_PWM_MAX = 800;
-	static constexpr uint16_t MODALAI_ESC_RPM_MIN = 5000;
-	static constexpr uint16_t MODALAI_ESC_RPM_MAX = 20000;
+	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MIN = 0;
+	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MAX = 20000;
 
-	static constexpr uint16_t max_pwm(uint16_t pwm) { return math::min(pwm, MODALAI_ESC_PWM_MAX); }
-	static constexpr uint16_t max_rpm(uint16_t rpm) { return math::min(rpm, MODALAI_ESC_RPM_MAX); }
+	//static constexpr uint16_t max_pwm(uint16_t pwm) { return math::min(pwm, MODALAI_ESC_PWM_MAX); }
+	//static constexpr uint16_t max_rpm(uint16_t rpm) { return math::min(rpm, MODALAI_ESC_RPM_MAX); }
 
 	ModalaiEscSerial 	*_uart_port;
 
+	struct {
+		int32_t		config{MODALAI_ESC_UART_CONFIG};
+		int32_t		baud_rate{MODALAI_ESC_DEFAULT_BAUD};
+		int32_t		rpm_min{MODALAI_ESC_DEFAULT_RPM_MIN};
+		int32_t		rpm_max{MODALAI_ESC_DEFAULT_RPM_MAX};
+		int32_t		motor_map[MODALAI_ESC_OUTPUT_CHANNELS] {1, 2, 3, 4};
+	} _parameters;
+
+	struct EscChans {
+		uint16_t rate[MODALAI_ESC_OUTPUT_CHANNELS];
+		uint8_t led[MODALAI_ESC_OUTPUT_CHANNELS];
+	};
+
+	typedef struct {
+		uint8_t		number;
+		int8_t		direction;
+	} ch_assign_t;
+
 	unsigned		_output_count = MODALAI_ESC_OUTPUT_CHANNELS;
+	ch_assign_t		_output_map[MODALAI_ESC_OUTPUT_CHANNELS] {{1, 1}, {2, 1}, {3, 1}, {4, 1}};
 	MixingOutput 		_mixing_output{MODALAI_ESC_OUTPUT_CHANNELS, *this, MixingOutput::SchedulingPolicy::Auto, false, false};
 
 	int			_class_instance{-1};
