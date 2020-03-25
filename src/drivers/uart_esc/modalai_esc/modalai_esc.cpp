@@ -336,8 +336,10 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 			int16_t rpm2 = (esc_id & 4) ? rate : 0;
 			int16_t rpm3 = (esc_id & 8) ? rate : 0;
 
+			// TODO load mapping
+
 			// PX4 default mapping
-			cmd.len = qc_esc_create_rpm_packet4(rpm2, -rpm1, rpm3, rpm0, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
+			cmd.len = qc_esc_create_rpm_packet4(rpm2, rpm1, rpm3, rpm0, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
 			cmd.response = false;
 			cmd.repeats = 500;
 			return get_instance()->sendCommandThreadSafe(&cmd);
@@ -354,6 +356,8 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 			int16_t pwm1 = (esc_id & 2) ? rate : 0;
 			int16_t pwm2 = (esc_id & 4) ? rate : 0;
 			int16_t pwm3 = (esc_id & 8) ? rate : 0;
+
+			// TODO load mapping
 
 			// PX4 default mapping
 			cmd.len = qc_esc_create_pwm_packet4(pwm2, pwm1, pwm3, pwm0, 0, 0, 0, 0, cmd.buf, sizeof(cmd.buf));
@@ -465,23 +469,28 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 
 	memset(&_esc_chans, 0x00, sizeof(_esc_chans));
 
+	uint8_t motor_idx;
+
 	for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
 		if (stop_motors) {
 			_esc_chans.rate[i] = 0;
 
 		} else {
-			if (_output_map[i].number > 0 && _output_map[i].number <= MODALAI_ESC_OUTPUT_CHANNELS) {
+			motor_idx = _output_map[i].number;
+
+			if (motor_idx > 0 && motor_idx <= MODALAI_ESC_OUTPUT_CHANNELS) {
 				/* user defined mapping is 1-4, array is 0-3 */
-				_esc_chans.rate[_output_map[i].number - 1] = outputs[i] * _output_map[i].direction;
+				motor_idx--;
+				_esc_chans.rate[i] = outputs[motor_idx];// * _output_map[motor_idx-1].direction;
 			}
 		}
 	}
 
 	Command cmd;
-	cmd.len = qc_esc_create_rpm_packet4(_esc_chans.rate[0],
-					    _esc_chans.rate[1],
-					    _esc_chans.rate[2],
-					    _esc_chans.rate[3],
+	cmd.len = qc_esc_create_rpm_packet4(_esc_chans.rate[0],//outputs[2],
+					    _esc_chans.rate[1],//outputs[1],
+					    _esc_chans.rate[2],//outputs[3],
+					    _esc_chans.rate[3],//outputs[0],
 					    _esc_chans.led[0],
 					    _esc_chans.led[1],
 					    _esc_chans.led[2],
