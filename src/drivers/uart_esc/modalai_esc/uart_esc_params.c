@@ -54,32 +54,41 @@ PARAM_DEFINE_INT32(UART_ESC_CONFIG, 0);
 PARAM_DEFINE_INT32(UART_ESC_BAUD, 250000);
 
 /**
+ * Motor mappings for ModalAI ESC M004
+ *
+ *  HW Channel Idexes (PX4 Indexes) (note: silkscreen shows 0 indexed)
+ *         4(1)     3(4)
+ * [front]
+ *         1(3)     2(2)
+ */
+
+/**
  * UART ESC Motor 1 Mapping.  1-4 (negative for reversal).
  *
  * @group UART ESC
  */
-PARAM_DEFINE_INT32(UART_ESC_MOTOR1, 2);
+PARAM_DEFINE_INT32(UART_ESC_MOTOR1, 3);
 
 /**
  *UART ESC Motor 2 Mapping.  1-4 (negative for reversal).
  *
  * @group UART ESC
  */
-PARAM_DEFINE_INT32(UART_ESC_MOTOR2, 4);
+PARAM_DEFINE_INT32(UART_ESC_MOTOR2, 2);
 
 /**
  * UART ESC Motor 3 Mapping.  1-4 (negative for reversal).
  *
  * @group UART ESC
  */
-PARAM_DEFINE_INT32(UART_ESC_MOTOR3, 1);
+PARAM_DEFINE_INT32(UART_ESC_MOTOR3, 4);
 
 /**
  * UART ESC Motor 4 Mapping.  1-4 (negative for reversal).
  *
  * @group UART ESC
  */
-PARAM_DEFINE_INT32(UART_ESC_MOTOR4, 3);
+PARAM_DEFINE_INT32(UART_ESC_MOTOR4, 1);
 
 /**
  * UART ESC RPM Min
