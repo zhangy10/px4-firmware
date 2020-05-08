@@ -111,12 +111,14 @@ start_bus(struct voxlpm_bus_option &bus)
 		return false;
 	}
 
-	if (bus.vbat.dev->init() != OK || bus.vpwr.dev->init() != OK) {
-		delete bus.vbat.dev;
-		bus.vbat.dev = nullptr;
+	/* need battery to fly */
+	if (bus.vbat.dev->force_init() != OK) {
+		PX4_INFO("Failed to init voxlpm type: VBAT on bus: %d, but will try again periodically.", bus.busnum);
+	}
+
+	if (bus.vpwr.dev->init() != OK) {
 		delete bus.vpwr.dev;
 		bus.vpwr.dev = nullptr;
-		return false;
 	}
 
 	return true;
