@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "px4muorb_KraitRpcWrapper.hpp"
-#include <rpcmem.h>
+#include "../ipc/fastrpc/rpcmem/inc/rpcmem.h"
 #include <px4muorb.h>
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/shmem.h>
@@ -114,7 +114,7 @@ int calc_timer_diff_to_dsp_us(int32_t *time_diff_us)
 	close(fd);
 
 	uint64_t time_dsp;
-	int ret = sscanf(buffer, "%llx", &time_dsp);
+	int ret = sscanf(buffer, "%lx", &time_dsp);
 
 	if (ret < 0) {
 		PX4_ERR("Could not parse DSP timer.");
@@ -144,6 +144,8 @@ int calc_timer_diff_to_dsp_us(int32_t *time_diff_us)
 
 	return 0;
 }
+
+#define rpcmem_init()
 
 bool px4muorb::KraitRpcWrapper::Initialize()
 {
@@ -234,7 +236,7 @@ bool px4muorb::KraitRpcWrapper::Initialize()
 	// TODO FIXME: remove this check or make it less verbose later
 	px4muorb_set_absolute_time_offset(time_diff_us);
 
-	uint64_t time_dsp;
+	uint64 time_dsp;
 	px4muorb_get_absolute_time(&time_dsp);
 
 	uint64_t time_appsproc = hrt_absolute_time();

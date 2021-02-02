@@ -70,7 +70,7 @@ function(px4_add_common_flags)
 		-Wextra
 		-Werror
 
-		-Warray-bounds
+		# -Warray-bounds
 		-Wcast-align
 		-Wdisabled-optimization
 		-Wdouble-promotion

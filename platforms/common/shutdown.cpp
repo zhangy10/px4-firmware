@@ -172,7 +172,8 @@ static void shutdown_worker(void *arg)
 
 	if (delay_elapsed && ((done && shutdown_lock_counter == 0) || (now > (shutdown_time_us + shutdown_timeout_us)))) {
 		if (shutdown_args & SHUTDOWN_ARG_REBOOT) {
-#if defined(CONFIG_BOARDCTL_RESET)
+// #if defined(CONFIG_BOARDCTL_RESET)
+#if 0
 			PX4_INFO_RAW("Reboot NOW.");
 			board_reset((shutdown_args & SHUTDOWN_ARG_TO_BOOTLOADER) ? 1 : 0);
 #else
@@ -196,7 +197,7 @@ static void shutdown_worker(void *arg)
 
 	} else {
 		pthread_mutex_unlock(&shutdown_mutex);
-		work_queue(HPWORK, &shutdown_work, (worker_t)&shutdown_worker, nullptr, USEC2TICK(10000));
+		// work_queue(HPWORK, &shutdown_work, (worker_t)&shutdown_worker, nullptr, USEC2TICK(10000));
 	}
 }
 

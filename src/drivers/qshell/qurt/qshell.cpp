@@ -46,6 +46,26 @@
 #include <px4_platform_common/defines.h>
 #include <dspal_platform.h>
 
+// Pthread stuff needed by DSPAL?
+typedef volatile int  pthread_once_t;
+int pthread_once(pthread_once_t  *once_control, void (*init_routine)(void)) {
+    if (*once_control == 0) {
+        *once_control++;
+        init_routine();
+    } else {
+        return -1;
+    }
+    return 0;
+}
+int pthread_detach(pthread_t  thid) {
+    return 0;
+}
+
+// Scheduler stuff needed by DSPAL?
+int sched_yield(void) {
+    return 0;
+}
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>

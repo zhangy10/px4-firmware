@@ -25,7 +25,9 @@ px4_posix_generate_alias(
 	PREFIX ${PX4_SHELL_COMMAND_PREFIX}
 )
 
-if (("${PX4_BOARD}" MATCHES "atlflight_eagle") OR ("${PX4_BOARD}" MATCHES "atlflight_excelsior"))
+if (("${PX4_BOARD}" MATCHES "modalai_rb5-flight") OR
+    ("${PX4_BOARD}" MATCHES "atlflight_eagle") OR
+    ("${PX4_BOARD}" MATCHES "atlflight_excelsior"))
 	include(fastrpc)
 	include(linux_app)
 

@@ -43,6 +43,8 @@
 
 #include "dev_fs_lib_spi.h"
 
+#include <px4_platform_common/spi.h>
+
 enum spi_mode_e {
 	SPIDEV_MODE0 = 0, /* CPOL=0 CHPHA=0 */
 	SPIDEV_MODE1 = 1, /* CPOL=0 CHPHA=1 */
@@ -162,6 +164,7 @@ private:
 protected:
 
 	bool	external() { return px4_spi_bus_external(get_device_bus()); }
+	// bool	external() { return false; }
 
 };
 

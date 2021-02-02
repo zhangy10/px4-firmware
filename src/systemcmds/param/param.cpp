@@ -867,7 +867,7 @@ do_reset_all(const char *excludes[], int num_excludes)
 static int
 do_reset_specific(const char *resets[], int num_resets)
 {
-	param_reset_specific(resets, num_resets);
+	// param_reset_specific(resets, num_resets);
 	return 0;
 }
 

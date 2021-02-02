@@ -31,32 +31,9 @@
 #
 ############################################################################
 
-list(APPEND CMAKE_MODULE_PATH "${PX4_SOURCE_DIR}/boards/modalai/cmake_hexagon")
-include(hexagon_sdk)
-
-include_directories(${HEXAGON_8074_INCLUDES})
-
-set(QURT_LAYER_SRCS
-	px4_qurt_impl.cpp
-	tasks.cpp
-	lib_crc32.c
-	drv_hrt.cpp
-	qurt_stubs.c
-	main.cpp
-	shmem_qurt.cpp
-	px4_init.cpp
-	)
-
-if ("${QURT_ENABLE_STUBS}" STREQUAL "1")
-	list(APPEND QURT_LAYER_SRCS
-		stubs/posix.c
-		stubs/qurt.c
-		)
-endif()
-
-add_library(px4_layer
-	${QURT_LAYER_SRCS}
-	${CONFIG_SRC}
+add_library(drivers_board
+	board_config.h
+	init.c
+    i2c.cpp
+    spi.cpp
 )
-target_link_libraries(px4_layer PRIVATE work_queue)
-add_dependencies(px4_layer uorb_msgs) # dataman requires mission

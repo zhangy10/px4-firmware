@@ -106,7 +106,7 @@ void VotedSensorsUpdate::parametersUpdate()
 					} else {
 						// change relative priority to incorporate any sensor faults
 						int priority_change = _accel.priority_configured[uorb_index] - accel_priority_old;
-						_accel.priority[uorb_index] = math::constrain(_accel.priority[uorb_index] + priority_change, 1, 100);
+						_accel.priority[uorb_index] = math::constrain(_accel.priority[uorb_index] + priority_change, (long) 1, (long) 100);
 					}
 				}
 			}
@@ -128,7 +128,7 @@ void VotedSensorsUpdate::parametersUpdate()
 					} else {
 						// change relative priority to incorporate any sensor faults
 						int priority_change = _gyro.priority_configured[uorb_index] - gyro_priority_old;
-						_gyro.priority[uorb_index] = math::constrain(_gyro.priority[uorb_index] + priority_change, 1, 100);
+						_gyro.priority[uorb_index] = math::constrain(_gyro.priority[uorb_index] + priority_change, (long) 1, (long) 100);
 					}
 				}
 			}

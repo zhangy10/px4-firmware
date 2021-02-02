@@ -105,6 +105,8 @@ SPI::init()
 	/* tell the world where we are */
 	DEVICE_DEBUG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
 
+    if (_mode == SPIDEV_MODE0) DEVICE_DEBUG("SPI Mode 0");
+
 	return PX4_OK;
 }
 

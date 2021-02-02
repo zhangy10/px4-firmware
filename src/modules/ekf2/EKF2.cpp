@@ -1588,7 +1588,7 @@ int EKF2::task_spawn(int argc, char *argv[])
 		param_get(param_find("EKF2_MULTI_IMU"), &imu_instances);
 
 		if (imu_instances < 1 || imu_instances > 4) {
-			const int32_t imu_instances_limited = math::constrain(imu_instances, 1, 4);
+			const int32_t imu_instances_limited = math::constrain(imu_instances, (int32_t) 1, (int32_t) 4);
 			PX4_WARN("EKF2_MULTI_IMU limited %d -> %d", imu_instances, imu_instances_limited);
 			param_set_no_notification(param_find("EKF2_MULTI_IMU"), &imu_instances_limited);
 			imu_instances = imu_instances_limited;
@@ -1602,7 +1602,7 @@ int EKF2::task_spawn(int argc, char *argv[])
 
 			// Mags (1 - 4 supported)
 			if (mag_instances < 1 || mag_instances > 4) {
-				const int32_t mag_instances_limited = math::constrain(mag_instances, 1, 4);
+				const int32_t mag_instances_limited = math::constrain(mag_instances, (int32_t) 1, (int32_t) 4);
 				PX4_WARN("EKF2_MULTI_MAG limited %d -> %d", mag_instances, mag_instances_limited);
 				param_set_no_notification(param_find("EKF2_MULTI_MAG"), &mag_instances_limited);
 				mag_instances = mag_instances_limited;
@@ -1628,7 +1628,7 @@ int EKF2::task_spawn(int argc, char *argv[])
 		}
 
 		const hrt_abstime time_started = hrt_absolute_time();
-		const int multi_instances = math::min(imu_instances * mag_instances, (int)EKF2_MAX_INSTANCES);
+		const int multi_instances = math::min((int)(imu_instances * mag_instances), (int)EKF2_MAX_INSTANCES);
 		int multi_instances_allocated = 0;
 
 		// allocate EKF2 instances until all found or arming

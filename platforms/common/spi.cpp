@@ -59,6 +59,8 @@ void px4_set_spi_buses_from_hw_version()
 const px4_spi_bus_t *px4_spi_buses{};
 #endif
 
+bool px4_spi_bus_external(const px4_spi_bus_t &bus);
+
 int px4_find_spi_bus(uint32_t devid)
 {
 	for (int i = 0; i < SPI_BUS_MAX_BUS_ITEMS; ++i) {
