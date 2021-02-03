@@ -45,6 +45,7 @@ set(QURT_LAYER_SRCS
 	main.cpp
 	shmem_qurt.cpp
 	px4_init.cpp
+	dspal_impl.c
 	)
 
 if ("${QURT_ENABLE_STUBS}" STREQUAL "1")

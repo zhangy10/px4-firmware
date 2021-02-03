@@ -181,6 +181,9 @@ define cmake-build
 		&& cmake "$(SRC_DIR)" -G"$(PX4_CMAKE_GENERATOR)" $(CMAKE_ARGS) \
 		|| (rm -rf $(BUILD_DIR)); \
 	fi
+	# Has to be done to get the correct CXXFLAGS for QURT build.
+	# TODO: Why does this need to be done?
+	@cmake -H$(SRC_DIR) -B$(BUILD_DIR)
 	@# run the build for the specified target
 	@cmake --build $(BUILD_DIR) -- $(PX4_MAKE_ARGS) $(ARGS)
 endef

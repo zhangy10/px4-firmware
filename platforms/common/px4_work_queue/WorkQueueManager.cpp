@@ -48,6 +48,13 @@
 #include <limits.h>
 #include <string.h>
 
+// Forward declaration
+static void *WorkQueueRunner(void *ptr);
+
+static pthread_attr_t wq_attr;
+static void *wq_static_ptr;
+static pthread_t wq_thread_id;
+
 using namespace time_literals;
 
 namespace px4
@@ -218,23 +225,6 @@ const wq_config_t &ins_instance_to_wq(uint8_t instance)
 	return wq_configurations::INS0;
 }
 
-static void *
-WorkQueueRunner(void *context)
-{
-	wq_config_t *config = static_cast<wq_config_t *>(context);
-	WorkQueue wq(*config);
-
-	// add to work queue list
-	_wq_manager_wqs_list->add(&wq);
-
-	wq.Run();
-
-	// remove from work queue list
-	_wq_manager_wqs_list->remove(&wq);
-
-	return nullptr;
-}
-
 static int
 WorkQueueManagerRun(int, char **)
 {
@@ -248,15 +238,14 @@ WorkQueueManagerRun(int, char **)
 		if (wq != nullptr) {
 			// create new work queue
 
-			pthread_attr_t attr;
-			int ret_attr_init = pthread_attr_init(&attr);
+			int ret_attr_init = pthread_attr_init(&wq_attr);
 
 			if (ret_attr_init != 0) {
 				PX4_ERR("attr init for %s failed (%i)", wq->name, ret_attr_init);
 			}
 
 			sched_param param;
-			int ret_getschedparam = pthread_attr_getschedparam(&attr, &param);
+			int ret_getschedparam = pthread_attr_getschedparam(&wq_attr, &param);
 
 			if (ret_getschedparam != 0) {
 				PX4_ERR("getting sched param for %s failed (%i)", wq->name, ret_getschedparam);
@@ -274,7 +263,7 @@ WorkQueueManagerRun(int, char **)
 			const size_t stacksize_adj = math::max(PTHREAD_STACK_MIN, PX4_STACK_ADJUSTED(wq->stacksize));
 			const size_t stacksize = (stacksize_adj + page_size - (stacksize_adj % page_size));
 #endif
-			int ret_setstacksize = pthread_attr_setstacksize(&attr, stacksize);
+			int ret_setstacksize = pthread_attr_setstacksize(&wq_attr, stacksize);
 
 			if (ret_setstacksize != 0) {
 				PX4_ERR("setting stack size for %s failed (%i)", wq->name, ret_setstacksize);
@@ -283,7 +272,7 @@ WorkQueueManagerRun(int, char **)
 #ifndef __PX4_QURT
 
 			// schedule policy FIFO
-			int ret_setschedpolicy = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+			int ret_setschedpolicy = pthread_attr_setschedpolicy(&wq_attr, SCHED_FIFO);
 
 			if (ret_setschedpolicy != 0) {
 				PX4_ERR("failed to set sched policy SCHED_FIFO (%i)", ret_setschedpolicy);
@@ -293,15 +282,15 @@ WorkQueueManagerRun(int, char **)
 
 			// priority
 			param.sched_priority = sched_get_priority_max(SCHED_FIFO) + wq->relative_priority;
-			int ret_setschedparam = pthread_attr_setschedparam(&attr, &param);
+			int ret_setschedparam = pthread_attr_setschedparam(&wq_attr, &param);
 
 			if (ret_setschedparam != 0) {
 				PX4_ERR("setting sched params for %s failed (%i)", wq->name, ret_setschedparam);
 			}
 
 			// create thread
-			pthread_t thread;
-			int ret_create = pthread_create(&thread, &attr, WorkQueueRunner, (void *)wq);
+            wq_static_ptr = (void *) wq;
+			int ret_create = pthread_create(&wq_thread_id, &wq_attr, WorkQueueRunner, wq_static_ptr);
 
 			if (ret_create == 0) {
 				PX4_DEBUG("starting: %s, priority: %d, stack: %zu bytes", wq->name, param.sched_priority, stacksize);
@@ -311,7 +300,7 @@ WorkQueueManagerRun(int, char **)
 			}
 
 			// destroy thread attributes
-			int ret_destroy = pthread_attr_destroy(&attr);
+			int ret_destroy = pthread_attr_destroy(&wq_attr);
 
 			if (ret_destroy != 0) {
 				PX4_ERR("failed to destroy thread attributes for %s (%i)", wq->name, ret_create);
@@ -435,3 +424,20 @@ WorkQueueManagerStatus()
 }
 
 } // namespace px4
+
+static void *
+WorkQueueRunner(void *context)
+{
+	px4::wq_config_t *config = static_cast<px4::wq_config_t *>(context);
+	px4::WorkQueue wq(*config);
+
+	// add to work queue list
+	px4::_wq_manager_wqs_list->add(&wq);
+
+	wq.Run();
+
+	// remove from work queue list
+	px4::_wq_manager_wqs_list->remove(&wq);
+
+	return nullptr;
+}

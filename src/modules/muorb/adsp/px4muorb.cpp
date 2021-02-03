@@ -59,9 +59,13 @@ int px4muorb_orb_initialize()
 		uORB::FastRpcChannel::GetInstance());
 
 	// Now continue with the usual dspal startup.
-	const char *argv[] = { "dspal", "start" };
+	const char *argv[3] = { "dspal", "start" };
 	int argc = 2;
 	int rc;
+
+    // Make sure that argv has a NULL pointer in the end.
+    argv[argc] = NULL;
+
 	rc = dspal_main(argc, (char **) argv);
 
 	return rc;

@@ -125,15 +125,10 @@ px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int
 	PX4_DEBUG("attr address: 0x%X, param address: 0x%X", &attr, &param);
 
 	// Calculate argc
-	while (p != (char *)0) {
-		p = argv[argc];
-
-		if (p == (char *)0) {
-			break;
-		}
-
-		++argc;
+	while (p) {
 		len += strlen(p) + 1;
+		argc++;
+		p = argv[argc];
 	}
 
 	structsize = sizeof(pthdata_t) + (argc + 1) * sizeof(char *);
