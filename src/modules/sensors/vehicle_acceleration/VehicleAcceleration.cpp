@@ -228,6 +228,77 @@ void VehicleAcceleration::Run()
 
 		_acceleration_prev = accel_corrected;
 
+        // uint8_t *raw_data = (uint8_t*) &sensor_data;
+        // PX4_INFO("0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
+        //          raw_data[0], raw_data[1], raw_data[2], raw_data[3],
+        //          raw_data[4], raw_data[5], raw_data[6], raw_data[7],
+        //          raw_data[8], raw_data[9], raw_data[10], raw_data[11],
+        //          raw_data[12], raw_data[13], raw_data[14], raw_data[15]);
+        // PX4_INFO(" 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
+        //          raw_data[16], raw_data[17], raw_data[18], raw_data[19],
+        //          raw_data[20], raw_data[21], raw_data[22], raw_data[23],
+        //          raw_data[24], raw_data[25], raw_data[26], raw_data[27],
+        //          raw_data[28], raw_data[29], raw_data[30], raw_data[31]);
+        // PX4_INFO(" 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
+        //          raw_data[32], raw_data[33], raw_data[34], raw_data[35],
+        //          raw_data[36], raw_data[37], raw_data[38], raw_data[39],
+        //          raw_data[40], raw_data[41], raw_data[42], raw_data[43],
+        //          raw_data[44], raw_data[45], raw_data[46], raw_data[47]);
+
+#ifdef __PX4_QURT
+        // PX4_INFO("%llu %llu %u %f %f %f %f", sensor_data.timestamp, sensor_data.timestamp_sample,
+        // PX4_INFO("%llu %llu %u %f %f %f %f", hrt_absolute_time(), sensor_data.timestamp_sample,
+        //          sensor_data.device_id, (double) sensor_data.x, (double) sensor_data.y, (double) sensor_data.z,
+        //          (double) sensor_data.temperature);
+
+        // Some code to measure either min and max of total delay from when the
+        // sample was generated until now (total_delay) or just min and max times
+        // between consecutive samples to make sure that we aren't seeing any drops.
+        int measure_total_delay = 0;
+        uint64_t current_time = hrt_absolute_time();
+        static uint64_t last_sample_timestamp = 0;
+        static int32_t min_time_difference_ms = 0xffffffff;
+        static int32_t max_time_difference_ms = 0;
+        static int32_t report_count = 0;
+        if (last_sample_timestamp) {
+            int32_t time_difference_ms = 0;
+            if (measure_total_delay) {
+                time_difference_ms = (current_time - sensor_data.timestamp_sample) / 1000;
+            } else {
+                time_difference_ms = (sensor_data.timestamp_sample - last_sample_timestamp) / 1000;
+            }
+            if (time_difference_ms < min_time_difference_ms) min_time_difference_ms = time_difference_ms;
+            if (time_difference_ms > max_time_difference_ms) max_time_difference_ms = time_difference_ms;
+            if ( ! (report_count++ % 1000)) {
+                PX4_INFO("Min: %d, max: %d", min_time_difference_ms, max_time_difference_ms);
+                min_time_difference_ms = 0xfffffff;
+                max_time_difference_ms = 0;
+            }
+        }
+        last_sample_timestamp = sensor_data.timestamp_sample;
+
+        // PX4_INFO("0x%llx", sensor_data.timestamp);
+        // PX4_INFO("0x%llx", sensor_data.timestamp_sample);
+        // PX4_INFO("0x%x", sensor_data.device_id);
+#endif
+
+	// report.timestamp = 0x0001020304050607;
+	// report.timestamp_sample = 0x08090A0B0C0D0E0F;
+	// report.device_id = 0x10111213;
+	// ((uint32_t*) &report.x)[0] = 0x14151617;
+	// ((uint32_t*) &report.y)[0] = 0x18191a1b;
+	// ((uint32_t*) &report.z)[0] = 0x1c1d1e1f;
+	// ((uint32_t*) &report.temperature)[0] = 0x20212223;
+	// report.error_count = 0x24252627;
+	// report.clip_counter[0] = 0x28;
+	// report.clip_counter[1] = 0x29;
+	// report.clip_counter[2] = 0x2a;
+	// report._padding0[0] = 0x2b;
+	// report._padding0[1] = 0x2c;
+	// report._padding0[2] = 0x2d;
+	// report._padding0[3] = 0x2e;
+	// report._padding0[4] = 0x2f;
+
 		// publish once all new samples are processed
 		if (!_sensor_sub.updated()) {
 			// Publish vehicle_acceleration
@@ -236,7 +307,6 @@ void VehicleAcceleration::Run()
 			accel_filtered.copyTo(v_acceleration.xyz);
 			v_acceleration.timestamp = hrt_absolute_time();
 			_vehicle_acceleration_pub.publish(v_acceleration);
-
 			return;
 		}
 	}

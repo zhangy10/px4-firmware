@@ -144,6 +144,8 @@ void PX4Accelerometer::updateFIFO(sensor_accel_fifo_s &sample)
 	}
 }
 
+// static uint8_t report_counter = 0;
+
 void PX4Accelerometer::Publish(const hrt_abstime &timestamp_sample, float x, float y, float z, uint8_t clip_count[3])
 {
 	// Apply rotation (before scaling)
@@ -167,6 +169,34 @@ void PX4Accelerometer::Publish(const hrt_abstime &timestamp_sample, float x, flo
 	report.clip_counter[1] = fabsf(roundf(clipping_y));
 	report.clip_counter[2] = fabsf(roundf(clipping_z));
 	report.timestamp = hrt_absolute_time();
+
+    // PX4_INFO("%lu %lu %u %f %f %f %f", report.timestamp, report.timestamp_sample,
+    //          report.device_id, (double) report.x, (double) report.y, (double) report.z,
+    //          (double) report.temperature);
+
+    // for (int i = 0; i < 48; i++) {
+    //     ((uint8_t*) &report)[i] = i;
+    // }
+
+	// report.timestamp = 0x0001020304050607;
+    // report.timestamp |= (report_counter++ << 24);
+	// // report.timestamp_sample = timestamp_sample;
+	// report.device_id = 0x10111213;
+	// ((uint32_t*) &report.x)[0] = 0x14151617;
+	// ((uint32_t*) &report.y)[0] = 0x18191a1b;
+	// ((uint32_t*) &report.z)[0] = 0x1c1d1e1f;
+	// ((uint32_t*) &report.temperature)[0] = 0x20212223;
+	// report.error_count = 0x24252627;
+	// report.clip_counter[0] = 0x28;
+	// report.clip_counter[1] = 0x29;
+	// report.clip_counter[2] = 0x2a;
+	// report._padding0[0] = 0x2b;
+	// report._padding0[1] = 0x2c;
+	// report._padding0[2] = 0x2d;
+	// report._padding0[3] = 0x2e;
+	// report._padding0[4] = 0x2f;
+    //
+    // PX4_INFO("0x%lx", report.timestamp_sample);
 
 	_sensor_pub.publish(report);
 }

@@ -54,10 +54,13 @@ VotedSensorsUpdate::VotedSensorsUpdate(bool hil_enabled,
 	_vehicle_imu_sub(vehicle_imu_sub),
 	_hil_enabled(hil_enabled)
 {
-	if (_hil_enabled) { // HIL has less accurate timing so increase the timeouts a bit
-		_gyro.voter.set_timeout(500000);
-		_accel.voter.set_timeout(500000);
-	}
+	// if (_hil_enabled) { // HIL has less accurate timing so increase the timeouts a bit
+	// 	_gyro.voter.set_timeout(500000);
+	// 	_accel.voter.set_timeout(500000);
+	// }
+
+	_gyro.voter.set_timeout(50000);
+	_accel.voter.set_timeout(50000);
 }
 
 int VotedSensorsUpdate::init(sensor_combined_s &raw)

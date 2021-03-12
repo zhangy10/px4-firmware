@@ -26,6 +26,11 @@ qurt_flags.cmake is used twice. In qurt.cmake and in platforms/qurt/CMakeLists.t
 
 ## Running
 
+Installing the C++ libraries:
+adb push $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.4.05/Tools/target/hexagon/lib/v66/G0/pic/libc++.so.1 /usr/lib/rfsa/adsp
+adb push $HEXAGON_SDK_ROOT/tools/HEXAGON_Tools/8.4.05/Tools/target/hexagon/lib/v66/G0/pic/libc++abi.so.1 /usr/lib/rfsa/adsp
+adb push $HEXAGON_SDK_ROOT/libs/weak_refs/ship/hexagon_toolv84/weak_refs.so /usr/lib/rfsa/adsp
+
 To allow parameter setting:
 mkdir -p /usr/share/data/adsp
 

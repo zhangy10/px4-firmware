@@ -252,7 +252,6 @@ void EKF2::Run()
 	if (!_callback_registered) {
 		if (_multi_mode) {
 			_callback_registered = _vehicle_imu_sub.registerCallback();
-
 		} else {
 			_callback_registered = _sensor_combined_sub.registerCallback();
 		}
@@ -347,6 +346,8 @@ void EKF2::Run()
 
 	if (imu_updated) {
 		const hrt_abstime now = imu_sample_new.time_us;
+
+        // PX4_INFO("EKF2 IMU updated");
 
 		// push imu data into estimator
 		_ekf.setIMUData(imu_sample_new);

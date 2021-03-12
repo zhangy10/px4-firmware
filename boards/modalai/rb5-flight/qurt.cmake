@@ -47,7 +47,7 @@ px4_add_board(
 	DRIVERS
 		# barometer/bmp280
 		# gps
-		# imu/mpu9250
+		# imu/invensense/icm42688p
 		# magnetometer/hmc5883
 		qshell/qurt
 		# snapdragon_pwm_out
@@ -70,7 +70,7 @@ px4_add_board(
 		rover_pos_control
 		sensors
 		# temperature_compensation
-		vmount
+		# vmount
 		# vtol_att_control
 	SYSTEMCMDS
 		# led_control

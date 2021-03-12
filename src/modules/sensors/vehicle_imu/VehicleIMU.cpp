@@ -203,7 +203,6 @@ void VehicleIMU::Run()
 		return;
 	}
 
-
 	bool sensor_data_gap = false;
 	bool update_integrator_config = false;
 	bool publish_status = false;

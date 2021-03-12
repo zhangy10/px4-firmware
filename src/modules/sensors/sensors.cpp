@@ -603,6 +603,8 @@ void Sensors::Run()
 
 	if (_sensor_combined.timestamp != _sensor_combined_prev_timestamp) {
 
+        // PX4_INFO("Publishing sensor combined");
+
 		_voted_sensors_update.setRelativeTimestamps(_sensor_combined);
 		_sensor_pub.publish(_sensor_combined);
 		_sensor_combined_prev_timestamp = _sensor_combined.timestamp;
