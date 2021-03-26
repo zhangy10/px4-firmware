@@ -47,7 +47,7 @@ if (("${PX4_BOARD}" MATCHES "modalai_rb5-flight") OR
 				parameters
 				${module_libraries}
 				${FASTRPC_ARM_LIBS}
-				pthread m rt
+				pthread m rt see_sensor
 			-Wl,--end-group
 		)
 

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2016 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,28 +31,73 @@
  *
  ****************************************************************************/
 
-/**
- * @file qshell_main.cpp
- * Listener for shell commands from posix
- *
- * @author Nicolas de Palezieux <ndepal@gmail.com>
- */
+#include <string.h>
+#include "modules/uORB/uORBManager.hpp"
+#include "uORBAppsProtobufChannel.hpp"
 
-#include <px4_platform_common/log.h>
-#include <px4_platform_common/app.h>
-#include <px4_platform_common/init.h>
-#include "qshell.h"
+extern "C" { __EXPORT int muorb_main(int argc, char *argv[]); }
 
-extern "C" __EXPORT int qshell_entry(int argc, char **argv);
-
-int qshell_entry(int argc, char **argv)
+static void usage()
 {
-	px4::init(argc, argv, "qshell");
+	warnx("Usage: muorb 'start', 'stop', 'status'");
+}
 
-	PX4_DEBUG("qshell");
-	QShell qshell;
-	qshell.main();
 
-	PX4_DEBUG("goodbye");
-	return 0;
+int
+muorb_main(int argc, char *argv[])
+{
+	if (argc < 2) {
+		usage();
+		return -EINVAL;
+	}
+
+	/*
+	 * Start/load the driver.
+	 *
+	 * XXX it would be nice to have a wrapper for this...
+	 */
+	if (!strcmp(argv[1], "start")) {
+		if (uORB::AppsProtobufChannel::isInstance()) {
+			PX4_WARN("muorb already running");
+
+		} else {
+			// register the fast rpc channel with UORB.
+			uORB::Manager::get_instance()->set_uorb_communicator(uORB::AppsProtobufChannel::GetInstance());
+
+			// start the KaitFastRPC channel thread.
+			uORB::AppsProtobufChannel::GetInstance()->Start();
+		}
+
+		return OK;
+
+	}
+
+	if (!strcmp(argv[1], "stop")) {
+
+		if (uORB::AppsProtobufChannel::isInstance()) {
+			uORB::AppsProtobufChannel::GetInstance()->Stop();
+
+		} else {
+			PX4_WARN("muorb not running");
+		}
+
+		return OK;
+	}
+
+	/*
+	 * Print driver information.
+	 */
+	if (!strcmp(argv[1], "status")) {
+		if (uORB::AppsProtobufChannel::isInstance()) {
+			PX4_WARN("muorb running");
+
+		} else {
+			PX4_WARN("muorb not running");
+		}
+
+		return OK;
+	}
+
+	usage();
+	return -EINVAL;
 }

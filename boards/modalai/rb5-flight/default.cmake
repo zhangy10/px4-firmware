@@ -79,8 +79,8 @@ px4_add_board(
 		mc_pos_control
 		mc_rate_control
 		#micrortps_bridge
-		muorb/krait
-		muorb/test
+		muorb/apps
+		#muorb/test
 		navigator
 		rc_update
 		rover_pos_control

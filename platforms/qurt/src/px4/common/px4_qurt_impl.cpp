@@ -44,6 +44,7 @@
 #include <px4_platform_common/workqueue.h>
 #include <dataman/dataman.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
@@ -60,6 +61,129 @@ extern uint64_t get_ticks_per_us();
 
 //long PX4_TICKS_PER_SEC = 1000L;
 
+unsigned int QURT_MAX_HTHREADS = 4;
+
+//-----------------------------------------------
+// Unresolved in libpx4.so
+//-----------------------------------------------
+
+int HAP_power_request(int clock, int bus, int latency) {
+    PX4_INFO("*** Fake HAP_power_request called!!! ***");
+    return 0;
+}
+
+// int pthread_attr_init(pthread_attr_t *attr) {
+//     PX4_INFO("*** Fake pthread_attr_init called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)  {
+//     PX4_INFO("*** Fake pthread_attr_setstacksize called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_attr_destroy(pthread_attr_t *attr)  {
+//     PX4_INFO("*** Fake pthread_attr_destroy called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_attr_getschedparam(const pthread_attr_t *restrict attr, sched_param *restrict param)  {
+//     PX4_INFO("*** Fake pthread_attr_getschedparam called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_attr_setschedparam(pthread_attr_t *restrict attr, const sched_param *restrict param)  {
+//     PX4_INFO("*** Fake pthread_attr_setschedparam called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_kill(pthread_t thread, int sig)  {
+//     PX4_INFO("*** Fake pthread_kill called!!! ***");
+//     return -1;
+// }
+//
+// int pthread_cancel(pthread_t thread)  {
+//     PX4_INFO("*** Fake pthread_cancel called!!! ***");
+//     return -1;
+// }
+//
+// void pthread_exit(void *value_ptr)  {
+//     PX4_INFO("*** Fake pthread_exit called!!! ***");
+// }
+//
+// int sem_init(sem_t *sem, int pshared, unsigned int value) {
+//     PX4_INFO("*** Fake sem_init called!!! ***");
+//     return -1;
+// }
+// int sem_wait(sem_t *sem) {
+//     PX4_INFO("*** Fake sem_wait called!!! ***");
+//     return -1;
+// }
+// int sem_post(sem_t *sem) {
+//     PX4_INFO("*** Fake sem_post called!!! ***");
+//     return -1;
+// }
+// int sem_destroy(sem_t *sem) {
+//     PX4_INFO("*** Fake sem_destroy called!!! ***");
+//     return -1;
+// }
+// int sem_getvalue(sem_t *sem, int *value) {
+//     PX4_INFO("*** Fake sem_getvalue called!!! ***");
+//     return -1;
+// }
+//
+// int sched_get_priority_max(int policy) {
+//     PX4_INFO("*** Fake sched_get_priority_max called!!! ***");
+//     return -1;
+// }
+//
+//
+// int usleep(useconds_t usec) {
+//     PX4_INFO("*** Fake usleep called!!! ***");
+//     return -1;
+// }
+
+//-----------------------------------------------
+// Unresolved in both libpx4.so and libc++.so.1
+//-----------------------------------------------
+
+static uint32_t gettime_counter = 0;
+
+__attribute__((visibility("default"))) int clock_gettime(clockid_t clk_id, struct timespec *tp) {
+    if ((gettime_counter++ % 10000) == 0) PX4_INFO("*** Fake clock_gettime called!!! ***");
+    return -1;
+}
+
+//-----------------------------------------------
+// Unresolved in libc++.so.1
+//-----------------------------------------------
+
+__attribute__((visibility("default"))) int nanosleep(const struct timespec *req, struct timespec *rem) {
+    PX4_INFO("*** Fake nanosleep called!!! ***");
+    return -1;
+}
+
+__attribute__((visibility("default"))) void free(void *ptr) {
+    PX4_INFO("*** Fake free called!!! ***");
+    ptr = 0;
+}
+
+__attribute__((visibility("default"))) void *malloc(size_t size) {
+    PX4_INFO("*** Fake malloc called!!! ***");
+    return (void*) 0;
+}
+
+__attribute__((visibility("default"))) void *calloc(size_t nmemb, size_t size) {
+    PX4_INFO("*** Fake calloc called!!! ***");
+    return (void*) 0;
+}
+
+__attribute__((visibility("default"))) void *realloc(void *ptr, size_t size) {
+    PX4_INFO("*** Fake realloc called!!! ***");
+    return (void*) 0;
+}
+
+#if 0
 unsigned int sleep(unsigned int sec)
 {
 	for (unsigned int i = 0; i < sec; i++) {
@@ -68,6 +192,7 @@ unsigned int sleep(unsigned int sec)
 
 	return 0;
 }
+#endif
 
 extern void hrt_init(void);
 

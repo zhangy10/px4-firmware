@@ -65,7 +65,7 @@ px4_add_board(
 		mc_att_control
 		mc_pos_control
 		mc_rate_control
-		muorb/adsp
+		muorb/slpi
 		# rc_update
 		rover_pos_control
 		sensors

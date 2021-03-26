@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,11 +30,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__qshell__qurt
-	MAIN qshell
-	SRCS
-		qshell_start_qurt.cpp
-		qshell.cpp
-	DEPENDS
-	)
+
+px4_add_library(modules__muorb__slpi
+	px4muorb.cpp
+	uORBProtobufChannel.cpp
+)
+target_include_directories(modules__muorb__slpi PRIVATE ${PX4_SOURCE_DIR}/src/modules/uORB)

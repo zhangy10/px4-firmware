@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,11 +30,18 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+include(hexagon_sdk)
+
 px4_add_module(
-	MODULE drivers__qshell__qurt
-	MAIN qshell
+	MODULE modules__muorb__apps
+	MAIN muorb
+	COMPILE_FLAGS
+		-Wno-cast-align # TODO: fix and enable
+	INCLUDES
+		${HEXAGON_SDK_INCLUDES}
+		${PX4_BINARY_DIR}/platforms/posix
 	SRCS
-		qshell_start_qurt.cpp
-		qshell.cpp
-	DEPENDS
+		uORBAppsProtobufChannel.cpp
+		AppsProtobufWrapper.cpp
+		muorb_main.cpp
 	)
