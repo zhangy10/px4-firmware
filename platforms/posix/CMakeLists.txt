@@ -25,9 +25,7 @@ px4_posix_generate_alias(
 	PREFIX ${PX4_SHELL_COMMAND_PREFIX}
 )
 
-if (("${PX4_BOARD}" MATCHES "modalai_rb5-flight") OR
-    ("${PX4_BOARD}" MATCHES "atlflight_eagle") OR
-    ("${PX4_BOARD}" MATCHES "atlflight_excelsior"))
+if ("${PX4_BOARD}" MATCHES "modalai_rb5-flight")
 	include(fastrpc)
 	include(linux_app)
 
@@ -47,9 +45,11 @@ if (("${PX4_BOARD}" MATCHES "modalai_rb5-flight") OR
 				parameters
 				${module_libraries}
 				${FASTRPC_ARM_LIBS}
-				pthread m rt see_sensor
+				pthread m rt
 			-Wl,--end-group
 		)
+
+	target_link_libraries(px4 fc_sensor)
 
 else()
 	add_executable(px4

@@ -41,7 +41,7 @@
 #include <drivers/drv_hrt.h>
 #include <string.h>
 
-#include "see_sensor.h"
+#include "fc_sensor.h"
 
 using namespace px4muorb;
 
@@ -262,7 +262,7 @@ bool px4muorb::AppsProtobufWrapper::Initialize()
 	// }
 
 	// call muorb initialize routine.
-	if (see_sensor_flight_controller_initialize(false, ReceiveCallback, AdvertiseCallback) != 0) {
+	if (fc_sensor_initialize(false, ReceiveCallback, AdvertiseCallback) != 0) {
 		PX4_ERR("%s Error calling the muorb protobuf initalize method..",
 			__FUNCTION__);
 		rc = false;
@@ -315,36 +315,36 @@ bool px4muorb::AppsProtobufWrapper::Terminate()
 
 int32_t px4muorb::AppsProtobufWrapper::TopicAdvertised(const char *topic)
 {
-	return ((_Initialized) ? see_sensor_flight_controller_advertise(topic) : -1);
+	return ((_Initialized) ? fc_sensor_advertise(topic) : -1);
 }
 
 int32_t px4muorb::AppsProtobufWrapper::TopicUnadvertised(const char *topic)
 {
-	return ((_Initialized) ? see_sensor_flight_controller_unadvertise(topic) : -1);
+	return ((_Initialized) ? fc_sensor_unadvertise(topic) : -1);
     return -1;
 }
 
 int32_t px4muorb::AppsProtobufWrapper::AddSubscriber(const char *topic)
 {
-	return ((_Initialized) ? see_sensor_flight_controller_subscribe(topic) : -1);
+	return ((_Initialized) ? fc_sensor_subscribe(topic) : -1);
 }
 
 int32_t px4muorb::AppsProtobufWrapper::RemoveSubscriber(const char *topic)
 {
-	return (_Initialized ? see_sensor_flight_controller_unsubscribe(topic) : -1);
+	return (_Initialized ? fc_sensor_unsubscribe(topic) : -1);
 }
 
 int32_t px4muorb::AppsProtobufWrapper::IsSubscriberPresent(const char *topic,
 		int32_t *status)
 {
-    *status = see_sensor_flight_controller_query_subscriber(topic);
+    *status = fc_sensor_query_subscriber(topic);
 	return 0;
 }
 
 int32_t px4muorb::AppsProtobufWrapper::SendData(const char *topic,
 		int32_t length_in_bytes, const uint8_t *data)
 {
-	return (_Initialized ? see_sensor_flight_controller_send_data(topic, data, length_in_bytes) : -1);
+	return (_Initialized ? fc_sensor_send_data(topic, data, length_in_bytes) : -1);
 }
 
 int32_t px4muorb::AppsProtobufWrapper::ReceiveData(char **topic,
@@ -352,7 +352,7 @@ int32_t px4muorb::AppsProtobufWrapper::ReceiveData(char **topic,
 {
 	int32_t rc = -1;
 
-    // see_sensor_flight_controller_get_data(topic,
+    // fc_sensor_get_data(topic,
     //                                        const uint8_t *data,
     //                                        uint32_t *length_in_bytes);
 

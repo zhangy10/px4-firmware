@@ -34,6 +34,8 @@ add_definitions(
     -DCONFIG_BOARDCTL_RESET
 )
 
+link_directories(${PX4_SOURCE_DIR}/boards/modalai/rb5-flight/lib)
+
 px4_add_board(
 	PLATFORM posix
 	VENDOR modalai
