@@ -24,9 +24,13 @@ include(qurt_flags)
 message(STATUS "in qurt.make after qurt_flags.cmake")
 message(STATUS "in qurt.make: CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
+set(HEXAGON_SDK_INCLUDES ${HEXAGON_SDK_INCLUDES}
+    ${HEXAGON_SDK_ROOT}/tools/HEXAGON_Tools/8.4.05/Tools/target/hexagon/include
+       )
+
 include_directories(${HEXAGON_SDK_INCLUDES})
 
-set(CONFIG_SHMEM "1")
+set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 
 # Disable the creation of the parameters.xml file by scanning individual
@@ -77,7 +81,7 @@ px4_add_board(
 		mixer
 		# motor_ramp
 		# motor_test
-		param
+		# param
 		perf
 		# pwm
 		# topic_listener

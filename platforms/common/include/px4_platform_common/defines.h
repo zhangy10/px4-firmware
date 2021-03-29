@@ -39,6 +39,7 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include <px4_platform_common/log.h>
 
 /****************************************************************************

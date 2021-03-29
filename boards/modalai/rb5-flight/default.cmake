@@ -17,7 +17,7 @@ set(QC_SOC_TARGET "QRB5165")
 # ARM and DSP processors.
 set(DISABLE_PARAMS_MODULE_SCOPING TRUE)
 
-set(CONFIG_SHMEM "1")
+set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 
 # modalai toolchain doesn't properly set the compiler, so these aren't set automatically

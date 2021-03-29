@@ -67,9 +67,9 @@ function (QURT_LIB)
 	set(multiValueArgs SOURCES LINK_LIBS INCS FLAGS)
 	cmake_parse_arguments(QURT_LIB "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
-	if ("${QURT_LIB_IDL_NAME}" STREQUAL "")
-		message(FATAL_ERROR "QURT_LIB called without IDL_NAME")
-	endif()
+	#if ("${QURT_LIB_IDL_NAME}" STREQUAL "")
+	#	message(FATAL_ERROR "QURT_LIB called without IDL_NAME")
+	#endif()
 
 	include_directories(
 		${CMAKE_CURRENT_BINARY_DIR}
@@ -78,9 +78,9 @@ function (QURT_LIB)
 
 	message("QURT_LIB_INCS = ${QURT_LIB_INCS}")
 
-	add_library(${QURT_LIB_IDL_NAME}_skel MODULE
-		${QURT_LIB_IDL_NAME}_skel.c
-		)
+	#add_library(${QURT_LIB_IDL_NAME}_skel MODULE
+	#	${QURT_LIB_IDL_NAME}_skel.c
+	#	)
 
 	if ("${QURT_LIB_SOURCES}" STREQUAL "")
 		message(FATAL_ERROR "QURT_LIB called without SOURCES")
@@ -104,18 +104,18 @@ function (QURT_LIB)
 			${QURT_LIB_LINK_LIBS}
 			)
 
-		add_dependencies(${QURT_LIB_LIB_NAME} generate_${QURT_LIB_IDL_NAME}_stubs)
+		# add_dependencies(${QURT_LIB_LIB_NAME} generate_${QURT_LIB_IDL_NAME}_stubs)
 
 		# Hack to support PX4 - because it links static libs into .so targets it ends up with
 		# Duplicate symbols. This can be reverted to link ${QURT_LIB_LIB_NAME} when PX4 is fixed.
-		target_link_libraries(${QURT_LIB_IDL_NAME}_skel
-			"${CMAKE_CURRENT_BINARY_DIR}/lib${QURT_LIB_LIB_NAME}.so"
-			)
+		#target_link_libraries(${QURT_LIB_IDL_NAME}_skel
+		#	"${CMAKE_CURRENT_BINARY_DIR}/lib${QURT_LIB_LIB_NAME}.so"
+		#	)
 
-		add_dependencies(${QURT_LIB_IDL_NAME}_skel
-			generate_${QURT_LIB_IDL_NAME}_stubs
-			${QURT_LIB_LIB_NAME}
-			)
+		#add_dependencies(${QURT_LIB_IDL_NAME}_skel
+		#	generate_${QURT_LIB_IDL_NAME}_stubs
+		#	${QURT_LIB_LIB_NAME}
+		#	)
 	endif()
 
 	#message("Making custom target build_${QURT_LIB_LIB_NAME}_dsp")

@@ -51,6 +51,8 @@
 #include <float.h>
 #include <math.h>
 
+#include <sys/unistd.h>
+
 #include <drivers/drv_hrt.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/px4_config.h>
@@ -238,7 +240,8 @@ param_init()
  * @param param			The parameter handle to test.
  * @return			True if the handle is valid.
  */
-static bool
+//static bool
+bool
 handle_in_range(param_t param)
 {
 	unsigned count = get_param_info_count();
@@ -274,7 +277,8 @@ param_compare_values(const void *a, const void *b)
  * @return			The structure holding the modified value, or
  *				nullptr if the parameter has not been modified.
  */
-static param_wbuf_s *
+//static param_wbuf_s *
+param_wbuf_s *
 param_find_changed(param_t param)
 {
 	param_wbuf_s	*s = nullptr;
