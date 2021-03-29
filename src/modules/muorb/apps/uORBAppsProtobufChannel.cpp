@@ -39,347 +39,122 @@
 #include <pthread.h>
 #include <string.h>
 
-#define LOG_TAG "uORBAppsProtobufChannel.cpp"
+#include "fc_sensor.h"
+
+// TODO: Get rid of all the shmem stuff!
+unsigned char *adsp_changed_index = nullptr;
 
 uORB::AppsProtobufChannel *uORB::AppsProtobufChannel::_InstancePtr = nullptr;
+uORBCommunicator::IChannelRxHandler *uORB::AppsProtobufChannel::_RxHandler = nullptr;
 
-// static void DumpData(uint8_t *buffer, int32_t length, int32_t num_topics);
+const uint32_t uORB::AppsProtobufChannel::_TOPIC_DATA_BUFFER_LENGTH;
 
-// static initialization.
-static std::string _log_file_name = "./hex_dump.txt";
+char uORB::AppsProtobufChannel::_topic_name_buffer[_TOPIC_DATA_BUFFER_LENGTH];
+uint8_t uORB::AppsProtobufChannel::_topic_data_buffer[_TOPIC_DATA_BUFFER_LENGTH];
 
-static unsigned long _snd_msg_min = 0xFFFFFF;
-static unsigned long _snd_msg_max = 0;
-static double        _snd_msg_avg = 0.0;
-static unsigned long _snd_msg_count = 0;
-static unsigned long _overall_snd_min = 0xFFFFFF;
-static unsigned long _overall_snd_max = 0;
-static double        _overall_snd_avg = 0.0;
-static unsigned long _overall_snd_count = 0;
-static hrt_abstime   _log_check_time = 0;
-static hrt_abstime   _log_check_interval = 10000000;
+pthread_mutex_t uORB::AppsProtobufChannel::_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
+                                                const uint8_t *data,
+                                                uint32_t length_in_bytes) {
+    PX4_INFO("Got received data callback for topic %s", topic);
 
-uORB::AppsProtobufChannel::AppsProtobufChannel() :
-	_RxHandler(nullptr),
-	_ThreadStarted(false),
-	_ThreadShouldExit(false)
-{
-	_AppsWrapper.Initialize();
+    if (length_in_bytes < _TOPIC_DATA_BUFFER_LENGTH) {
+        if (_RxHandler) {
+            pthread_mutex_lock(&_mutex);
+            strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
+            memcpy(_topic_data_buffer, data, length_in_bytes);
+            _RxHandler->process_received_message(_topic_name_buffer, length_in_bytes, _topic_data_buffer);
+            pthread_mutex_unlock(&_mutex);
+        } else {
+            PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
+        }
+    } else {
+        PX4_ERR("ReceiveCallback topic data too long %d", length_in_bytes);
+    }
+}
+
+void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
+    PX4_INFO("Got advertisement callback for topic %s", topic);
+
+    if (_RxHandler) {
+        pthread_mutex_lock(&_mutex);
+        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
+        _RxHandler->process_remote_topic(_topic_name_buffer);
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
+    }
+}
+
+void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
+    PX4_INFO("Got subscription callback for topic %s", topic);
+
+    if (_RxHandler) {
+        pthread_mutex_lock(&_mutex);
+        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
+        _RxHandler->process_add_subscription(_topic_name_buffer);
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
+    }
+}
+
+void uORB::AppsProtobufChannel::UnsubscribeCallback(const char *topic) {
+    PX4_INFO("Got remove subscription callback for topic %s", topic);
+
+    if (_RxHandler) {
+        pthread_mutex_lock(&_mutex);
+        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
+        _RxHandler->process_remove_subscription(_topic_name_buffer);
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
+    }
+}
+
+bool uORB::AppsProtobufChannel::Initialize(bool enable_debug) {
+    if (_Initialized == false) {
+        fc_callbacks cb = {ReceiveCallback, AdvertiseCallback,
+                           SubscribeCallback, UnsubscribeCallback};
+        if (fc_sensor_initialize(enable_debug, &cb) != 0) {
+        	PX4_ERR("Error calling the muorb protobuf initalize method..");
+        } else {
+            _Initialized = true;
+        }
+    }
+    return _Initialized;
 }
 
 int16_t uORB::AppsProtobufChannel::topic_advertised(const char *messageName)
 {
-	int16_t rc = 0;
-	PX4_DEBUG("Before calling TopicAdvertised for [%s]\n", messageName);
-	rc = _AppsWrapper.TopicAdvertised(messageName);
-	PX4_DEBUG("Response for TopicAdvertised for [%s], rc[%d]\n", messageName, rc);
-	return rc;
+    if (_Initialized) return fc_sensor_advertise(messageName);
+    else return -1;
 }
 
-int16_t uORB::AppsProtobufChannel::topic_unadvertised(const char *messageName)
+int16_t uORB::AppsProtobufChannel::add_subscription(const char *messageName, int msgRateInHz)
 {
-	int16_t rc = 0;
-	PX4_DEBUG("Before calling TopicUnadvertised for [%s]\n", messageName);
-	rc = _AppsWrapper.TopicUnadvertised(messageName);
-	PX4_DEBUG("Response for TopicUnadvertised for [%s], rc[%d]\n", messageName, rc);
-	return rc;
-}
-
-int16_t uORB::AppsProtobufChannel::add_subscription(const char *messageName, int32_t msgRateInHz)
-{
-	int16_t rc = 0;
-	//PX4_DEBUG("Before calling AddSubscriber for [%s]\n", messageName);
-	rc = _AppsWrapper.AddSubscriber(messageName);
-	//PX4_DEBUG("Response for AddSubscriber for [%s], rc[%d]\n", messageName, rc);
-	return rc;
+    (void)(msgRateInHz);
+    if (_Initialized) return fc_sensor_subscribe(messageName);
+    else return -1;
 }
 
 int16_t uORB::AppsProtobufChannel::remove_subscription(const char *messageName)
 {
-	int16_t rc = 0;
-	//PX4_DEBUG("Before calling RemoveSubscriber for [%s]\n", messageName);
-	rc = _AppsWrapper.RemoveSubscriber(messageName);
-	//PX4_DEBUG("Response for RemoveSubscriber for [%s], rc[%d]\n", messageName, rc);
-	return rc;
+    if (_Initialized) return fc_sensor_unsubscribe(messageName);
+    else return -1;
 }
 
 int16_t uORB::AppsProtobufChannel::register_handler(uORBCommunicator::IChannelRxHandler *handler)
 {
 	_RxHandler = handler;
-    _AppsWrapper.RegisteruORBReceiveHandler(_RxHandler);
-
 	return 0;
 }
 
-int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int32_t length, uint8_t *data)
+int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int length, uint8_t *data)
 {
-	int16_t rc = 0;
-	int32_t status = 0;
-	hrt_abstime t1, t4;
-	hrt_abstime t2 = 0;
-	hrt_abstime t3 = 0;
-	t1 = hrt_absolute_time();
+    // TODO: Only send if we know that there are remote subscribers for the topic
 
-	if (_SlpiSubscriberCache.find(std::string(messageName)) == _SlpiSubscriberCache.end()) {
-		// check the status from adsp. as it is not cached.
-		if (_AppsWrapper.IsSubscriberPresent(messageName, &status) == 0) {
-			_SlpiSubscriberCache[messageName] = status;
-			_SlpiSubscriberSampleTimestamp[messageName] = hrt_absolute_time();
-		}
-
-	} else {
-		if ((hrt_absolute_time() - _SlpiSubscriberSampleTimestamp[messageName]) > _SubCacheRefreshRate) {
-			if (_AppsWrapper.IsSubscriberPresent(messageName, &status) == 0) {
-				_SlpiSubscriberCache[messageName] = status;
-				_SlpiSubscriberSampleTimestamp[messageName] = hrt_absolute_time();
-			}
-		}
-	}
-
-	if (_SlpiSubscriberCache[messageName] > 0) {// there are remote subscribers
-		t2 = hrt_absolute_time();
-		rc = _AppsWrapper.SendData(messageName, length, data);
-		t3 = hrt_absolute_time();
-		_snd_msg_count++;
-		// PX4_INFO("***** SENDING[%s] topic to remote....\n", messageName);
-
-	} else {
-		// PX4_INFO("******* NO SUBSCRIBER PRESENT ON THE REMOTE FOR topic[%s] \n", messageName);
-	}
-
-	t4 = hrt_absolute_time();
-	_overall_snd_count++;
-
-	if ((t4 - t1) < _overall_snd_min) { _overall_snd_min = (t4 - t1); }
-
-	if ((t4 - t1) > _overall_snd_max) { _overall_snd_max = (t4 - t1); }
-
-	if (_SlpiSubscriberCache[messageName] > 0) {
-		if ((t3 - t2) < _snd_msg_min) { _snd_msg_min = (t3 - t2); }
-
-		if ((t3 - t2) > _snd_msg_max) { _snd_msg_max = (t3 - t2); }
-
-		_snd_msg_avg = ((double)((_snd_msg_avg * (_snd_msg_count - 1)) +
-					 (unsigned long)(t3 - t2))) / (double)(_snd_msg_count);
-	}
-
-	_overall_snd_avg = ((double)((_overall_snd_avg * (_overall_snd_count - 1)) +
-				     (unsigned long)(t4 - t1))) / (double)(_overall_snd_count);
-
-	if ((t4 - _log_check_time) > _log_check_interval) {
-		/*
-		PX4_DEBUG("SndMsgStats: overall_min: %lu overall_max: %lu snd_msg_min: %lu snd_msg_max: %lu",
-			  _overall_snd_min, _overall_snd_max,
-			  _snd_msg_min, _snd_msg_max);
-		PX4_DEBUG(".... overall_avg: %f (%lu) snd_msg_avg: %f (%lu)",
-			  _overall_snd_avg, _overall_snd_count, _snd_msg_avg, _snd_msg_count);
-		*/
-		_log_check_time = t4;
-		_overall_snd_min = _snd_msg_min = 0xFFFFFFF;
-		_overall_snd_max = _snd_msg_max = 0;
-		_overall_snd_count = _snd_msg_count = 0;
-		_overall_snd_avg = _snd_msg_avg = 0.0;
-	}
-
-	//PX4_DEBUG( "Response for SendMessage for [%s],len[%d] rc[%d]\n", messageName.c_str(), length, rc );
-	return rc;
+    if (_Initialized) return fc_sensor_send_data(messageName, data, length);
+    else return -1;
 }
-
-void uORB::AppsProtobufChannel::Start()
-{
-	_ThreadStarted = true;
-	_ThreadShouldExit = false;
-	pthread_attr_t protobuf_recv_thread_attr;
-	pthread_attr_init(&protobuf_recv_thread_attr);
-
-	struct sched_param param;
-	(void)pthread_attr_getschedparam(&protobuf_recv_thread_attr, &param);
-	param.sched_priority = SCHED_PRIORITY_MAX - 80;
-	(void)pthread_attr_setschedparam(&protobuf_recv_thread_attr, &param);
-
-	pthread_attr_setstacksize(&protobuf_recv_thread_attr, 4096);
-
-	if (pthread_create(&_RecvThread, &protobuf_recv_thread_attr, thread_start, (void *)this) != 0) {
-		PX4_ERR("Error  creating the receive thread for muorb");
-
-	} else {
-		pthread_setname_np(_RecvThread, "muorb_apps_receiver");
-	}
-
-	pthread_attr_destroy(&protobuf_recv_thread_attr);
-}
-
-void uORB::AppsProtobufChannel::Stop()
-{
-	_ThreadShouldExit = true;
-	_AppsWrapper.UnblockReceiveData();
-	//PX4_DEBUG("After calling UnblockReceiveData()...\n");
-	pthread_join(_RecvThread, NULL);
-	//PX4_DEBUG("*** After calling pthread_join...\n");
-	_ThreadStarted = false;
-}
-
-void  *uORB::AppsProtobufChannel::thread_start(void *handler)
-{
-	if (handler != nullptr) {
-		((uORB::AppsProtobufChannel *)handler)->protobuf_recv_thread();
-	}
-
-	return 0;
-}
-
-void uORB::AppsProtobufChannel::protobuf_recv_thread()
-{
-	// sit in while loop.
-	// int32_t rc = 0;
-	// int32_t  data_length = 0;
-	// uint8_t *data = nullptr;
-	// unsigned long rpc_min, rpc_max;
-	// unsigned long orb_min, orb_max;
-	// double rpc_avg, orb_avg;
-	// unsigned long count = 0;
-	// rpc_max = orb_max = 0;
-	// rpc_min = orb_min = 0xFFFFFFFF;
-	// rpc_avg = orb_avg = 0.0;
-    //
-	// int32_t num_topics = 0;
-    //
-	// hrt_abstime check_time = 0;
-// static uint8_t protobuf_topic_data[1024];
-// static uint32_t protobuf_topic_data_len = 0;
-//
-// 	rc = _AppsWrapper.AddSubscriber(messageName);
-
-
-	while (!_ThreadShouldExit) {
-        // int  see_sensor_flight_controller_get_data(const char *topic,
-        //                                    const uint8_t *data,
-        //                                    uint32_t *length_in_bytes);
-        sleep(1);
-		// hrt_abstime t1, t2, t3;
-		// t1 = hrt_absolute_time();
-		// rc = _AppsWrapper.GetData(&data, &data_length, &num_topics);
-        //
-		// t2 = hrt_absolute_time();
-        //
-		// if (rc == 0) {
-		// 	//PX4_DEBUG( "Num of topics Received: %d", num_topics );
-		// 	int32_t bytes_processed = 0;
-        //
-		// 	for (int i = 0; i < num_topics; ++i) {
-		// 		uint8_t *new_pkt = &(data[bytes_processed]);
-		// 		struct BulkTransferHeader *header = (struct BulkTransferHeader *)new_pkt;
-		// 		char *messageName = (char *)(new_pkt + sizeof(struct BulkTransferHeader));
-		// 		uint16_t check_msg_len = strlen(messageName);
-        //
-		// 		if (header->_MsgNameLen != (check_msg_len + 1)) {
-		// 			PX4_ERR("Error: Packing error.  Sent Msg Len. of[%d] but strlen returned:[%d]", header->_MsgNameLen, check_msg_len);
-		// 			PX4_ERR("Error: NumTopics: %d processing topic: %d msgLen[%d] dataLen[%d] data_len[%d] bytes processed: %d",
-		// 				num_topics, i, header->_MsgNameLen, header->_DataLen, data_length, bytes_processed);
-		// 			DumpData(data, data_length, num_topics);
-		// 			break;
-		// 		}
-        //
-		// 		uint8_t *topic_data = (uint8_t *)(messageName + strlen(messageName) + 1);
-        //
-		// 		if (_RxHandler != nullptr) {
-		// 			if (header->_MsgType == _DATA_MSG_TYPE) {
-		// 				//PX4_DEBUG( "Received topic data for: [%s] len[%d]\n", messageName, data_length );
-		// 				_RxHandler->process_received_message(messageName,
-		// 								     header->_DataLen, topic_data);
-        //
-		// 			} else if (header->_MsgType == _CONTROL_MSG_TYPE_ADVERTISE) {
-		// 				PX4_DEBUG("Received topic advertise message for: [%s] len[%d]\n", messageName, data_length);
-		// 				_RxHandler->process_remote_topic(messageName, true);
-        //
-		// 			} else if (header->_MsgType == _CONTROL_MSG_TYPE_UNADVERTISE) {
-		// 				PX4_DEBUG("Received topic unadvertise message for: [%s] len[%d]\n", messageName, data_length);
-		// 				_RxHandler->process_remote_topic(messageName, false);
-		// 			}
-		// 		}
-        //
-		// 		bytes_processed += header->_MsgNameLen + header->_DataLen + sizeof(struct BulkTransferHeader);
-		// 	}
-        //
-		// } else {
-		// 	PX4_DEBUG("Error: Getting data over fastRPC channel\n");
-		// 	break;
-		// }
-        //
-		// t3 = hrt_absolute_time();
-		// count++;
-        //
-		// if ((unsigned long)(t2 - t1) < rpc_min) {
-		// 	rpc_min = (unsigned long)(t2 - t1);
-		// }
-        //
-		// if ((unsigned long)(t2 - t1) > rpc_max) {
-		// 	rpc_max = (unsigned long)(t2 - t1);
-		// }
-        //
-		// if ((unsigned long)(t3 - t2) < orb_min) {
-		// 	orb_min = (unsigned long)(t3 - t2);
-		// }
-        //
-		// if ((unsigned long)(t3 - t2) > orb_max) {
-		// 	orb_max = (unsigned long)(t3 - t2);
-		// }
-        //
-		// rpc_avg = ((double)((rpc_avg * (count - 1)) + (unsigned long)(t2 - t1))) / (double)(count);
-		// orb_avg = ((double)((orb_avg * (count - 1)) + (unsigned long)(t3 - t2))) / (double)(count);
-        //
-		// if ((unsigned long)(t3 - check_time) >= 10000000) {
-		// 	//PX4_DEBUG("Krait RPC Stats     : rpc_min: %lu rpc_max: %lu rpc_avg: %f", rpc_min, rpc_max, rpc_avg);
-		// 	//PX4_DEBUG("Krait RPC(orb) Stats: orb_min: %lu orb_max: %lu orb_avg: %f", orb_min, orb_max, orb_avg);
-		// 	check_time = t3;
-		// 	rpc_max = orb_max = 0;
-		// 	rpc_min = orb_min = 0xFFFFFF;
-		// 	orb_avg = 0;
-		// 	rpc_avg = 0;
-		// 	count = 0;
-		// }
-
-		//PX4_DEBUG("MsgName: %30s, t1: %lu, t2: %lu, t3: %lu, dt1: %lu, dt2: %lu",name, (unsigned long) t1, (unsigned long) t2, (unsigned long) t3,
-		//  (unsigned long) (t2-t1), (unsigned long) (t3-t2));
-	}
-
-	PX4_DEBUG("[uORB::AppsProtobufChannel::protobuf_recv_thread] Exiting protobuf_recv_thread\n");
-}
-
-// void DumpData(uint8_t *buffer, int32_t length, int32_t num_topics)
-// {
-// 	FILE *fp = fopen(_log_file_name.c_str(), "a+");
-//
-// 	if (fp == nullptr) {
-// 		PX4_ERR("Error unable to open log file[%s]", _log_file_name.c_str());
-// 		return;
-// 	}
-//
-// 	fprintf(fp, "===== Data Len[%d] num_topics[%d]  ======\n", length, num_topics);
-//
-// 	for (int i = 0; i < length; i += 16) {
-// 		int remaining_chars = length - i;
-// 		remaining_chars = (remaining_chars >= 16) ? 16 : remaining_chars;
-//
-// 		fprintf(fp, "%p  - ", &(buffer[i]));
-//
-// 		for (int j = 0; j < remaining_chars; j++) {
-// 			fprintf(fp, " %02X", buffer[i + j]);
-//
-// 			if (j == 7) {
-// 				fprintf(fp, " -");
-// 			}
-// 		}
-//
-// 		fprintf(fp, "  ");
-//
-// 		for (int j = 0; j < remaining_chars; j++) {
-// 			fprintf(fp, "%c", (char)buffer[i + j ]);
-// 		}
-//
-// 		fprintf(fp, "\n");
-// 	}
-//
-// 	fclose(fp);
-// }

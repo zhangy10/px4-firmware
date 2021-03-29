@@ -168,7 +168,7 @@ int px4muorb_topic_advertised(const char *topic_name)
 	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
 
 	if (rxHandler != nullptr) {
-		rc = rxHandler->process_remote_topic(topic_name, 1);
+		rc = rxHandler->process_remote_topic(topic_name);
 	} else {
         PX4_INFO("Not registered yet");
 		rc = -1;
@@ -177,6 +177,7 @@ int px4muorb_topic_advertised(const char *topic_name)
 	return rc;
 }
 
+// TODO: Remove this!!! But also needs to be done when IDL is removed.
 int px4muorb_topic_unadvertised(const char *topic_name)
 {
 	int rc = 0;
@@ -185,7 +186,7 @@ int px4muorb_topic_unadvertised(const char *topic_name)
 	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
 
 	if (rxHandler != nullptr) {
-		rc = rxHandler->process_remote_topic(topic_name, 0);
+		rc = rxHandler->process_remote_topic(topic_name);
 
 	} else {
 		rc = -1;
@@ -202,7 +203,7 @@ int px4muorb_add_subscriber(const char *name)
 	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
 
 	if (rxHandler != nullptr) {
-		rc = rxHandler->process_add_subscription(name, 0);
+		rc = rxHandler->process_add_subscription(name);
 
 		if (rc != OK) {
 			channel->RemoveRemoteSubscriber(name);

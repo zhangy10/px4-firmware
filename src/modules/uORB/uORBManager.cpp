@@ -181,10 +181,7 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	}
 
 #ifdef ORB_COMMUNICATOR
-	// If this is from a local source then call over to the remote system
-    // and inform them
-    bool topic_is_remote = (_remote_topics.find(meta->o_name) != _remote_topics.end()) ? true : false;
-    if ( ! topic_is_remote) uORB::DeviceNode::topic_advertised(meta);
+    uORB::DeviceNode::topic_advertised(meta);
 #endif /* ORB_COMMUNICATOR */
 
 	/* the advertiser may perform an initial publish to initialise the object */
@@ -366,18 +363,9 @@ uORBCommunicator::IChannel *uORB::Manager::get_uorb_communicator()
 	return _comm_channel;
 }
 
-int16_t uORB::Manager::process_remote_topic(const char *topic_name, bool isAdvertisement)
+int16_t uORB::Manager::process_remote_topic(const char *topic_name)
 {
-    // TODO: Deal with removal of advertisements. For now, ignore it
-    if ( ! isAdvertisement) {
-        PX4_INFO("process_remote_topic for %s is not an advertisement\n", topic_name);
-    }
-
-    // Make sure this is in our list of remote topics
-    bool topic_in_remote_list = (_remote_topics.find(topic_name) != _remote_topics.end()) ? true : false;
-    if ( ! topic_in_remote_list) _remote_topics.insert(topic_name);
-
-    // Now look to see if we already have a node for this topic
+    // Look to see if we already have a node for this topic
 	char nodepath[orb_maxpath];
 	int ret = uORB::Utils::node_mkpath(nodepath, topic_name);
 
@@ -415,12 +403,11 @@ int16_t uORB::Manager::process_remote_topic(const char *topic_name, bool isAdver
 	return 0;
 }
 
-int16_t uORB::Manager::process_add_subscription(const char *messageName, int32_t msgRateInHz)
+int16_t uORB::Manager::process_add_subscription(const char *messageName)
 {
 	PX4_DEBUG("entering Manager_process_add_subscription: name: %s", messageName);
 
 	int16_t rc = 0;
-	_remote_subscriber_topics.insert(messageName);
 	char nodepath[orb_maxpath];
 	int ret = uORB::Utils::node_mkpath(nodepath, messageName);
 	DeviceMaster *device_master = get_device_master();
@@ -433,7 +420,7 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName, int32_t
 
 		} else {
 			// node is present.
-			node->process_add_subscription(msgRateInHz);
+			node->process_add_subscription();
 		}
 
 	} else {
@@ -446,7 +433,6 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName, int32_t
 int16_t uORB::Manager::process_remove_subscription(const char *messageName)
 {
 	int16_t rc = -1;
-	_remote_subscriber_topics.erase(messageName);
 	char nodepath[orb_maxpath];
 	int ret = uORB::Utils::node_mkpath(nodepath, messageName);
 	DeviceMaster *device_master = get_device_master();
@@ -493,14 +479,6 @@ int16_t uORB::Manager::process_received_message(const char *messageName, int32_t
 	return rc;
 }
 
-bool uORB::Manager::is_remote_subscriber_present(const char *messageName)
-{
-#ifdef __PX4_NUTTX
-	return _remote_subscriber_topics.find(messageName);
-#else
-	return (_remote_subscriber_topics.find(messageName) != _remote_subscriber_topics.end());
-#endif
-}
 #endif /* ORB_COMMUNICATOR */
 
 #ifdef ORB_USE_PUBLISHER_RULES

@@ -38,7 +38,6 @@
 #include <string>
 #include <pthread.h>
 #include "uORB/uORBCommunicator.hpp"
-#include "AppsProtobufWrapper.hpp"
 #include <map>
 #include "drivers/drv_hrt.h"
 
@@ -70,6 +69,8 @@ public:
 		return (_InstancePtr != nullptr);
 	}
 
+    bool Initialize(bool enable_debug);
+
 	/**
 	 * @brief Interface to notify the remote entity of a topic being advertised.
 	 *
@@ -81,21 +82,8 @@ public:
 	 * 		Note: This does not mean that the receiver as received it.
 	 *  otherwise = failure.
 	 */
-	virtual int16_t topic_advertised(const char *messageName);
 
-	/**
-	 * @brief Interface to notify the remote entity of a topic being unadvertised
-	 * and is no longer publishing messages.
-	 *
-	 * @param messageName
-	 * 	This represents the uORB message name(aka topic); This message name should be
-	 * 	globally unique.
-	 * @return
-	 * 	0 = success; This means the messages is successfully sent to the receiver
-	 * 		Note: This does not mean that the receiver as received it.
-	 *  otherwise = failure.
-	 */
-	virtual int16_t topic_unadvertised(const char *messageName);
+	int16_t topic_advertised(const char *messageName);
 
 	/**
 	 * @brief Interface to notify the remote entity of interest of a
@@ -111,8 +99,8 @@ public:
 	 * 		Note: This does not mean that the receiver as received it.
 	 *  otherwise = failure.
 	 */
-	virtual int16_t add_subscription(const char *messageName, int32_t msgRateInHz);
 
+	int16_t add_subscription(const char *messageName, int msgRateInHz);
 
 	/**
 	 * @brief Interface to notify the remote entity of removal of a subscription
@@ -125,13 +113,14 @@ public:
 	 * 		Note: This does not necessarily mean that the receiver as received it.
 	 *  otherwise = failure.
 	 */
-	virtual int16_t remove_subscription(const char *messageName);
+
+	int16_t remove_subscription(const char *messageName);
 
 	/**
 	 * Register Message Handler.  This is internal for the IChannel implementer*
 	 */
-	virtual int16_t register_handler(uORBCommunicator::IChannelRxHandler *handler);
 
+	int16_t register_handler(uORBCommunicator::IChannelRxHandler *handler);
 
 	//=========================================================================
 	//     INTERFACES FOR Data messages
@@ -151,45 +140,34 @@ public:
 	 * 		Note: This does not mean that the receiver as received it.
 	 *  otherwise = failure.
 	 */
-	virtual int16_t send_message(const char *messageName, int32_t length, uint8_t *data);
 
-
-	void Start();
-	void Stop();
+	int16_t send_message(const char *messageName, int length, uint8_t *data);
 
 private: // data members
-	static uORB::AppsProtobufChannel *_InstancePtr;
-	uORBCommunicator::IChannelRxHandler *_RxHandler;
-	pthread_t   _RecvThread;
-	bool _ThreadStarted;
-	bool _ThreadShouldExit;
+	static uORB::AppsProtobufChannel           *_InstancePtr;
+	static uORBCommunicator::IChannelRxHandler *_RxHandler;
 
-	static const int32_t _CONTROL_MSG_TYPE_ADD_SUBSCRIBER = 1;
-	static const int32_t _CONTROL_MSG_TYPE_REMOVE_SUBSCRIBER = 2;
-	static const int32_t _DATA_MSG_TYPE = 3;
-	static const int32_t _CONTROL_MSG_TYPE_ADVERTISE = 4;
-	static const int32_t _CONTROL_MSG_TYPE_UNADVERTISE = 5;
+	std::map<std::string, int>                  _SlpiSubscriberCache;
 
-	struct BulkTransferHeader {
-		uint16_t _MsgType;
-		uint16_t _MsgNameLen;
-		uint16_t _DataLen;
-	};
+    bool                                        _Initialized;
 
-	px4muorb::AppsProtobufWrapper _AppsWrapper;
+    static const uint32_t                       _TOPIC_DATA_BUFFER_LENGTH = 1024;
 
-	std::map<std::string, int32_t> _SlpiSubscriberCache;
-	std::map<std::string, hrt_abstime> _SlpiSubscriberSampleTimestamp;
-	//hrt_abstime  _SubCacheSampleTimestamp;
-	static const hrt_abstime _SubCacheRefreshRate = 1000000; // 1 second;
+    static char                                 _topic_name_buffer[_TOPIC_DATA_BUFFER_LENGTH];
+    static uint8_t                              _topic_data_buffer[_TOPIC_DATA_BUFFER_LENGTH];
+
+    static pthread_mutex_t                      _mutex;
 
 private://class members.
 	/// constructor.
-	AppsProtobufChannel();
+	AppsProtobufChannel() {};
 
-	static void  *thread_start(void *handler);
-
-	void protobuf_recv_thread();
+    static void ReceiveCallback(const char *topic,
+                                const uint8_t *data,
+                                uint32_t length_in_bytes);
+    static void AdvertiseCallback(const char *topic);
+    static void SubscribeCallback(const char *topic);
+    static void UnsubscribeCallback(const char *topic);
 
 };
 

@@ -42,6 +42,5 @@ px4_add_module(
 		${PX4_BINARY_DIR}/platforms/posix
 	SRCS
 		uORBAppsProtobufChannel.cpp
-		AppsProtobufWrapper.cpp
 		muorb_main.cpp
 	)

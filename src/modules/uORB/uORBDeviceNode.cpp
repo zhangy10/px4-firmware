@@ -394,18 +394,6 @@ int16_t uORB::DeviceNode::topic_advertised(const orb_metadata *meta)
 
 	return -1;
 }
-
-/*
-//TODO: Check if we need this since we only unadvertise when things all shutdown and it doesn't actually remove the device
-int16_t uORB::DeviceNode::topic_unadvertised(const orb_metadata *meta)
-{
-	uORBCommunicator::IChannel *ch = uORB::Manager::get_instance()->get_uorb_communicator();
-	if (ch != nullptr && meta != nullptr) {
-		return ch->topic_unadvertised(meta->o_name);
-	}
-	return -1;
-}
-*/
 #endif /* ORB_COMMUNICATOR */
 
 px4_pollevent_t
@@ -489,7 +477,7 @@ void uORB::DeviceNode::remove_internal_subscriber()
 }
 
 #ifdef ORB_COMMUNICATOR
-int16_t uORB::DeviceNode::process_add_subscription(int32_t rateInHz)
+int16_t uORB::DeviceNode::process_add_subscription()
 {
 	// if there is already data in the node, send this out to
 	// the remote entity.

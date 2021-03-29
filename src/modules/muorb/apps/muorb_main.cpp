@@ -51,50 +51,31 @@ muorb_main(int argc, char *argv[])
 		return -EINVAL;
 	}
 
-	/*
-	 * Start/load the driver.
-	 *
-	 * XXX it would be nice to have a wrapper for this...
-	 */
+    // TODO: Add an optional  start parameter to control debug messages
 	if (!strcmp(argv[1], "start")) {
 		if (uORB::AppsProtobufChannel::isInstance()) {
-			PX4_WARN("muorb already running");
-
+			PX4_INFO("muorb already started");
 		} else {
-			// register the fast rpc channel with UORB.
-			uORB::Manager::get_instance()->set_uorb_communicator(uORB::AppsProtobufChannel::GetInstance());
-
-			// start the KaitFastRPC channel thread.
-			uORB::AppsProtobufChannel::GetInstance()->Start();
+			// Register the protobuf channel with UORB.
+            uORB::AppsProtobufChannel *channel = uORB::AppsProtobufChannel::GetInstance();
+            if (channel) {
+                if (channel->Initialize(true)) {
+                    uORB::Manager::get_instance()->set_uorb_communicator(channel);
+                    return OK;
+                }
+            }
 		}
-
+	} else if (!strcmp(argv[1], "stop")) {
+		if (uORB::AppsProtobufChannel::isInstance() == false) {
+			PX4_INFO("muorb not running");
+		}
 		return OK;
-
-	}
-
-	if (!strcmp(argv[1], "stop")) {
-
+	} else if (!strcmp(argv[1], "status")) {
 		if (uORB::AppsProtobufChannel::isInstance()) {
-			uORB::AppsProtobufChannel::GetInstance()->Stop();
-
+			PX4_INFO("muorb initialized");
 		} else {
-			PX4_WARN("muorb not running");
+			PX4_INFO("muorb not running");
 		}
-
-		return OK;
-	}
-
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(argv[1], "status")) {
-		if (uORB::AppsProtobufChannel::isInstance()) {
-			PX4_WARN("muorb running");
-
-		} else {
-			PX4_WARN("muorb not running");
-		}
-
 		return OK;
 	}
 
