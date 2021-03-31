@@ -35,7 +35,7 @@
 
 #include <stdint.h>
 #include <string>
-#include <list>
+#include <map>
 #include "uORB/uORBCommunicator.hpp"
 #include <semaphore.h>
 #include <set>
@@ -69,20 +69,6 @@ public:
 	 *  otherwise = failure.
 	 */
 	virtual int16_t topic_advertised(const char *messageName);
-
-	/**
-	 * @brief Interface to notify the remote entity of a topic being unadvertised
-	 * and is no longer publishing messages.
-	 *
-	 * @param messageName
-	 * 	This represents the uORB message name(aka topic); This message name should be
-	 * 	globally unique.
-	 * @return
-	 * 	0 = success; This means the messages is successfully sent to the receiver
-	 * 		Note: This does not mean that the receiver as received it.
-	 *  otherwise = failure.
-	 */
-	virtual int16_t topic_unadvertised(const char *messageName);
 
 	/**
 	 * @brief Interface to notify the remote entity of interest of a
@@ -140,25 +126,6 @@ public:
 	 */
 	virtual int16_t send_message(const char *messageName, int32_t length, uint8_t *data);
 
-	//Function to return the data to krait.
-	int16_t get_data
-	(
-		int32_t *msg_type,
-		char *topic_name,
-		int32_t topic_name_len,
-		uint8_t *data,
-		int32_t data_len_in_bytes,
-		int32_t *bytes_returned
-	);
-
-	int16_t get_bulk_data(uint8_t *buffer, int32_t max_size_in_bytes, int32_t *returned_bytes, int32_t *topic_count);
-
-	// function to check if there are subscribers for a topic on adsp.
-	int16_t is_subscriber_present(const char *messageName, int32_t *status);
-
-	// function to release the blocking semaphore for get_data method.
-	int16_t unblock_get_data_method();
-
 	uORBCommunicator::IChannelRxHandler *GetRxHandler()
 	{
 		return _RxHandler;
@@ -166,136 +133,44 @@ public:
 
 	void AddRemoteSubscriber(const std::string &messageName)
 	{
-		_RemoteSubscribers.insert(messageName);
+        _AppsSubscriberCache[messageName]++;
 	}
+
 	void RemoveRemoteSubscriber(const std::string &messageName)
 	{
-		_RemoteSubscribers.erase(messageName);
+        if (_AppsSubscriberCache[messageName]) _AppsSubscriberCache[messageName]--;
 	}
 
 private: // data members
-	static uORB::ProtobufChannel _Instance;
-	uORBCommunicator::IChannelRxHandler *_RxHandler;
-
-	/// data structure to store the messages to be retrived by Krait.
-	static const int32_t _MAX_MSG_QUEUE_SIZE = 100;
-	static const int32_t _CONTROL_MSG_TYPE_ADD_SUBSCRIBER = 1;
-	static const int32_t _CONTROL_MSG_TYPE_REMOVE_SUBSCRIBER = 2;
-	static const int32_t _DATA_MSG_TYPE = 3;
-	static const int32_t _CONTROL_MSG_TYPE_ADVERTISE = 4;
-	static const int32_t _CONTROL_MSG_TYPE_UNADVERTISE = 5;
-
-	static const int32_t _PACKET_FIELD_TOPIC_NAME_LEN_SIZE_IN_BYTES = 2;
-	static const int32_t _PACKET_FIELD_DATA_LEN_IN_BYTES = 2;
-	static const int32_t _PACKET_HEADER_SIZE = 1 + //first byte is the MSG Type
-			_PACKET_FIELD_TOPIC_NAME_LEN_SIZE_IN_BYTES + _PACKET_FIELD_DATA_LEN_IN_BYTES;
-
-	struct ProtobufDataMsg {
-		int32_t     _MaxBufferSize;
-		int32_t     _Length;
-		uint8_t    *_Buffer;
-		std::string _MsgName;
-	};
-
-	struct ProtobufControlMsg {
-		int32_t _Type;
-		std::string _MsgName;
-	};
-
-	struct BulkTransferHeader {
-		uint16_t _MsgType;
-		uint16_t _MsgNameLen;
-		uint16_t _DataLen;
-	};
-
-
-	struct ProtobufDataMsg _DataMsgQueue[ _MAX_MSG_QUEUE_SIZE ];
-	int32_t _DataQInIndex;
-	int32_t _DataQOutIndex;
-
-	struct ProtobufControlMsg _ControlMsgQueue[ _MAX_MSG_QUEUE_SIZE ];
-	int32_t _ControlQInIndex;
-	int32_t _ControlQOutIndex;
-
-	std::list<std::string> _Subscribers;
-
-	//utility classes
-	class Mutex
-	{
-	public:
-		Mutex()
-		{
-			sem_init(&_Sem, 0, 1);
-		}
-		~Mutex()
-		{
-			sem_destroy(&_Sem);
-		}
-		void lock()
-		{
-			sem_wait(&_Sem);
-		}
-		void unlock()
-		{
-			sem_post(&_Sem);
-		}
-	private:
-		sem_t _Sem;
-
-		Mutex(const Mutex &);
-
-		Mutex &operator=(const Mutex &);
-	};
-
-	class Semaphore
-	{
-	public:
-		Semaphore()
-		{
-			sem_init(&_Sem, 0, 0);
-			/* _Sem use case is a signal */
-			px4_sem_setprotocol(&_Sem, SEM_PRIO_NONE);
-		}
-		~Semaphore()
-		{
-			sem_destroy(&_Sem);
-		}
-		void post()
-		{
-			sem_post(&_Sem);
-		}
-		void wait()
-		{
-			sem_wait(&_Sem);
-		}
-	private:
-		sem_t _Sem;
-		Semaphore(const Semaphore &);
-		Semaphore &operator=(const Semaphore &);
-
-	};
-
-	Mutex _QueueMutex;
-	Semaphore _DataAvailableSemaphore;
+	static uORB::ProtobufChannel                _Instance;
+	static uORBCommunicator::IChannelRxHandler *_RxHandler;
+	static std::map<std::string, int>           _AppsSubscriberCache;
 
 private://class members.
 	/// constructor.
-	ProtobufChannel();
-
-	void check_and_expand_data_buffer(int32_t index, int32_t length);
-
-	bool IsControlQFull();
-	bool IsControlQEmpty();
-	bool IsDataQFull();
-	bool IsDataQEmpty();
-	int32_t DataQSize();
-	int32_t ControlQSize();
-
-	int32_t get_msg_size_at(bool isData, int32_t index);
-	int32_t copy_msg_to_buffer(bool isData, int32_t src_index, uint8_t *dst_buffer, int32_t offset, int32_t dst_buffer_len);
-	int16_t control_msg_queue_add(int32_t msgtype, const char *messageName);
-
-	std::set<std::string> _RemoteSubscribers;
+	ProtobufChannel() {};
 };
+
+// TODO: This has to be defined in the slpi_proc build and in the PX4 build.
+// Make it accessible from one file to both builds.
+typedef struct {
+    int (*advertise_func_ptr)(const char *topic_name);
+    int (*subscribe_func_ptr)(const char *topic_name);
+    int (*unsubscribe_func_ptr)(const char *topic_name);
+    int (*topic_data_func_ptr)(const char *name, const uint8_t *data, int data_len_in_bytes);
+} fc_func_ptrs;
+
+extern "C" {
+
+	int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs) __EXPORT;
+
+	int px4muorb_topic_advertised(const char *name) __EXPORT;
+
+	int px4muorb_add_subscriber(const char *name) __EXPORT;
+
+	int px4muorb_remove_subscriber(const char *name) __EXPORT;
+
+	int px4muorb_send_topic_data(const char *name, const uint8_t *data, int data_len_in_bytes) __EXPORT;
+}
 
 #endif /* _uORBProtobufChannel_hpp_ */

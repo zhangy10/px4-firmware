@@ -181,7 +181,11 @@ orb_advert_t uORB::Manager::orb_advertise_multi(const struct orb_metadata *meta,
 	}
 
 #ifdef ORB_COMMUNICATOR
-    uORB::DeviceNode::topic_advertised(meta);
+    // Advertise to the remote side, but only if it is a local topic. Otherwise
+    // wee will generate an advertisement loop.
+	if (_remote_topics.find(meta->o_name) == _remote_topics.end()) {
+        uORB::DeviceNode::topic_advertised(meta);
+    }
 #endif /* ORB_COMMUNICATOR */
 
 	/* the advertiser may perform an initial publish to initialise the object */
@@ -378,6 +382,7 @@ int16_t uORB::Manager::process_remote_topic(const char *topic_name)
     		if (node) {
     			PX4_INFO("Marking DeviceNode(%s) as advertised in process_remote_topic", topic_name);
     			node->mark_as_advertised();
+		        _remote_topics.insert(topic_name);
                 return 0;
     		}
         }
@@ -394,7 +399,8 @@ int16_t uORB::Manager::process_remote_topic(const char *topic_name)
     }
 
     if (topic_ptr) {
-        PX4_INFO("Advertising remote topic %s\n", topic_name);
+        PX4_INFO("Advertising remote topic %s", topic_name);
+        _remote_topics.insert(topic_name);
         orb_advertise(topic_ptr, nullptr);
     } else {
         PX4_INFO("process_remote_topic meta not found for %s\n", topic_name);

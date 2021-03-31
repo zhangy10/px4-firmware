@@ -369,6 +369,9 @@ private: // data members
 #ifdef ORB_COMMUNICATOR
 	// the communicator channel instance.
 	uORBCommunicator::IChannel *_comm_channel{nullptr};
+
+    // Track the advertisements we get from the remote side
+	ORBSet _remote_topics;
 #endif /* ORB_COMMUNICATOR */
 
 	DeviceMaster *_device_master{nullptr};

@@ -46,6 +46,7 @@ unsigned char *adsp_changed_index = nullptr;
 
 uORB::AppsProtobufChannel *uORB::AppsProtobufChannel::_InstancePtr = nullptr;
 uORBCommunicator::IChannelRxHandler *uORB::AppsProtobufChannel::_RxHandler = nullptr;
+std::map<std::string, int> uORB::AppsProtobufChannel::_SlpiSubscriberCache;
 
 const uint32_t uORB::AppsProtobufChannel::_TOPIC_DATA_BUFFER_LENGTH;
 
@@ -90,13 +91,20 @@ void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
 void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
     PX4_INFO("Got subscription callback for topic %s", topic);
 
+    pthread_mutex_lock(&_mutex);
+    _SlpiSubscriberCache[topic]++;
+    pthread_mutex_unlock(&_mutex);
+
     if (_RxHandler) {
         pthread_mutex_lock(&_mutex);
         strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
         _RxHandler->process_add_subscription(_topic_name_buffer);
         pthread_mutex_unlock(&_mutex);
     } else {
-        PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
+        // This can happen on startup if the remote entity is up and
+        // running before this side has completed initialization. It is
+        // okay because we have noted the event in the subscriber cache.
+        PX4_WARN("uORB pointer is null in %s", __FUNCTION__);
     }
 }
 
@@ -105,6 +113,7 @@ void uORB::AppsProtobufChannel::UnsubscribeCallback(const char *topic) {
 
     if (_RxHandler) {
         pthread_mutex_lock(&_mutex);
+        if (_SlpiSubscriberCache[topic]) _SlpiSubscriberCache[topic]--;
         strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
         _RxHandler->process_remove_subscription(_topic_name_buffer);
         pthread_mutex_unlock(&_mutex);
@@ -115,8 +124,8 @@ void uORB::AppsProtobufChannel::UnsubscribeCallback(const char *topic) {
 
 bool uORB::AppsProtobufChannel::Initialize(bool enable_debug) {
     if (_Initialized == false) {
-        fc_callbacks cb = {ReceiveCallback, AdvertiseCallback,
-                           SubscribeCallback, UnsubscribeCallback};
+        fc_callbacks cb = {&ReceiveCallback, &AdvertiseCallback,
+                           &SubscribeCallback, &UnsubscribeCallback};
         if (fc_sensor_initialize(enable_debug, &cb) != 0) {
         	PX4_ERR("Error calling the muorb protobuf initalize method..");
         } else {
@@ -153,8 +162,23 @@ int16_t uORB::AppsProtobufChannel::register_handler(uORBCommunicator::IChannelRx
 
 int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int length, uint8_t *data)
 {
-    // TODO: Only send if we know that there are remote subscribers for the topic
+    bool enable_debug = false;
+    if (strcmp(messageName, "qshell_req") == 0) enable_debug = true;
+    if (strcmp(messageName, "qshell_retval") == 0) enable_debug = true;
 
-    if (_Initialized) return fc_sensor_send_data(messageName, data, length);
-    else return -1;
+    if (_Initialized) {
+        if (_SlpiSubscriberCache[messageName]) {
+            if (enable_debug) PX4_INFO("Sending data in %s", __FUNCTION__);
+            return fc_sensor_send_data(messageName, data, length);
+        } else {
+            // There are no remote subscribers so no need to actually send
+            // the data. If a subscription comes in later, the data will
+            // be re-sent to them at that time.
+            if (enable_debug) PX4_INFO("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
+            return 0;
+        }
+    }
+
+    if (enable_debug) PX4_ERR("AppsProtobufChannel not yet initialized in %s", __FUNCTION__);
+    return -1;
 }

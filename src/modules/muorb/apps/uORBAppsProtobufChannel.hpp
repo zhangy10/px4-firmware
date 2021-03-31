@@ -147,7 +147,7 @@ private: // data members
 	static uORB::AppsProtobufChannel           *_InstancePtr;
 	static uORBCommunicator::IChannelRxHandler *_RxHandler;
 
-	std::map<std::string, int>                  _SlpiSubscriberCache;
+	static std::map<std::string, int>           _SlpiSubscriberCache;
 
     bool                                        _Initialized;
 

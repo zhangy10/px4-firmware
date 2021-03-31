@@ -34,48 +34,13 @@
 
 #include <stdint.h>
 
-// TODO: This has to be defined in the slpi_proc build and in the PX4 build.
-// Make it accessible from one file to both builds.
-typedef struct {
-    int (*advertise_func_ptr)(const char *topic_name);
-    int (*unadvertise_func_ptr)(const char *topic_name);
-    int (*subscribe_func_ptr)(const char *topic_name);
-    int (*unsubscribe_func_ptr)(const char *topic_name);
-    int (*topic_data_func_ptr)(const char *name, const uint8_t *data, int data_len_in_bytes);
-} fc_func_ptrs;
-
 extern "C" {
 
-	int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs) __EXPORT;
-
-	int px4muorb_set_absolute_time_offset(int32_t time_diff_us) __EXPORT;
-
-	int px4muorb_get_absolute_time(uint64_t *time_us) __EXPORT;
+    // TODO: What about the timestamp functions?
 
 	int px4muorb_param_update_to_shmem(uint32_t param, const uint8_t *value, int data_len_in_bytes) __EXPORT;
 
 	int px4muorb_param_update_index_from_shmem(unsigned char *data, int data_len_in_bytes) __EXPORT;
 
 	int px4muorb_param_update_value_from_shmem(uint32_t param, const uint8_t *value, int data_len_in_bytes) __EXPORT;
-
-	int px4muorb_topic_advertised(const char *name) __EXPORT;
-
-	int px4muorb_topic_unadvertised(const char *name) __EXPORT;
-
-	int px4muorb_add_subscriber(const char *name) __EXPORT;
-
-	int px4muorb_remove_subscriber(const char *name) __EXPORT;
-
-	int px4muorb_send_topic_data(const char *name, const uint8_t *data, int data_len_in_bytes) __EXPORT;
-
-	int px4muorb_is_subscriber_present(const char *topic_name, int *status) __EXPORT;
-
-	int px4muorb_receive_msg(int *msg_type, char *topic_name, int topic_name_len, uint8_t *data, int data_len_in_bytes,
-				 int *bytes_returned) __EXPORT;
-
-	int px4muorb_receive_bulk_data(uint8_t *_BulkTransferBuffer, int max_size_in_bytes,
-				       int *length_in_bytes, int *topic_count) __EXPORT;
-
-	int px4muorb_unblock_recieve_msg(void) __EXPORT;
-
 }
