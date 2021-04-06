@@ -44,34 +44,24 @@
 // TODO: Get rid of all the shmem stuff!
 unsigned char *adsp_changed_index = nullptr;
 
+// Initialize the static members
 uORB::AppsProtobufChannel *uORB::AppsProtobufChannel::_InstancePtr = nullptr;
 uORBCommunicator::IChannelRxHandler *uORB::AppsProtobufChannel::_RxHandler = nullptr;
 std::map<std::string, int> uORB::AppsProtobufChannel::_SlpiSubscriberCache;
-
-const uint32_t uORB::AppsProtobufChannel::_TOPIC_DATA_BUFFER_LENGTH;
-
-char uORB::AppsProtobufChannel::_topic_name_buffer[_TOPIC_DATA_BUFFER_LENGTH];
-uint8_t uORB::AppsProtobufChannel::_topic_data_buffer[_TOPIC_DATA_BUFFER_LENGTH];
-
-pthread_mutex_t uORB::AppsProtobufChannel::_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t uORB::AppsProtobufChannel::_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t uORB::AppsProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
                                                 const uint8_t *data,
                                                 uint32_t length_in_bytes) {
     PX4_INFO("Got received data callback for topic %s", topic);
 
-    if (length_in_bytes < _TOPIC_DATA_BUFFER_LENGTH) {
-        if (_RxHandler) {
-            pthread_mutex_lock(&_mutex);
-            strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
-            memcpy(_topic_data_buffer, data, length_in_bytes);
-            _RxHandler->process_received_message(_topic_name_buffer, length_in_bytes, _topic_data_buffer);
-            pthread_mutex_unlock(&_mutex);
-        } else {
-            PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
-        }
+    if (_RxHandler) {
+        _RxHandler->process_received_message(topic,
+                                             length_in_bytes,
+                                             const_cast<uint8_t*>(data));
     } else {
-        PX4_ERR("ReceiveCallback topic data too long %d", length_in_bytes);
+        PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
     }
 }
 
@@ -79,10 +69,7 @@ void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
     PX4_INFO("Got advertisement callback for topic %s", topic);
 
     if (_RxHandler) {
-        pthread_mutex_lock(&_mutex);
-        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
-        _RxHandler->process_remote_topic(_topic_name_buffer);
-        pthread_mutex_unlock(&_mutex);
+        _RxHandler->process_remote_topic(topic);
     } else {
         PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
     }
@@ -91,15 +78,12 @@ void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
 void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
     PX4_INFO("Got subscription callback for topic %s", topic);
 
-    pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&_rx_mutex);
     _SlpiSubscriberCache[topic]++;
-    pthread_mutex_unlock(&_mutex);
+    pthread_mutex_unlock(&_rx_mutex);
 
     if (_RxHandler) {
-        pthread_mutex_lock(&_mutex);
-        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
-        _RxHandler->process_add_subscription(_topic_name_buffer);
-        pthread_mutex_unlock(&_mutex);
+        _RxHandler->process_add_subscription(topic);
     } else {
         // This can happen on startup if the remote entity is up and
         // running before this side has completed initialization. It is
@@ -111,12 +95,12 @@ void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
 void uORB::AppsProtobufChannel::UnsubscribeCallback(const char *topic) {
     PX4_INFO("Got remove subscription callback for topic %s", topic);
 
+    pthread_mutex_lock(&_rx_mutex);
+    if (_SlpiSubscriberCache[topic]) _SlpiSubscriberCache[topic]--;
+    pthread_mutex_unlock(&_rx_mutex);
+
     if (_RxHandler) {
-        pthread_mutex_lock(&_mutex);
-        if (_SlpiSubscriberCache[topic]) _SlpiSubscriberCache[topic]--;
-        strncpy(_topic_name_buffer, topic, _TOPIC_DATA_BUFFER_LENGTH);
-        _RxHandler->process_remove_subscription(_topic_name_buffer);
-        pthread_mutex_unlock(&_mutex);
+        _RxHandler->process_remove_subscription(topic);
     } else {
         PX4_ERR("uORB pointer is null in %s", __FUNCTION__);
     }
@@ -137,21 +121,36 @@ bool uORB::AppsProtobufChannel::Initialize(bool enable_debug) {
 
 int16_t uORB::AppsProtobufChannel::topic_advertised(const char *messageName)
 {
-    if (_Initialized) return fc_sensor_advertise(messageName);
-    else return -1;
+    if (_Initialized) {
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = fc_sensor_advertise(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
+    }
+    return -1;
 }
 
 int16_t uORB::AppsProtobufChannel::add_subscription(const char *messageName, int msgRateInHz)
 {
     (void)(msgRateInHz);
-    if (_Initialized) return fc_sensor_subscribe(messageName);
-    else return -1;
+    if (_Initialized) {
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = fc_sensor_subscribe(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
+    }
+    return -1;
 }
 
 int16_t uORB::AppsProtobufChannel::remove_subscription(const char *messageName)
 {
-    if (_Initialized) return fc_sensor_unsubscribe(messageName);
-    else return -1;
+    if (_Initialized) {
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = fc_sensor_unsubscribe(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
+    }
+    return -1;
 }
 
 int16_t uORB::AppsProtobufChannel::register_handler(uORBCommunicator::IChannelRxHandler *handler)
@@ -162,23 +161,27 @@ int16_t uORB::AppsProtobufChannel::register_handler(uORBCommunicator::IChannelRx
 
 int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int length, uint8_t *data)
 {
-    bool enable_debug = false;
-    if (strcmp(messageName, "qshell_req") == 0) enable_debug = true;
-    if (strcmp(messageName, "qshell_retval") == 0) enable_debug = true;
+    //bool enable_debug = false;
+    //if ((_MessageCounter++ % 100) == 0) enable_debug = true;
 
     if (_Initialized) {
-        if (_SlpiSubscriberCache[messageName]) {
-            if (enable_debug) PX4_INFO("Sending data in %s", __FUNCTION__);
-            return fc_sensor_send_data(messageName, data, length);
+        pthread_mutex_lock(&_rx_mutex);
+        int has_subscribers = _SlpiSubscriberCache[messageName];
+        pthread_mutex_unlock(&_rx_mutex);
+
+        if (has_subscribers) {
+            //if (enable_debug) PX4_INFO("Sending data for topic %s", messageName);
+            pthread_mutex_lock(&_tx_mutex);
+            int16_t rc = fc_sensor_send_data(messageName, data, length);
+            pthread_mutex_unlock(&_tx_mutex);
+            return rc;
         } else {
             // There are no remote subscribers so no need to actually send
             // the data. If a subscription comes in later, the data will
             // be re-sent to them at that time.
-            if (enable_debug) PX4_INFO("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
+            //if (enable_debug) PX4_INFO("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
             return 0;
         }
     }
-
-    if (enable_debug) PX4_ERR("AppsProtobufChannel not yet initialized in %s", __FUNCTION__);
     return -1;
 }

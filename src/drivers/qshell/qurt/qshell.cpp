@@ -133,8 +133,7 @@ int QShell::main()
 			appargs.push_back(arg);  // push last argument
 
 			qshell_retval_s retval{};
-			// retval.return_value = run_cmd(appargs);
-			retval.return_value = 0;
+			retval.return_value = run_cmd(appargs);
 			retval.return_sequence = m_qshell_req.request_sequence;
 
 			if (retval.return_value) {

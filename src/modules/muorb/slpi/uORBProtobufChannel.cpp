@@ -44,6 +44,8 @@ fc_func_ptrs muorb_func_ptrs;
 uORB::ProtobufChannel uORB::ProtobufChannel::_Instance;
 uORBCommunicator::IChannelRxHandler *uORB::ProtobufChannel::_RxHandler;
 std::map<std::string, int> uORB::ProtobufChannel::_AppsSubscriberCache;
+pthread_mutex_t uORB::ProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t uORB::ProtobufChannel::_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //==============================================================================
 //==============================================================================
@@ -51,7 +53,10 @@ int16_t uORB::ProtobufChannel::topic_advertised(const char *messageName)
 {
 	PX4_INFO("Advertising %s on remote side", messageName);
 	if (muorb_func_ptrs.advertise_func_ptr) {
-        return muorb_func_ptrs.advertise_func_ptr(messageName);
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = muorb_func_ptrs.advertise_func_ptr(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
     }
 
     PX4_ERR("advertise_func_ptr is null in %s", __FUNCTION__);
@@ -64,7 +69,10 @@ int16_t uORB::ProtobufChannel::add_subscription(const char *messageName, int32_t
 {
 	PX4_INFO("Subscribing to %s on remote side", messageName);
 	if (muorb_func_ptrs.subscribe_func_ptr) {
-        return muorb_func_ptrs.subscribe_func_ptr(messageName);
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = muorb_func_ptrs.subscribe_func_ptr(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
     }
 
     PX4_ERR("subscribe_func_ptr is null in %s", __FUNCTION__);
@@ -77,7 +85,10 @@ int16_t uORB::ProtobufChannel::remove_subscription(const char *messageName)
 {
 	PX4_INFO("Unsubscribing from %s on remote side", messageName);
 	if (muorb_func_ptrs.unsubscribe_func_ptr) {
-        return muorb_func_ptrs.unsubscribe_func_ptr(messageName);
+        pthread_mutex_lock(&_tx_mutex);
+        int16_t rc = muorb_func_ptrs.unsubscribe_func_ptr(messageName);
+        pthread_mutex_unlock(&_tx_mutex);
+        return rc;
     }
 
     PX4_ERR("unsubscribe_func_ptr is null in %s", __FUNCTION__);
@@ -98,12 +109,23 @@ int16_t uORB::ProtobufChannel::register_handler(uORBCommunicator::IChannelRxHand
 int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t length, uint8_t *data)
 {
     if (muorb_func_ptrs.topic_data_func_ptr) {
+        PX4_INFO("Got message for topic %s", messageName);
         std::string temp(messageName);
-        if (_AppsSubscriberCache[temp]) {
-    	   return muorb_func_ptrs.topic_data_func_ptr(messageName, data, length);
+        int has_subscribers = 0;
+        pthread_mutex_lock(&_rx_mutex);
+        has_subscribers = _AppsSubscriberCache[temp];
+        pthread_mutex_unlock(&_rx_mutex);
+
+        if (has_subscribers) {
+            PX4_INFO("Sending message for topic %s", messageName);
+            pthread_mutex_lock(&_tx_mutex);
+            int16_t rc = muorb_func_ptrs.topic_data_func_ptr(messageName, data, length);
+            pthread_mutex_unlock(&_tx_mutex);
+            return rc;
         }
         // If there are no remote subscribers then we do not need to send the
         // message over. That is still a success.
+        PX4_INFO("Skipping message for topic %s", messageName);
         return 0;
     }
 
@@ -117,9 +139,6 @@ __END_DECLS
 
 int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs)
 {
-	// HAP_power_request(100, 100, 1000);
-	// shmem_info_p = NULL;
-
 	// The uORB Manager needs to be initialized first up, otherwise the instance is nullptr.
 	uORB::Manager::initialize();
 	// Register the protobuf muorb with uORBManager.

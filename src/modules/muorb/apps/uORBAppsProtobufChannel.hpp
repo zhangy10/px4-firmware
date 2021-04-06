@@ -146,17 +146,12 @@ public:
 private: // data members
 	static uORB::AppsProtobufChannel           *_InstancePtr;
 	static uORBCommunicator::IChannelRxHandler *_RxHandler;
-
 	static std::map<std::string, int>           _SlpiSubscriberCache;
+    static pthread_mutex_t                      _tx_mutex;
+    static pthread_mutex_t                      _rx_mutex;
 
     bool                                        _Initialized;
-
-    static const uint32_t                       _TOPIC_DATA_BUFFER_LENGTH = 1024;
-
-    static char                                 _topic_name_buffer[_TOPIC_DATA_BUFFER_LENGTH];
-    static uint8_t                              _topic_data_buffer[_TOPIC_DATA_BUFFER_LENGTH];
-
-    static pthread_mutex_t                      _mutex;
+    uint32_t                                    _MessageCounter;
 
 private://class members.
 	/// constructor.
