@@ -50,6 +50,7 @@ uORBCommunicator::IChannelRxHandler *uORB::AppsProtobufChannel::_RxHandler = nul
 std::map<std::string, int> uORB::AppsProtobufChannel::_SlpiSubscriberCache;
 pthread_mutex_t uORB::AppsProtobufChannel::_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t uORB::AppsProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER;
+bool uORB::AppsProtobufChannel::_Debug;
 
 void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
                                                 const uint8_t *data,

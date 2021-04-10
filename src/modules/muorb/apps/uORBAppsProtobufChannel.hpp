@@ -149,9 +149,9 @@ private: // data members
 	static std::map<std::string, int>           _SlpiSubscriberCache;
     static pthread_mutex_t                      _tx_mutex;
     static pthread_mutex_t                      _rx_mutex;
+    static bool                                 _Debug;
 
     bool                                        _Initialized;
-    bool                                        _Debug;
     uint32_t                                    _MessageCounter;
 
 private://class members.
