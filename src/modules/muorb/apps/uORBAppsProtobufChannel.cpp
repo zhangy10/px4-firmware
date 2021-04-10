@@ -54,7 +54,7 @@ pthread_mutex_t uORB::AppsProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER
 void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
                                                 const uint8_t *data,
                                                 uint32_t length_in_bytes) {
-    PX4_INFO("Got received data callback for topic %s", topic);
+    if (_Debug) PX4_INFO("Got received data callback for topic %s", topic);
 
     if (_RxHandler) {
         _RxHandler->process_received_message(topic,
@@ -66,7 +66,7 @@ void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
 }
 
 void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
-    PX4_INFO("Got advertisement callback for topic %s", topic);
+    if (_Debug) PX4_INFO("Got advertisement callback for topic %s", topic);
 
     if (_RxHandler) {
         _RxHandler->process_remote_topic(topic);
@@ -76,7 +76,7 @@ void uORB::AppsProtobufChannel::AdvertiseCallback(const char *topic) {
 }
 
 void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
-    PX4_INFO("Got subscription callback for topic %s", topic);
+    if (_Debug) PX4_INFO("Got subscription callback for topic %s", topic);
 
     pthread_mutex_lock(&_rx_mutex);
     _SlpiSubscriberCache[topic]++;
@@ -93,7 +93,7 @@ void uORB::AppsProtobufChannel::SubscribeCallback(const char *topic) {
 }
 
 void uORB::AppsProtobufChannel::UnsubscribeCallback(const char *topic) {
-    PX4_INFO("Got remove subscription callback for topic %s", topic);
+    if (_Debug) PX4_INFO("Got remove subscription callback for topic %s", topic);
 
     pthread_mutex_lock(&_rx_mutex);
     if (_SlpiSubscriberCache[topic]) _SlpiSubscriberCache[topic]--;
@@ -111,8 +111,12 @@ bool uORB::AppsProtobufChannel::Initialize(bool enable_debug) {
         fc_callbacks cb = {&ReceiveCallback, &AdvertiseCallback,
                            &SubscribeCallback, &UnsubscribeCallback};
         if (fc_sensor_initialize(enable_debug, &cb) != 0) {
-        	PX4_ERR("Error calling the muorb protobuf initalize method..");
+            PX4_ERR("Error calling the muorb protobuf initalize method");
         } else {
+            if (enable_debug) {
+                _Debug = true;
+                PX4_INFO("muorb protobuf initalize method succeeded");
+            }
             _Initialized = true;
         }
     }
@@ -122,6 +126,7 @@ bool uORB::AppsProtobufChannel::Initialize(bool enable_debug) {
 int16_t uORB::AppsProtobufChannel::topic_advertised(const char *messageName)
 {
     if (_Initialized) {
+        if (_Debug) PX4_INFO("Advertising topic %s to remote side", messageName);
         pthread_mutex_lock(&_tx_mutex);
         int16_t rc = fc_sensor_advertise(messageName);
         pthread_mutex_unlock(&_tx_mutex);
@@ -161,8 +166,8 @@ int16_t uORB::AppsProtobufChannel::register_handler(uORBCommunicator::IChannelRx
 
 int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int length, uint8_t *data)
 {
-    //bool enable_debug = false;
-    //if ((_MessageCounter++ % 100) == 0) enable_debug = true;
+    bool enable_debug = false;
+    if ((_MessageCounter++ % 100) == 0) enable_debug = true;
 
     if (_Initialized) {
         pthread_mutex_lock(&_rx_mutex);
@@ -170,7 +175,8 @@ int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int len
         pthread_mutex_unlock(&_rx_mutex);
 
         if (has_subscribers) {
-            //if (enable_debug) PX4_INFO("Sending data for topic %s", messageName);
+            // PX4_DEBUG("Sending data for topic %s", messageName);
+            if (_Debug && enable_debug) PX4_INFO("Sending data for topic %s", messageName);
             pthread_mutex_lock(&_tx_mutex);
             int16_t rc = fc_sensor_send_data(messageName, data, length);
             pthread_mutex_unlock(&_tx_mutex);
@@ -179,7 +185,8 @@ int16_t uORB::AppsProtobufChannel::send_message(const char *messageName, int len
             // There are no remote subscribers so no need to actually send
             // the data. If a subscription comes in later, the data will
             // be re-sent to them at that time.
-            //if (enable_debug) PX4_INFO("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
+            // PX4_WARN("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
+            if (_Debug && enable_debug) PX4_INFO("No subscribers (yet) in %s for topic %s", __FUNCTION__, messageName);
             return 0;
         }
     }

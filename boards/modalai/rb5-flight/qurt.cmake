@@ -32,6 +32,9 @@ include_directories(${HEXAGON_SDK_INCLUDES})
 
 set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
+# add_definitions(-DDEBUG_BUILD)
+add_definitions(-DRELEASE_BUILD)
+add_definitions(-DPARAM_CLIENT)
 
 # Disable the creation of the parameters.xml file by scanning individual
 # source files, and scan all source files.  This will create a parameters.xml
@@ -81,7 +84,7 @@ px4_add_board(
 		mixer
 		# motor_ramp
 		# motor_test
-		# param
+		param
 		perf
 		# pwm
 		# topic_listener

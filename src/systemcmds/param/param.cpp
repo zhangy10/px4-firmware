@@ -79,7 +79,7 @@ static int 	do_load(const char *param_file_name);
 static int	do_import(const char *param_file_name = nullptr);
 static int	do_show(const char *search_string, bool only_changed);
 static int	do_show_for_airframe();
-static int	do_show_all();
+static int	do_show_all(const char *search_string);
 static int	do_show_quiet(const char *param_name);
 static int	do_show_index(const char *index, bool used_index);
 static void	do_show_print(void *arg, param_t param);
@@ -237,7 +237,12 @@ param_main(int argc, char *argv[])
 					}
 
 				} else if (!strcmp(argv[2], "-a")) {
-					return do_show_all();
+					if (argc >= 4) {
+						return do_show_all(argv[3]);
+
+					} else {
+						return do_show_all(nullptr);
+					}
 
 				} else if (!strcmp(argv[2], "-q")) {
 					if (argc >= 4) {
@@ -482,10 +487,10 @@ do_show_for_airframe()
 }
 
 static int
-do_show_all()
+do_show_all(const char *search_string)
 {
 	PX4_INFO_RAW("Symbols: x = used, + = saved, * = unsaved\n");
-	param_foreach(do_show_print, nullptr, false, false);
+	param_foreach(do_show_print, (char *)search_string, false, false);
 	PX4_INFO_RAW("\n %u parameters total, %u used.\n", param_count(), param_count_used());
 
 	return 0;

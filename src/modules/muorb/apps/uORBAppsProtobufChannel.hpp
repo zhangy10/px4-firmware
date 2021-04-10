@@ -151,6 +151,7 @@ private: // data members
     static pthread_mutex_t                      _rx_mutex;
 
     bool                                        _Initialized;
+    bool                                        _Debug;
     uint32_t                                    _MessageCounter;
 
 private://class members.

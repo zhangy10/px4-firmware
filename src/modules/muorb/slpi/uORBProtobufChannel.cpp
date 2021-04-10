@@ -47,11 +47,14 @@ std::map<std::string, int> uORB::ProtobufChannel::_AppsSubscriberCache;
 pthread_mutex_t uORB::ProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t uORB::ProtobufChannel::_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// TODO: Create a way to set this a run time
+bool uORB::ProtobufChannel::_debug = false;
+
 //==============================================================================
 //==============================================================================
 int16_t uORB::ProtobufChannel::topic_advertised(const char *messageName)
 {
-	PX4_INFO("Advertising %s on remote side", messageName);
+	if (_debug) PX4_INFO("Advertising %s on remote side", messageName);
 	if (muorb_func_ptrs.advertise_func_ptr) {
         pthread_mutex_lock(&_tx_mutex);
         int16_t rc = muorb_func_ptrs.advertise_func_ptr(messageName);
@@ -67,7 +70,7 @@ int16_t uORB::ProtobufChannel::topic_advertised(const char *messageName)
 //==============================================================================
 int16_t uORB::ProtobufChannel::add_subscription(const char *messageName, int32_t msgRateInHz)
 {
-	PX4_INFO("Subscribing to %s on remote side", messageName);
+	if (_debug) PX4_INFO("Subscribing to %s on remote side", messageName);
 	if (muorb_func_ptrs.subscribe_func_ptr) {
         pthread_mutex_lock(&_tx_mutex);
         int16_t rc = muorb_func_ptrs.subscribe_func_ptr(messageName);
@@ -83,7 +86,7 @@ int16_t uORB::ProtobufChannel::add_subscription(const char *messageName, int32_t
 //==============================================================================
 int16_t uORB::ProtobufChannel::remove_subscription(const char *messageName)
 {
-	PX4_INFO("Unsubscribing from %s on remote side", messageName);
+	if (_debug) PX4_INFO("Unsubscribing from %s on remote side", messageName);
 	if (muorb_func_ptrs.unsubscribe_func_ptr) {
         pthread_mutex_lock(&_tx_mutex);
         int16_t rc = muorb_func_ptrs.unsubscribe_func_ptr(messageName);
@@ -109,7 +112,7 @@ int16_t uORB::ProtobufChannel::register_handler(uORBCommunicator::IChannelRxHand
 int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t length, uint8_t *data)
 {
     if (muorb_func_ptrs.topic_data_func_ptr) {
-        PX4_INFO("Got message for topic %s", messageName);
+        if (_debug) PX4_INFO("Got message for topic %s", messageName);
         std::string temp(messageName);
         int has_subscribers = 0;
         pthread_mutex_lock(&_rx_mutex);
@@ -117,7 +120,7 @@ int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t len
         pthread_mutex_unlock(&_rx_mutex);
 
         if (has_subscribers) {
-            PX4_INFO("Sending message for topic %s", messageName);
+            if (_debug) PX4_INFO("Sending message for topic %s", messageName);
             pthread_mutex_lock(&_tx_mutex);
             int16_t rc = muorb_func_ptrs.topic_data_func_ptr(messageName, data, length);
             pthread_mutex_unlock(&_tx_mutex);
@@ -125,7 +128,7 @@ int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t len
         }
         // If there are no remote subscribers then we do not need to send the
         // message over. That is still a success.
-        PX4_INFO("Skipping message for topic %s", messageName);
+        if (_debug) PX4_INFO("Skipping message for topic %s", messageName);
         return 0;
     }
 
@@ -164,16 +167,15 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs)
 
 int px4muorb_topic_advertised(const char *topic_name)
 {
-	PX4_INFO("px4muorb_topic_advertised [%s] on remote side...", topic_name);
-
 	uORB::ProtobufChannel *channel = uORB::ProtobufChannel::GetInstance();
     if (channel) {
-    	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
-    	if (rxHandler) {
-    		return rxHandler->process_remote_topic(topic_name);
-    	} else {
+        if (channel->DebugEnabled()) PX4_INFO("px4muorb_topic_advertised [%s] on remote side...", topic_name);
+        uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
+        if (rxHandler) {
+            return rxHandler->process_remote_topic(topic_name);
+        } else {
             PX4_ERR("Null rx handler in %s", __FUNCTION__);
-    	}
+        }
     } else {
         PX4_ERR("Null channel pointer in %s", __FUNCTION__);
     }
@@ -183,10 +185,9 @@ int px4muorb_topic_advertised(const char *topic_name)
 
 int px4muorb_add_subscriber(const char *topic_name)
 {
-	PX4_INFO("px4muorb_add_subscriber [%s] on remote side...", topic_name);
-
 	uORB::ProtobufChannel *channel = uORB::ProtobufChannel::GetInstance();
     if (channel) {
+        if (channel->DebugEnabled()) PX4_INFO("px4muorb_add_subscriber [%s] on remote side...", topic_name);
     	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
     	if (rxHandler) {
             channel->AddRemoteSubscriber(topic_name);
@@ -203,10 +204,9 @@ int px4muorb_add_subscriber(const char *topic_name)
 
 int px4muorb_remove_subscriber(const char *topic_name)
 {
-	PX4_INFO("px4muorb_remove_subscriber [%s] on remote side...", topic_name);
-
 	uORB::ProtobufChannel *channel = uORB::ProtobufChannel::GetInstance();
     if (channel) {
+        if (channel->DebugEnabled()) PX4_INFO("px4muorb_remove_subscriber [%s] on remote side...", topic_name);
     	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
     	if (rxHandler) {
             channel->RemoveRemoteSubscriber(topic_name);
@@ -224,10 +224,9 @@ int px4muorb_remove_subscriber(const char *topic_name)
 int px4muorb_send_topic_data(const char *topic_name, const uint8_t *data,
 			                 int data_len_in_bytes)
 {
-	PX4_INFO("px4muorb_send_topic_data [%s] on remote side...", topic_name);
-
 	uORB::ProtobufChannel *channel = uORB::ProtobufChannel::GetInstance();
     if (channel) {
+        if (channel->DebugEnabled()) PX4_INFO("px4muorb_send_topic_data [%s] on remote side...", topic_name);
     	uORBCommunicator::IChannelRxHandler *rxHandler = channel->GetRxHandler();
     	if (rxHandler) {
     		return rxHandler->process_received_message(topic_name,

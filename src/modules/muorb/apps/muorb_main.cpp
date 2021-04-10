@@ -42,6 +42,7 @@ static void usage()
 	warnx("Usage: muorb 'start', 'stop', 'status'");
 }
 
+static bool enable_debug = false;
 
 int
 muorb_main(int argc, char *argv[])
@@ -54,12 +55,12 @@ muorb_main(int argc, char *argv[])
     // TODO: Add an optional  start parameter to control debug messages
 	if (!strcmp(argv[1], "start")) {
 		if (uORB::AppsProtobufChannel::isInstance()) {
-			PX4_INFO("muorb already started");
+			PX4_WARN("muorb already started");
 		} else {
 			// Register the protobuf channel with UORB.
             uORB::AppsProtobufChannel *channel = uORB::AppsProtobufChannel::GetInstance();
             if (channel) {
-                if (channel->Initialize(true)) {
+                if (channel->Initialize(enable_debug)) {
                     uORB::Manager::get_instance()->set_uorb_communicator(channel);
                     return OK;
                 }
@@ -67,7 +68,7 @@ muorb_main(int argc, char *argv[])
 		}
 	} else if (!strcmp(argv[1], "stop")) {
 		if (uORB::AppsProtobufChannel::isInstance() == false) {
-			PX4_INFO("muorb not running");
+			PX4_WARN("muorb not running");
 		}
 		return OK;
 	} else if (!strcmp(argv[1], "status")) {

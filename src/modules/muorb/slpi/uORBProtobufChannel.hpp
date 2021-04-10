@@ -145,12 +145,15 @@ public:
         pthread_mutex_unlock(&_rx_mutex);
 	}
 
+    bool DebugEnabled() { return _debug; }
+
 private: // data members
 	static uORB::ProtobufChannel                _Instance;
 	static uORBCommunicator::IChannelRxHandler *_RxHandler;
 	static std::map<std::string, int>           _AppsSubscriberCache;
     static pthread_mutex_t                      _tx_mutex;
     static pthread_mutex_t                      _rx_mutex;
+    static bool                                 _debug;
 
 private://class members.
 	/// constructor.

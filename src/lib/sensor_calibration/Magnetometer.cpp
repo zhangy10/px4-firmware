@@ -269,7 +269,7 @@ void Magnetometer::PrintStatus()
 	}
 
 #if defined(DEBUG_BUILD)
-	_scale.print()
+	_scale.print();
 #endif // DEBUG_BUILD
 }
 
