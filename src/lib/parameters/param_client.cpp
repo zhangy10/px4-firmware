@@ -7,6 +7,8 @@
 #include "uORB/uORB.h"
 
 // uORB topics needed to keep parameter server and client in sync
+#include <uORB/topics/parameter_client_reset_request.h>
+#include <uORB/topics/parameter_client_reset_response.h>
 #include <uORB/topics/parameter_client_set_request.h>
 #include <uORB/topics/parameter_client_set_response.h>
 #include <uORB/topics/parameter_server_set_used.h>
@@ -27,28 +29,33 @@ static int param_sync_thread(int argc, char *argv[]) {
     // side could be missed.
     usleep(500);
 
-    int param_set_req_fd = orb_subscribe(ORB_ID(parameter_client_set_request));
-    orb_advert_t param_set_rsp_fd = nullptr;
+    int param_set_req_fd   = orb_subscribe(ORB_ID(parameter_client_set_request));
+    int param_reset_req_fd = orb_subscribe(ORB_ID(parameter_client_reset_request));
 
-	struct parameter_client_set_request_s req;
-	struct parameter_client_set_response_s rsp;
+    orb_advert_t param_set_rsp_fd   = nullptr;
+    orb_advert_t param_reset_rsp_fd = nullptr;
+
+	struct parameter_client_set_request_s    s_req;
+	struct parameter_client_set_response_s   s_rsp;
+	struct parameter_client_reset_request_s  r_req;
+	struct parameter_client_reset_response_s r_rsp;
 
     bool updated = false;
     while (true) {
         usleep(100);
         (void) orb_check(param_set_req_fd, &updated);
         if (updated) {
-            orb_copy(ORB_ID(parameter_client_set_request), param_set_req_fd, &req);
-    		PX4_INFO("Got parameter_client_set_request for %s", req.parameter_name);
+            orb_copy(ORB_ID(parameter_client_set_request), param_set_req_fd, &s_req);
+    		PX4_INFO("Got parameter_client_set_request for %s", s_req.parameter_name);
             // This will find the parameter and also set its used flag
-            param_t param = param_find(req.parameter_name);
+            param_t param = param_find(s_req.parameter_name);
             switch (param_type(param)) {
     		case PARAM_TYPE_INT32:
-                param_set_no_notification(param, (const void *) &req.int_value);
+                param_set_no_notification(param, (const void *) &s_req.int_value);
     			break;
 
     		case PARAM_TYPE_FLOAT:
-                param_set_no_notification(param, (const void *) &req.float_value);
+                param_set_no_notification(param, (const void *) &s_req.float_value);
     			break;
 
     		default:
@@ -56,11 +63,29 @@ static int param_sync_thread(int argc, char *argv[]) {
                 break;
             }
 
-            rsp.timestamp = hrt_absolute_time();
+            s_rsp.timestamp = hrt_absolute_time();
             if (param_set_rsp_fd == nullptr) {
-                param_set_rsp_fd = orb_advertise(ORB_ID(parameter_client_set_response), &rsp);
+                param_set_rsp_fd = orb_advertise(ORB_ID(parameter_client_set_response), &s_rsp);
             } else {
-                orb_publish(ORB_ID(parameter_client_set_response), param_set_rsp_fd, &rsp);
+                orb_publish(ORB_ID(parameter_client_set_response), param_set_rsp_fd, &s_rsp);
+            }
+    	}
+        (void) orb_check(param_reset_req_fd, &updated);
+        if (updated) {
+            orb_copy(ORB_ID(parameter_client_reset_request), param_reset_req_fd, &r_req);
+    		PX4_INFO("Got parameter_client_reset_request");
+            if (r_req.reset_all) {
+                param_reset_all();
+            } else {
+                param_t param = param_find_no_notification(r_req.parameter_name);
+                param_reset_no_notification(param);
+            }
+
+            r_rsp.timestamp = hrt_absolute_time();
+            if (param_reset_rsp_fd == nullptr) {
+                param_reset_rsp_fd = orb_advertise(ORB_ID(parameter_client_reset_response), &r_rsp);
+            } else {
+                orb_publish(ORB_ID(parameter_client_reset_response), param_reset_rsp_fd, &r_rsp);
             }
     	}
     }

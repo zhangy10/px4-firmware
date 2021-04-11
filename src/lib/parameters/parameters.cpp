@@ -73,9 +73,11 @@ using namespace time_literals;
 #include "flashparams/flashparams.h"
 static const char *param_default_file = nullptr; // nullptr means to store to FLASH
 #else
+#if !defined(PARAM_CLIENT)
 inline static int flash_param_save(bool only_unsaved, param_filter_func filter) { return -1; }
 inline static int flash_param_load() { return -1; }
 inline static int flash_param_import() { return -1; }
+#endif
 static const char *param_default_file = PX4_ROOTFSDIR"/eeprom/parameters";
 #endif
 
@@ -104,7 +106,11 @@ static char *param_user_file = nullptr;
 static hrt_abstime last_autosave_timestamp = 0;
 static struct work_s autosave_work {};
 static volatile bool autosave_scheduled = false;
+#if !defined(PARAM_CLIENT)
 static bool autosave_disabled = false;
+#else
+static bool autosave_disabled = true;
+#endif
 
 /**
  * Array of static parameter info.
@@ -699,6 +705,7 @@ param_autosave()
 void
 param_control_autosave(bool enable)
 {
+#if !defined(PARAM_CLIENT)
 	param_lock_writer();
 
 	if (!enable && autosave_scheduled) {
@@ -708,6 +715,7 @@ param_control_autosave(bool enable)
 
 	autosave_disabled = !enable;
 	param_unlock_writer();
+#endif
 }
 
 static int
@@ -884,6 +892,10 @@ void param_set_used_internal(param_t param)
 
 static int param_reset_internal(param_t param, bool notify = true)
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot reset parameters on client side");
+    return false;
+#else
 	param_wbuf_s *s = nullptr;
 	bool param_found = false;
 
@@ -907,11 +919,16 @@ static int param_reset_internal(param_t param, bool notify = true)
 
 	param_unlock_writer();
 
+#if defined(PARAM_SERVER)
+    param_server_reset(param);
+#endif
+
 	if (s != nullptr && notify) {
 		_param_notify_changes();
 	}
 
 	return (!param_found);
+#endif
 }
 
 int param_reset(param_t param) { return param_reset_internal(param, true); }
@@ -920,6 +937,9 @@ int param_reset_no_notification(param_t param) { return param_reset_internal(par
 static void
 param_reset_all_internal(bool auto_save)
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot reset all parameters on client side");
+#else
 	param_lock_writer();
 
 	if (param_values != nullptr) {
@@ -935,7 +955,13 @@ param_reset_all_internal(bool auto_save)
 
 	param_unlock_writer();
 
+
+#if defined(PARAM_SERVER)
+    param_server_reset_all();
+#endif
+
 	_param_notify_changes();
+#endif
 }
 
 void
@@ -1029,6 +1055,10 @@ param_get_default_file()
 
 int param_save_default()
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot save parameters to a file on client side");
+    return PX4_ERROR;
+#else
 	int res = PX4_ERROR;
 
 	const char *filename = param_get_default_file();
@@ -1070,6 +1100,7 @@ int param_save_default()
 	close(fd);
 
 	return res;
+#endif
 }
 
 /**
@@ -1078,6 +1109,10 @@ int param_save_default()
 int
 param_load_default()
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot load parameters from a file on client side");
+    return PX4_ERROR;
+#else
 	int res = 0;
 	const char *filename = param_get_default_file();
 
@@ -1106,11 +1141,16 @@ param_load_default()
 	}
 
 	return res;
+#endif
 }
 
 int
 param_export(int fd, bool only_unsaved, param_filter_func filter)
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot export parameters on client side");
+    return PX4_ERROR;
+#else
 	int	result = -1;
 	perf_begin(param_export_perf);
 
@@ -1216,12 +1256,14 @@ out:
 	perf_end(param_export_perf);
 
 	return result;
+#endif
 }
 
 struct param_import_state {
 	bool mark_saved;
 };
 
+#if !defined(PARAM_CLIENT)
 static int
 param_import_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
 {
@@ -1372,26 +1414,37 @@ param_import_internal(int fd, bool mark_saved)
 
 	return result;
 }
+#endif
 
 int
 param_import(int fd, bool mark_saved)
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot import parameters on client side");
+    return PX4_ERROR;
+#else
 	if (fd < 0) {
 		return flash_param_import();
 	}
 
 	return param_import_internal(fd, mark_saved);
+#endif
 }
 
 int
 param_load(int fd)
 {
+#if defined(PARAM_CLIENT)
+    PX4_ERR("Cannot load parameters on client side");
+    return PX4_ERROR;
+#else
 	if (fd < 0) {
 		return flash_param_load();
 	}
 
 	param_reset_all_internal(false);
 	return param_import_internal(fd, true);
+#endif
 }
 
 void

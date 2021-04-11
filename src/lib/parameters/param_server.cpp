@@ -6,6 +6,8 @@
 #include "uORB/uORBManager.hpp"
 
 // uORB topics needed to keep parameter server and client in sync
+#include <uORB/topics/parameter_client_reset_request.h>
+#include <uORB/topics/parameter_client_reset_response.h>
 #include <uORB/topics/parameter_client_set_request.h>
 #include <uORB/topics/parameter_client_set_response.h>
 #include <uORB/topics/parameter_server_set_used.h>
@@ -13,6 +15,8 @@
 
 static orb_advert_t param_set_req_topic = nullptr;
 static int          param_set_rsp_topic = PX4_ERROR;
+static orb_advert_t param_reset_req_topic = nullptr;
+static int          param_reset_rsp_topic = PX4_ERROR;
 static px4_task_t   sync_thread_tid;
 static const char  *sync_thread_name = "server_sync_thread";
 
@@ -131,4 +135,60 @@ void param_server_set(param_t param, const void *val) {
             PX4_ERR("Timeout waiting for parameter_client_set_response");
         }
     }
+}
+
+static void param_server_reset_internal(param_t param, bool reset_all) {
+    PX4_INFO("Param reset in server");
+    struct parameter_client_reset_request_s req;
+	req.timestamp = hrt_absolute_time();
+    req.reset_all = reset_all;
+    if (reset_all == false) {
+    	strncpy(req.parameter_name, param_name(param), 16);
+        req.parameter_name[16] = 0;
+    }
+
+	if (param_reset_rsp_topic == PX4_ERROR) {
+        PX4_INFO("Subscribing to parameter_client_reset_response");
+		param_reset_rsp_topic = orb_subscribe(ORB_ID(parameter_client_reset_response));
+    	if (param_reset_rsp_topic == PX4_ERROR) {
+            PX4_INFO("Subscription to parameter_client_reset_response failed");
+    	} else {
+            PX4_INFO("Subscription to parameter_client_reset_response succeeded");
+        }
+	}
+
+    PX4_INFO("Sending param reset request to client");
+
+	if (param_reset_req_topic == nullptr) {
+		param_reset_req_topic = orb_advertise(ORB_ID(parameter_client_reset_request), nullptr);
+	}
+
+	orb_publish(ORB_ID(parameter_client_reset_request), param_reset_req_topic, &req);
+
+    // Wait for response
+    PX4_INFO("Waiting for parameter_client_reset_response");
+    usleep(100);
+    bool updated = false;
+    int count = 100;
+    while (--count) {
+        (void) orb_check(param_reset_rsp_topic, &updated);
+        if (updated) {
+            PX4_INFO("Got parameter_client_reset_response");
+            struct parameter_client_reset_response_s rsp;
+            orb_copy(ORB_ID(parameter_client_reset_response), param_reset_rsp_topic, &rsp);
+            break;
+    	}
+        usleep(100);
+    }
+    if ( ! count) {
+        PX4_ERR("Timeout waiting for parameter_client_reset_response");
+    }
+}
+
+void param_server_reset(param_t param) {
+    param_server_reset_internal(param, false);
+}
+
+void param_server_reset_all() {
+    param_server_reset_internal(0, true);
 }
