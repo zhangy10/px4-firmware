@@ -46,6 +46,11 @@
 
 uORB::Manager *uORB::Manager::_Instance = nullptr;
 
+#ifdef ORB_COMMUNICATOR
+pthread_mutex_t uORB::Manager::_communicator_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif /* ORB_COMMUNICATOR */
+
+
 bool uORB::Manager::initialize()
 {
 	if (_Instance == nullptr) {
@@ -355,16 +360,20 @@ int uORB::Manager::node_open(const struct orb_metadata *meta, bool advertiser, i
 #ifdef ORB_COMMUNICATOR
 void uORB::Manager::set_uorb_communicator(uORBCommunicator::IChannel *channel)
 {
-	_comm_channel = channel;
-
-	if (_comm_channel != nullptr) {
-		_comm_channel->register_handler(this);
-	}
+    pthread_mutex_lock(&_communicator_mutex);
+    if (channel != nullptr) {
+        channel->register_handler(this);
+        _comm_channel = channel;
+    }
+    pthread_mutex_unlock(&_communicator_mutex);
 }
 
 uORBCommunicator::IChannel *uORB::Manager::get_uorb_communicator()
 {
-	return _comm_channel;
+    pthread_mutex_lock(&_communicator_mutex);
+    uORBCommunicator::IChannel *temp = _comm_channel;
+    pthread_mutex_unlock(&_communicator_mutex);
+    return temp;
 }
 
 int16_t uORB::Manager::process_remote_topic(const char *topic_name)

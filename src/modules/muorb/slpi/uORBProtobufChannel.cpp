@@ -48,7 +48,7 @@ pthread_mutex_t uORB::ProtobufChannel::_rx_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t uORB::ProtobufChannel::_tx_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // TODO: Create a way to set this a run time
-bool uORB::ProtobufChannel::_debug = false;
+bool uORB::ProtobufChannel::_debug = true;
 
 //==============================================================================
 //==============================================================================

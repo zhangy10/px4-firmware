@@ -42,7 +42,7 @@ static void usage()
 	warnx("Usage: muorb 'start', 'stop', 'status'");
 }
 
-static bool enable_debug = false;
+static bool enable_debug = true;
 
 int
 muorb_main(int argc, char *argv[])

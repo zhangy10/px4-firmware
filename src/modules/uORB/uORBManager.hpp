@@ -370,6 +370,8 @@ private: // data members
 	// the communicator channel instance.
 	uORBCommunicator::IChannel *_comm_channel{nullptr};
 
+    static pthread_mutex_t _communicator_mutex;
+
     // Track the advertisements we get from the remote side
 	ORBSet _remote_topics;
 #endif /* ORB_COMMUNICATOR */
