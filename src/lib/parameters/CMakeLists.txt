@@ -126,17 +126,25 @@ add_custom_command(OUTPUT px4_parameters.c px4_parameters.h px4_parameters_publi
 	)
 
 set(SRCS)
-if ("${CONFIG_SHMEM}" STREQUAL "1")
-	message(STATUS "parameters shared memory enabled")
-	add_definitions(-DCONFIG_SHMEM=1)
-	list(APPEND SRCS parameters_shmem.cpp)
+if ("${CONFIG_PARAM_CLIENT}" STREQUAL "1")
+	message(STATUS "parameter client enabled")
+    add_definitions(-DPARAM_CLIENT)
+
+	list(APPEND SRCS param_client.cpp)
+endif()
+
+if ("${CONFIG_PARAM_SERVER}" STREQUAL "1")
+	message(STATUS "parameter server enabled")
+    add_definitions(-DPARAM_SERVER)
+
+	list(APPEND SRCS param_server.cpp)
+endif()
+
+list(APPEND SRCS parameters.cpp)
+if(BUILD_TESTING)
+	list(APPEND SRCS param_translation_unit_tests.cpp)
 else()
-	list(APPEND SRCS parameters.cpp)
-	if(BUILD_TESTING)
-		list(APPEND SRCS param_translation_unit_tests.cpp)
-	else()
-		list(APPEND SRCS param_translation.cpp)
-	endif()
+	list(APPEND SRCS param_translation.cpp)
 endif()
 
 if(${PX4_PLATFORM} STREQUAL "nuttx")

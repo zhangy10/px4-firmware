@@ -21,7 +21,8 @@ set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 # add_definitions(-DDEBUG_BUILD)
 add_definitions(-DRELEASE_BUILD)
-add_definitions(-DPARAM_SERVER)
+
+set(CONFIG_PARAM_SERVER "1")
 
 # modalai toolchain doesn't properly set the compiler, so these aren't set automatically
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=gnu99>)

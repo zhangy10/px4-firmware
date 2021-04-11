@@ -34,7 +34,8 @@ set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 # add_definitions(-DDEBUG_BUILD)
 add_definitions(-DRELEASE_BUILD)
-add_definitions(-DPARAM_CLIENT)
+
+set(CONFIG_PARAM_CLIENT "1")
 
 # Disable the creation of the parameters.xml file by scanning individual
 # source files, and scan all source files.  This will create a parameters.xml

@@ -84,16 +84,17 @@ static const char *param_default_file = PX4_ROOTFSDIR"/eeprom/parameters";
 // PARAM_CLIENT is defined when PX4 is split between two processors
 // and this file handles the functionality of the client (remote).
 // Do not define either in a monolithic PX4 implementation.
-#if defined(PARAM_SERVER)
-#if defined(PARAM_CLIENT)
+#if defined(PARAM_SERVER) && defined(PARAM_CLIENT)
 #error Can only define PARAM_SERVER or PARAM_CLIENT but not both
 #endif
+
+// uORB topics needed to keep parameter server and client in sync
+#if defined(PARAM_SERVER)
+#include "param_server.h"
 #endif
-#if defined(PARAM_SERVER) || defined(PARAM_CLIENT)
-#include <uORB/topics/parameter_client_set_request.h>
-#include <uORB/topics/parameter_client_set_response.h>
-#include <uORB/topics/parameter_server_set_used.h>
-#include <uORB/topics/parameter_server_set_value.h>
+
+#if defined(PARAM_CLIENT)
+#include "param_client.h"
 #endif
 
 static char *param_user_file = nullptr;
@@ -153,16 +154,9 @@ UT_array *param_values{nullptr};
 const UT_icd param_icd = {sizeof(param_wbuf_s), nullptr, nullptr, nullptr};
 
 /** parameter update topic handle */
+#if !defined(PARAM_CLIENT)
 static orb_advert_t param_topic = nullptr;
 static unsigned int param_instance = 0;
-
-#if defined(PARAM_SERVER)
-static orb_advert_t param_set_req_topic = nullptr;
-static int param_set_rsp_topic = PX4_ERROR;
-#endif
-
-#if defined(PARAM_CLIENT)
-static orb_advert_t param_set_event_topic = nullptr;
 #endif
 
 static void param_set_used_internal(param_t param);
@@ -239,115 +233,6 @@ param_assert_locked()
 	/* XXX */
 }
 
-#if defined(PARAM_SERVER) || defined(PARAM_CLIENT)
-static px4_task_t sync_thread_tid;
-#endif
-
-#ifdef PARAM_SERVER
-static const char *sync_thread_name = "server_sync_thread";
-
-int param_sync_thread(int argc, char *argv[]) {
-
-    // Need to wait until the uORB and muORB are ready
-    // Check for uORB initialization with get_instance
-    while (uORB::Manager::get_instance() == nullptr) { usleep(100); }
-
-    // Check for muORB initialization with get_uorb_communicator
-    while (uORB::Manager::get_instance()->get_uorb_communicator() == nullptr) { usleep(100); }
-
-    int param_used_fd = orb_subscribe(ORB_ID(parameter_server_set_used));
-    int param_set_fd = orb_subscribe(ORB_ID(parameter_server_set_value));
-
-    px4_pollfd_struct_t fds[2] = { { .fd = param_used_fd, .events = POLLIN },
-                                   { .fd = param_set_fd, .events = POLLIN } };
-    while (true) {
-    	px4_poll(fds, 1, 1000);
-    	if (fds[0].revents & POLLIN) {
-            struct parameter_server_set_used_s msg;
-    		orb_copy(ORB_ID(parameter_server_set_used), param_used_fd, &msg);
-    		PX4_INFO("Got parameter_server_set_used for %s", msg.parameter_name);
-            (void) param_find(msg.parameter_name);
-    	} else if (fds[1].revents & POLLIN) {
-            struct parameter_server_set_value_s msg;
-    		orb_copy(ORB_ID(parameter_server_set_value), param_set_fd, &msg);
-    		PX4_INFO("Got parameter_server_set_value for %s", msg.parameter_name);
-            param_t param = param_find_no_notification(msg.parameter_name);
-            switch (param_type(param)) {
-    		case PARAM_TYPE_INT32:
-                param_set(param, (const void *) &msg.int_value);
-    			break;
-
-    		case PARAM_TYPE_FLOAT:
-                param_set(param, (const void *) &msg.float_value);
-    			break;
-
-    		default:
-    			PX4_ERR("Parameter must be either int or float");
-                break;
-            }
-    	}
-    }
-
-    return 0;
-}
-
-#endif
-
-#ifdef PARAM_CLIENT
-static const char *sync_thread_name = "client_sync_thread";
-
-int param_sync_thread(int argc, char *argv[]) {
-
-    // This thread gets started by the client side during PX4 initialization.
-    // We cannot send out the subscribe request immediately because the server
-    // side will not be ready to receive it on the muorb yet and it will get dropped.
-    // So, sleep a little bit to give server side a chance to finish initialization
-    // of the muorb. But don't wait too long otherwise a set request from the server
-    // side could be missed.
-    usleep(500);
-
-    int param_set_req_fd = orb_subscribe(ORB_ID(parameter_client_set_request));
-    orb_advert_t param_set_rsp_fd = nullptr;
-
-	struct parameter_client_set_request_s req;
-	struct parameter_client_set_response_s rsp;
-
-    bool updated = false;
-    while (true) {
-        usleep(100);
-        (void) orb_check(param_set_req_fd, &updated);
-        if (updated) {
-            orb_copy(ORB_ID(parameter_client_set_request), param_set_req_fd, &req);
-    		PX4_INFO("Got parameter_client_set_request for %s", req.parameter_name);
-            // This will find the parameter and also set its used flag
-            param_t param = param_find(req.parameter_name);
-            switch (param_type(param)) {
-    		case PARAM_TYPE_INT32:
-                param_set_no_notification(param, (const void *) &req.int_value);
-    			break;
-
-    		case PARAM_TYPE_FLOAT:
-                param_set_no_notification(param, (const void *) &req.float_value);
-    			break;
-
-    		default:
-    			PX4_ERR("Parameter must be either int or float");
-                break;
-            }
-
-            rsp.timestamp = hrt_absolute_time();
-            if (param_set_rsp_fd == nullptr) {
-                param_set_rsp_fd = orb_advertise(ORB_ID(parameter_client_set_response), &rsp);
-            } else {
-                orb_publish(ORB_ID(parameter_client_set_response), param_set_rsp_fd, &rsp);
-            }
-    	}
-    }
-
-    return 0;
-}
-
-#endif
 
 void
 param_init()
@@ -361,14 +246,14 @@ param_init()
 	param_get_perf = perf_alloc(PC_COUNT, "param_get");
 	param_set_perf = perf_alloc(PC_ELAPSED, "param_set");
 
-#if defined(PARAM_SERVER) || defined(PARAM_CLIENT)
-    sync_thread_tid = px4_task_spawn_cmd(sync_thread_name,
-				                         SCHED_DEFAULT,
-				                         SCHED_PRIORITY_PARAMS,
-				                         (1024 * 4),
-				                         param_sync_thread,
-				                         NULL);
+#if defined(PARAM_SERVER)
+    param_server_init();
 #endif
+
+#if defined(PARAM_CLIENT)
+    param_client_init();
+#endif
+
 }
 
 /**
@@ -434,6 +319,8 @@ param_find_changed(param_t param)
 static void
 _param_notify_changes()
 {
+// The parameter client does not send out notifications. Only the server.
+#if !defined(PARAM_CLIENT)
 	parameter_update_s pup = {};
 	pup.timestamp = hrt_absolute_time();
 	pup.instance = param_instance++;
@@ -448,6 +335,7 @@ _param_notify_changes()
 	} else {
 		orb_publish(ORB_ID(parameter_update), param_topic, &pup);
 	}
+#endif
 }
 
 void
@@ -912,111 +800,18 @@ out:
 	perf_end(param_set_perf);
 	param_unlock_writer();
 
-#ifdef PARAM_SERVER
+#if defined(PARAM_SERVER)
     // If this is the parameter server, make sure that the client is updated
-    if (params_changed) {
-        PX4_INFO("Param changed in server");
-        bool send_request = true;
-        struct parameter_client_set_request_s req;
-    	req.timestamp = hrt_absolute_time();
-    	strncpy(req.parameter_name, param_name(param), 16);
-        req.parameter_name[16] = 0;
-		switch (param_type(param)) {
-		case PARAM_TYPE_INT32:
-			req.int_value = *(int32_t *)val;
-			break;
-
-		case PARAM_TYPE_FLOAT:
-			req.float_value = *(float *)val;
-			break;
-
-		default:
-			PX4_ERR("Parameter must be either int or float");
-            send_request = false;
-            break;
-		}
-
-    	if (param_set_rsp_topic == PX4_ERROR) {
-            PX4_INFO("Subscribing to parameter_client_set_response");
-    		param_set_rsp_topic = orb_subscribe(ORB_ID(parameter_client_set_response));
-        	if (param_set_rsp_topic == PX4_ERROR) {
-                PX4_INFO("Subscription to parameter_client_set_response failed");
-        	} else {
-                PX4_INFO("Subscription to parameter_client_set_response succeeded");
-            }
-    	}
-
-        if (send_request) {
-            PX4_INFO("Sending param set request to client for %s", req.parameter_name);
-
-        	if (param_set_req_topic == nullptr) {
-        		param_set_req_topic = orb_advertise(ORB_ID(parameter_client_set_request), nullptr);
-        	}
-
-    		orb_publish(ORB_ID(parameter_client_set_request), param_set_req_topic, &req);
-
-            // Wait for response
-            PX4_INFO("Waiting for parameter_client_set_response");
-            usleep(100);
-            bool updated = false;
-            int count = 100;
-            while (--count) {
-                (void) orb_check(param_set_rsp_topic, &updated);
-                if (updated) {
-                    PX4_INFO("Got parameter_client_set_response for %s", req.parameter_name);
-                    struct parameter_client_set_response_s rsp;
-                    orb_copy(ORB_ID(parameter_client_set_response), param_set_rsp_topic, &rsp);
-                    break;
-            	}
-                usleep(100);
-            }
-            if ( ! count) {
-                PX4_ERR("Timeout waiting for parameter_client_set_response");
-            }
-        }
-    }
+    // TODO: Handle the possibility that this fails.
+    if (params_changed) param_server_set(param, val);
 #endif
 
-#ifdef PARAM_CLIENT
+#if defined(PARAM_CLIENT)
     // If this is the parameter client, make sure that the server is updated
-    if (params_changed) {
-        PX4_INFO("Param changed in client");
-        bool send_event = false;
-        struct parameter_server_set_value_s event = {};
-    	event.timestamp = hrt_absolute_time();
-    	strncpy(event.parameter_name, param_name(param), 16);
-        event.parameter_name[16] = 0;
-		switch (param_type(param)) {
-		case PARAM_TYPE_INT32:
-			event.int_value = *(int32_t *)val;
-			break;
-
-		case PARAM_TYPE_FLOAT:
-			event.float_value = *(float *)val;
-			break;
-
-		default:
-			PX4_ERR("Parameter must be either int or float");
-            send_event = false;
-            break;
-		}
-
-        if (send_event) {
-        	/*
-        	 * If we don't have a handle to our topic, create one now; otherwise
-        	 * just publish.
-        	 */
-        	if (param_set_event_topic == nullptr) {
-        		param_set_event_topic = orb_advertise(ORB_ID(parameter_server_set_value), &event);
-
-        	} else {
-        		orb_publish(ORB_ID(parameter_server_set_value), param_set_event_topic, &event);
-        	}
-        }
-    }
+    // TODO: Handle the possibility that this fails.
+    if (params_changed) param_client_set(param, val);
 #endif
 
-#ifndef PARAM_CLIENT
 	/*
 	 * If we set something, now that we have unlocked, go ahead and advertise that
 	 * a thing has been set.
@@ -1024,7 +819,6 @@ out:
 	if (params_changed && notify_changes) {
 		_param_notify_changes();
 	}
-#endif
 
 	return result;
 }
@@ -1082,6 +876,10 @@ void param_set_used_internal(param_t param)
 	// FIXME: this needs locking too
 	param_changed_storage[param_index / bits_per_allocation_unit] |=
 		(1 << param_index % bits_per_allocation_unit);
+
+#if defined(PARAM_CLIENT)
+    param_client_set_used(param);
+#endif
 }
 
 static int param_reset_internal(param_t param, bool notify = true)

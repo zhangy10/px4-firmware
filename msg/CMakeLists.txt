@@ -93,6 +93,8 @@ set(msg_files
 	onboard_computer_status.msg
 	optical_flow.msg
 	orbit_status.msg
+    parameter_client_reset_request.msg
+    parameter_client_reset_response.msg
     parameter_client_set_request.msg
     parameter_client_set_response.msg
 	parameter_server_set_used.msg
