@@ -36,7 +36,6 @@
 #include <algorithm>
 #include <string.h>
 #include <drivers/drv_hrt.h>
-#include "px4muorb.hpp"
 
 fc_func_ptrs muorb_func_ptrs;
 

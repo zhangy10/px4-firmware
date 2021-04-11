@@ -32,7 +32,6 @@
 ############################################################################
 
 px4_add_library(modules__muorb__slpi
-	px4muorb.cpp
 	uORBProtobufChannel.cpp
 )
 target_include_directories(modules__muorb__slpi PRIVATE ${PX4_SOURCE_DIR}/src/modules/uORB)

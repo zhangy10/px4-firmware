@@ -160,10 +160,6 @@ if (NOT "${PX4_BOARD}" MATCHES "px4_io")
 		px4_parameters_public.h
 		)
 
-	if ("${CONFIG_SHMEM}" STREQUAL "1")
-		target_link_libraries(parameters PRIVATE px4_layer)
-	endif()
-
 	target_link_libraries(parameters PRIVATE perf tinybson)
 	target_compile_definitions(parameters PRIVATE -DMODULE_NAME="parameters")
 	target_compile_options(parameters

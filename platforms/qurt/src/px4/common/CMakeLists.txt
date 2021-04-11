@@ -43,7 +43,6 @@ set(QURT_LAYER_SRCS
 	drv_hrt.cpp
 	qurt_stubs.c
 	main.cpp
-	shmem_qurt.cpp
 	px4_init.cpp
 	dspal_impl.c
 	)
