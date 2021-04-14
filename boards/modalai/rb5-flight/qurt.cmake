@@ -56,6 +56,7 @@ px4_add_board(
 		# barometer/bmp280
 		# gps
 		# imu/invensense/icm42688p
+        modalai/imu_thin_client
 		# magnetometer/hmc5883
 		qshell/qurt
 		# snapdragon_pwm_out

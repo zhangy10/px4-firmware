@@ -31,10 +31,11 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__modalai__imu_mpa_client
-	MAIN imu_mpa_client
+	MODULE drivers__modalai__imu_thin_client
+	MAIN imu_thin_client
 	SRCS
-		imu_mpa_client.cpp
+		imu_thin_client.cpp
 	DEPENDS
+		drivers_gyroscope
 		drivers_accelerometer
 	)
