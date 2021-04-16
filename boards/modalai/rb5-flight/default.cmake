@@ -86,7 +86,7 @@ px4_add_board(
 		muorb/apps
 		#muorb/test
 		navigator
-		rc_update
+		# rc_update
 		rover_pos_control
 		sensors
 		#sih

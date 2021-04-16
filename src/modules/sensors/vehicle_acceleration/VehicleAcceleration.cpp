@@ -270,7 +270,7 @@ void VehicleAcceleration::Run()
             if (time_difference_ms < min_time_difference_ms) min_time_difference_ms = time_difference_ms;
             if (time_difference_ms > max_time_difference_ms) max_time_difference_ms = time_difference_ms;
             if ( ! (report_count++ % 1000)) {
-                PX4_INFO("Min: %d, max: %d", min_time_difference_ms, max_time_difference_ms);
+                PX4_DEBUG("Min: %d, max: %d", min_time_difference_ms, max_time_difference_ms);
                 min_time_difference_ms = 0xfffffff;
                 max_time_difference_ms = 0;
             }

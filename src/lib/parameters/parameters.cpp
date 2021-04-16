@@ -881,13 +881,13 @@ void param_set_used_internal(param_t param)
 		return;
 	}
 
+#if defined(PARAM_CLIENT)
+    if ( ! param_used(param)) param_client_set_used(param);
+#endif
+
 	// FIXME: this needs locking too
 	param_changed_storage[param_index / bits_per_allocation_unit] |=
 		(1 << param_index % bits_per_allocation_unit);
-
-#if defined(PARAM_CLIENT)
-    param_client_set_used(param);
-#endif
 }
 
 static int param_reset_internal(param_t param, bool notify = true)

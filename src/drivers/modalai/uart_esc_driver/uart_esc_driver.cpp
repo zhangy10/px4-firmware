@@ -158,6 +158,8 @@ UART_ESC_DriverModule::UART_ESC_DriverModule()
 {
 }
 
+// static uint32_t output_decimator = 0;
+
 void UART_ESC_DriverModule::run()
 {
 	PX4_INFO("ModalAI UART_ESC_DriverModule starting");
@@ -193,9 +195,12 @@ void UART_ESC_DriverModule::run()
 			// Grab new controls data
 			orb_copy(ORB_ID(actuator_controls_0), _controls_sub, &_controls);
 
-            PX4_INFO("UART ESC: 0x%lx 0x%lx", _controls.timestamp, _controls.timestamp_sample);
-            PX4_INFO("UART ESC: %f %f %f %f", (double) _controls.control[0], (double) _controls.control[1],
-                                              (double) _controls.control[2], (double) _controls.control[3]);
+            // PX4_INFO("UART ESC: 0x%lx 0x%lx", _controls.timestamp, _controls.timestamp_sample);
+            // if ( ! (output_decimator++ % 100)) {
+            //     PX4_INFO("UART ESC: %f %f %f %f", (double) _controls.control[0], (double) _controls.control[1],
+            //                                       (double) _controls.control[2], (double) _controls.control[3]);
+            // }
+
         	// float control[8];
         }
 

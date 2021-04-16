@@ -75,7 +75,7 @@ px4_add_board(
 		mc_pos_control
 		mc_rate_control
 		muorb/slpi
-		# rc_update
+		rc_update
 		rover_pos_control
 		sensors
 		# temperature_compensation

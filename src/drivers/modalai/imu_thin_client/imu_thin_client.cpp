@@ -21,7 +21,7 @@
 
 static IMU_ThinClient *local_instance;
 
-IMU_ThinClient::IMU_ThinClient() : _px4_accel(1), _px4_gyro(1) {}
+IMU_ThinClient::IMU_ThinClient() : _px4_accel(1), _px4_gyro(1), _px4_mag(1), _px4_baro(1) {}
 
 int imu_thin_client_main(int argc, char *argv[])
 {
