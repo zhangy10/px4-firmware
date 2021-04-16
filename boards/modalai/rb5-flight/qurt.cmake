@@ -53,16 +53,10 @@ px4_add_board(
 	MODEL excelsior
 	LABEL qurt
 	DRIVERS
-		# barometer/bmp280
-		# gps
-		# imu/invensense/icm42688p
         modalai/imu_thin_client
-		# magnetometer/hmc5883
+        modalai/baro_thin_client
 		qshell/qurt
-		# snapdragon_pwm_out
-		# spektrum_rc
 	MODULES
-		# airspeed_selector
 		attitude_estimator_q
 		commander
 		ekf2
@@ -80,7 +74,6 @@ px4_add_board(
 		sensors
 		# temperature_compensation
 		# vmount
-		# vtol_att_control
 	SYSTEMCMDS
 		# led_control
 		mixer
@@ -89,7 +82,6 @@ px4_add_board(
 		param
 		perf
 		# pwm
-		# topic_listener
 		ver
 		work_queue
 	)
