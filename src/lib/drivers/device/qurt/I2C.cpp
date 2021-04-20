@@ -47,9 +47,13 @@
 namespace device
 {
 
+I2C::_config_i2c_bus_func_t I2C::_config_i2c_bus = NULL;
+I2C::_i2c_transfer_func_t   I2C::_i2c_transfer   = NULL;
+pthread_mutex_t I2C::_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 I2C::I2C(uint8_t device_type, const char *name, const int bus, const uint16_t address, const uint32_t frequency) :
 	CDev(name, nullptr),
-	_frequency(frequency)
+	_frequency(frequency / 1000)
 {
 	// fill in _device_id fields for a I2C device
 	_device_id.devid_s.devtype = device_type;
@@ -60,10 +64,6 @@ I2C::I2C(uint8_t device_type, const char *name, const int bus, const uint16_t ad
 
 I2C::~I2C()
 {
-	if (_fd >= 0) {
-		::close(_fd);
-		_fd = -1;
-	}
 }
 
 int
@@ -71,22 +71,26 @@ I2C::init()
 {
 	int ret = PX4_ERROR;
 
-	// Open the actual I2C device
-	char dev_path[16] {};
-	snprintf(dev_path, sizeof(dev_path), DEV_FS_I2C_DEVICE_TYPE_STRING"%i", get_device_bus());
-	_fd = ::open(dev_path, O_RDWR);
-
-	if (_fd < 0) {
-		DEVICE_DEBUG("failed to init I2C");
-		ret = -ENOENT;
+	if (_config_i2c_bus == NULL) {
+		PX4_ERR("NULL i2c init function");
 		goto out;
-	}
+    }
+
+    pthread_mutex_lock(&_mutex);
+	// Open the actual I2C device
+	_i2c_fd = _config_i2c_bus(get_device_bus(), get_device_address(), _frequency);
+    pthread_mutex_unlock(&_mutex);
+
+	if (_i2c_fd == PX4_ERROR) {
+		PX4_ERR("i2c init failed");
+		goto out;
+    }
 
 	// call the probe function to check whether the device is present
 	ret = probe();
 
 	if (ret != OK) {
-		DEVICE_DEBUG("probe failed");
+		PX4_ERR("i2c probe failed");
 		goto out;
 	}
 
@@ -94,19 +98,14 @@ I2C::init()
 	ret = CDev::init();
 
 	if (ret != OK) {
-		DEVICE_DEBUG("cdev init failed");
+		PX4_ERR("i2c cdev init failed");
 		goto out;
 	}
 
 	// tell the world where we are
-	DEVICE_DEBUG("on I2C bus %d at 0x%02x", get_device_bus(), get_device_address());
+	// PX4_INFO("on I2C bus %d at 0x%02x", get_device_bus(), get_device_address());
 
 out:
-
-	if ((ret != OK) && !(_fd < 0)) {
-		::close(_fd);
-		_fd = -1;
-	}
 
 	return ret;
 }
@@ -117,45 +116,18 @@ I2C::transfer(const uint8_t *send, const unsigned send_len, uint8_t *recv, const
 	int ret = PX4_ERROR;
 	unsigned retry_count = 0;
 
-	if (_fd < 0) {
-		PX4_ERR("I2C device not opened");
-		return PX4_ERROR;
-	}
+    if ((_i2c_fd != PX4_ERROR) && (_i2c_transfer != NULL)) {
+    	do {
+    		// PX4_INFO("transfer out %p/%u  in %p/%u", send, send_len, recv, recv_len);
 
-	do {
-		DEVICE_DEBUG("transfer out %p/%u  in %p/%u", send, send_len, recv, recv_len);
+            pthread_mutex_lock(&_mutex);
+    		ret = _i2c_transfer(_i2c_fd, send, send_len, recv, recv_len);
+            pthread_mutex_unlock(&_mutex);
 
-		dspal_i2c_ioctl_slave_config slave_config{};
-		slave_config.slave_address = get_device_address();
-		slave_config.bus_frequency_in_khz = _frequency / 1000;
-		slave_config.byte_transer_timeout_in_usecs = 10000; // 10 ms
-		int ret_config = ::ioctl(_fd, I2C_IOCTL_SLAVE, &slave_config);
+            if (ret != PX4_ERROR) break;
 
-		if (ret_config < 0) {
-			DEVICE_DEBUG("Could not set slave config, result: %d", ret_config);
-		}
-
-
-		dspal_i2c_ioctl_combined_write_read ioctl_write_read{};
-
-		ioctl_write_read.write_buf = (uint8_t *)send;
-		ioctl_write_read.write_buf_len = send_len;
-		ioctl_write_read.read_buf = recv;
-		ioctl_write_read.read_buf_len = recv_len;
-
-		int bytes_read = ::ioctl(_fd, I2C_IOCTL_RDWR, &ioctl_write_read);
-
-		if (bytes_read != (int)recv_len) {
-			DEVICE_DEBUG("I2C transfer failed, bytes read %d", bytes_read);
-			ret = PX4_ERROR;
-
-		} else {
-			// success
-			ret = PX4_OK;
-			break;
-		}
-
-	} while (retry_count++ < _retries);
+    	} while (retry_count++ < _retries);
+    }
 
 	return ret;
 }

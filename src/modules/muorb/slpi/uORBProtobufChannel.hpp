@@ -40,6 +40,7 @@
 #include <semaphore.h>
 #include <set>
 #include <px4_platform_common/sem.h>
+#include <drivers/device/i2c.h>
 
 namespace uORB
 {
@@ -167,6 +168,8 @@ typedef struct {
     int (*subscribe_func_ptr)(const char *topic_name);
     int (*unsubscribe_func_ptr)(const char *topic_name);
     int (*topic_data_func_ptr)(const char *name, const uint8_t *data, int data_len_in_bytes);
+    device::I2C::_config_i2c_bus_func_t config_i2c_bus;
+    device::I2C::_i2c_transfer_func_t i2c_transfer;
 } fc_func_ptrs;
 
 extern "C" {

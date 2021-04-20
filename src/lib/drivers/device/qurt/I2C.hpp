@@ -61,6 +61,15 @@ public:
 
 	virtual int	init() override;
 
+    typedef int (*_config_i2c_bus_func_t)(uint8_t, uint8_t, uint32_t);
+    typedef int (*_i2c_transfer_func_t)(int, const uint8_t*, const unsigned, uint8_t*, const unsigned);
+
+    static void configure_callbacks(_config_i2c_bus_func_t config_func,
+                                    _i2c_transfer_func_t transfer_func) {
+        _config_i2c_bus = config_func;
+        _i2c_transfer = transfer_func;
+    }
+
 protected:
 	/**
 	 * The number of times a read or write operation will be retried on
@@ -103,9 +112,11 @@ protected:
 	virtual bool	external() const override { return false; }
 
 private:
-	uint32_t		_frequency{0};
-	int			_fd{-1};
-
+	uint32_t		              _frequency{0};
+    int                           _i2c_fd{-1};
+    static _config_i2c_bus_func_t _config_i2c_bus;
+    static _i2c_transfer_func_t   _i2c_transfer;
+    static pthread_mutex_t        _mutex;
 };
 
 } // namespace device

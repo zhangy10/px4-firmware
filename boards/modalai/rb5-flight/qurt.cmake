@@ -56,6 +56,7 @@ px4_add_board(
         modalai/imu_thin_client
         modalai/baro_thin_client
 		qshell/qurt
+        magnetometer/hmc5883
 	MODULES
 		attitude_estimator_q
 		commander

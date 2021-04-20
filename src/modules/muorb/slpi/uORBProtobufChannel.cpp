@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <string.h>
 #include <drivers/drv_hrt.h>
+#include <drivers/device/i2c.h>
 
 fc_func_ptrs muorb_func_ptrs;
 
@@ -150,18 +151,32 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs)
 	// Now continue with the usual dspal startup.
 	const char *argv[3] = { "dspal", "start" };
 	int argc = 2;
-	int rc;
 
     // Make sure that argv has a NULL pointer in the end.
     argv[argc] = NULL;
 
-	rc = dspal_main(argc, (char **) argv);
+	if (dspal_main(argc, (char **) argv)) {
+        PX4_ERR("dspal_main failed in %s", __FUNCTION__);
+        return -1;
+    }
 
     // Save off the function pointers needed to get access to
     // the SLPI protobuf functions.
     muorb_func_ptrs = *func_ptrs;
+    if ((muorb_func_ptrs.advertise_func_ptr == NULL) ||
+        (muorb_func_ptrs.subscribe_func_ptr == NULL) ||
+        (muorb_func_ptrs.unsubscribe_func_ptr == NULL) ||
+        (muorb_func_ptrs.topic_data_func_ptr == NULL) ||
+        (muorb_func_ptrs.config_i2c_bus == NULL) ||
+        (muorb_func_ptrs.i2c_transfer == NULL)) {
+        PX4_ERR("NULL function pointers in %s", __FUNCTION__);
+        return -1;
+    }
 
-	return rc;
+    // Configure the I2C driver function pointers
+    device::I2C::configure_callbacks(muorb_func_ptrs.config_i2c_bus, muorb_func_ptrs.i2c_transfer);
+
+	return 0;
 }
 
 int px4muorb_topic_advertised(const char *topic_name)
