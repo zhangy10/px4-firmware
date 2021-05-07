@@ -144,9 +144,9 @@ parameters:
                                 'Ohm', 'V',
                                 'us', 'ms', 's',
                                 'S', 'A/%', '(m/s^2)^2',  'm/m',  'tan(rad)^2', '(m/s)^2', 'm/rad',
-                                'm/s^3/sqrt(Hz)', 'm/s/sqrt(Hz)', 's/(1000*PWM)', '%m/s', 'min', 'us/C', 
+                                'm/s^3/sqrt(Hz)', 'm/s/sqrt(Hz)', 's/(1000*PWM)', '%m/s', 'min', 'us/C',
                                 'N/(m/s)', 'Nm/(rad/s)', 'Nm', 'N',
-                                'normalized_thrust/s', 'normalized_thrust', 'norm', 'SD']
+                                'normalized_thrust/s', 'normalized_thrust', 'norm', 'SD', 'RPM']
                         bit:
                             # description of all bits for type bitmask.
                             # The first bit is 0.
@@ -206,5 +206,3 @@ parameters:
                             # [0, N-1]
                             # Default: 0
                             type: integer
-
-

@@ -36,7 +36,6 @@
 #include <algorithm>
 #include <string.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/device/i2c.h>
 
 fc_func_ptrs muorb_func_ptrs;
 
@@ -168,13 +167,19 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs)
         (muorb_func_ptrs.unsubscribe_func_ptr == NULL) ||
         (muorb_func_ptrs.topic_data_func_ptr == NULL) ||
         (muorb_func_ptrs.config_i2c_bus == NULL) ||
-        (muorb_func_ptrs.i2c_transfer == NULL)) {
+        (muorb_func_ptrs.i2c_transfer == NULL) ||
+        (muorb_func_ptrs.open_uart_func == NULL) ||
+        (muorb_func_ptrs.write_uart_func == NULL) ||
+        (muorb_func_ptrs.read_uart_func == NULL)) {
         PX4_ERR("NULL function pointers in %s", __FUNCTION__);
         return -1;
     }
 
     // Configure the I2C driver function pointers
     device::I2C::configure_callbacks(muorb_func_ptrs.config_i2c_bus, muorb_func_ptrs.i2c_transfer);
+
+    // Configure the UART driver function pointers
+    configure_uart_callbacks(muorb_func_ptrs.open_uart_func, muorb_func_ptrs.write_uart_func, muorb_func_ptrs.read_uart_func);
 
 	return 0;
 }
