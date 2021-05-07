@@ -97,8 +97,7 @@ public:
 		uint16_t	repeat_delay_us = 2000;
 		uint8_t		retries = 0;
 		bool		response = false;
-		// uint16_t	resp_delay_us = 1000;
-		uint16_t	resp_delay_us = 10000;
+		uint16_t	resp_delay_us = 1000;
 
 		bool valid() const { return len > 0; }
 		void clear() { len = 0; }
@@ -112,8 +111,7 @@ private:
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_CHANNELS = 4;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_DISABLED = 0;
 
-	// static constexpr uint32_t MODALAI_ESC_WRITE_WAIT_US = 200;
-	static constexpr uint32_t MODALAI_ESC_WRITE_WAIT_US = 10000;
+	static constexpr uint32_t MODALAI_ESC_WRITE_WAIT_US = 200;
 
 	static constexpr uint16_t DISARMED_VALUE = 0;
 

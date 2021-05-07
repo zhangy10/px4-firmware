@@ -1,6 +1,9 @@
 
 #include <px4_log.h>
+#include <px4_platform_common/time.h>
 #include "uart.h"
+
+#define UART_READ_POLL_INTERVAL_US 100
 
 // Static variables
 static bool _callbacks_configured = false;
@@ -64,7 +67,7 @@ int qurt_uart_write(int fd, const char *buf, size_t len)
     return -1;
 }
 
-int qurt_uart_read(int fd, char *buf, size_t len)
+int qurt_uart_read(int fd, char *buf, size_t len, uint32_t timeout_us)
 {
 	if (fd < 0) {
 		PX4_ERR("invalid fd %d for %s", fd, __FUNCTION__);
@@ -82,7 +85,17 @@ int qurt_uart_read(int fd, char *buf, size_t len)
     }
 
     if (_callbacks_configured) {
-        return _read_uart(fd, buf, len);
+        uint32_t interval_counter = (timeout_us + (UART_READ_POLL_INTERVAL_US - 1)) / UART_READ_POLL_INTERVAL_US;
+        // PX4_INFO("UART interval counter = %d", interval_counter);
+        int read_len = 0;
+        do {
+            px4_usleep(UART_READ_POLL_INTERVAL_US);
+            read_len = _read_uart(fd, buf, len);
+            interval_counter--;
+        } while ((read_len <= 0) && interval_counter);
+        if (read_len <= 0) PX4_INFO("Warning, UART read timed out");
+        // else PX4_INFO("UART read %d bytes, counter = %d", read_len, interval_counter);
+        return read_len;
     } else {
         PX4_ERR("Cannot read from uart until callbacks have been configured");
     }
