@@ -34,20 +34,6 @@
 #include "string.h"
 #include "modalai_esc_serial.hpp"
 
-#ifdef __PX4_QURT
-void configure_uart_callbacks(open_uart_func_t open_func,
-                              write_uart_func_t write_func,
-                              read_uart_func_t read_func) {
-    ModalaiEscSerial::configure_callbacks(open_func, write_func, read_func);
-}
-
-// Static variables
-bool ModalaiEscSerial::_callbacks_configured = false;
-open_uart_func_t  ModalaiEscSerial::_open_uart = NULL;
-write_uart_func_t ModalaiEscSerial::_write_uart = NULL;
-read_uart_func_t  ModalaiEscSerial::_read_uart = NULL;
-#endif
-
 ModalaiEscSerial::ModalaiEscSerial()
 {
 }
@@ -67,19 +53,7 @@ int ModalaiEscSerial::uart_open(const char *dev, speed_t speed)
 	}
 
 #ifdef __PX4_QURT
-    if (_callbacks_configured) {
-        // Convert device string into a uart port number
-        char *endptr = NULL;
-        uint8_t port_number = (uint8_t) strtol(dev, &endptr, 10);
-        if ((port_number == 0) && (endptr == dev)) {
-            PX4_ERR("Could not convert %s into a valid uart port number", dev);
-            return -1;
-        }
-    	_uart_fd = _open_uart(port_number, speed);
-    } else {
-        PX4_ERR("Cannot open uart until callbacks have been configured");
-        return -1;
-    }
+	_uart_fd = qurt_uart_open(dev, speed);
 #else
 	/* Open UART */
 	_uart_fd = open(dev, O_RDWR | O_NOCTTY | O_NONBLOCK);
@@ -163,12 +137,7 @@ int ModalaiEscSerial::uart_write(FAR void *buf, size_t len)
 	}
 
 #ifdef __PX4_QURT
-    if (_callbacks_configured) {
-        return _write_uart(_uart_fd, buf, len);
-    } else {
-        PX4_ERR("Cannot write to uart until callbacks have been configured");
-        return -1;
-    }
+    return qurt_uart_write(_uart_fd, (const char*) buf, len);
 #else
 	return write(_uart_fd, buf, len);
 #endif
@@ -182,12 +151,7 @@ int ModalaiEscSerial::uart_read(FAR void *buf, size_t len)
 	}
 
 #ifdef __PX4_QURT
-    if (_callbacks_configured) {
-        return _read_uart(_uart_fd, buf, len);
-    } else {
-        PX4_ERR("Cannot read from uart until callbacks have been configured");
-        return -1;
-    }
+    return qurt_uart_read(_uart_fd, (char*) buf, len);
 #else
 	return read(_uart_fd, buf, len);
 #endif

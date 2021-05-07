@@ -55,27 +55,10 @@ public:
 	int		uart_read(FAR void *buf, size_t len);
 	bool		is_open() { return _uart_fd >= 0; };
 
-#ifdef __PX4_QURT
-    static bool _callbacks_configured;
-
-    static void configure_callbacks(open_uart_func_t open_func,
-                                    write_uart_func_t write_func,
-                                    read_uart_func_t read_func) {
-        _open_uart  = open_func;
-        _write_uart = write_func;
-        _read_uart  = read_func;
-        if (_open_uart && _write_uart && _read_uart) _callbacks_configured = true;
-    }
-#endif
-
 private:
 	int			       _uart_fd = -1;
 
-#ifdef __PX4_QURT
-    static open_uart_func_t  _open_uart;
-    static write_uart_func_t _write_uart;
-    static read_uart_func_t  _read_uart;
-#else
+#ifndef __PX4_QURT
 	struct termios		_orig_cfg;
 	struct termios		_cfg;
 #endif
