@@ -91,7 +91,7 @@ typedef struct {
 	uint16_t crc;
 }  __attribute__((__packed__)) QC_ESC_VERSION_INFO;
 
-// Definition of the feedbak response packet from ESC
+// Definition of the extended feedback response packet from ESC
 typedef struct {
 	uint8_t  header;
 	uint8_t  length;       // Total length of the packet
@@ -99,14 +99,16 @@ typedef struct {
 
 	uint8_t  state;        // bits 0:3 = state, bits 4:7 = ID
 	uint16_t rpm;          // Current RPM of the motor
-	uint8_t  cmd_counter;  // Number of commands received by the ESC
-	uint8_t  reserved0;
-	int8_t   voltage;      // Voltage = (-28)/34.0 + 9.0 = 8.176V.  0xE4 --> 228 (-28)
-	uint8_t  reserved1;
+	uint8_t  cmd_counter;  // Number of control packets received by the ESC
+	int8_t   power;        // Current power applied (-100 to 100). Negative means braking.
+	uint16_t voltage;      // Voltage in millivolts
+
+    // These 2 fields only exist in the extended version of the message
+    uint16_t current;      // In 8mA resolution
+    int16_t  temperature;  // In hundredths degrees C
 
 	uint16_t crc;
-}  __attribute__((__packed__)) QC_ESC_FB_RESPONSE;
-
+}  __attribute__((__packed__)) QC_ESC_EXTENDED_FB_RESPONSE;
 
 //-------------------------------------------------------------------------
 //Below are functions for generating packets that would be outgoing to ESCs

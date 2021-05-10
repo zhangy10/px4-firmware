@@ -217,7 +217,6 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
 	case ESC_PACKET_TYPE_VERSION_RESPONSE:
 		if (len != sizeof(QC_ESC_VERSION_INFO)) {
 			return -1;
-
 		} else {
 			QC_ESC_VERSION_INFO ver;
 			memcpy(&ver, buf, len);
@@ -230,24 +229,46 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
 		break;
 
 	case ESC_PACKET_TYPE_FB_RESPONSE:
-		if (len != sizeof(QC_ESC_FB_RESPONSE)) {
+    {
+        // The extended feedback message and the feedback message use the same
+        // message id so they need to be differentiated by message length.
+        bool extended_fb = false;
+		if (len == sizeof(QC_ESC_EXTENDED_FB_RESPONSE)) {
+            extended_fb = true;
+		} else if (len != (sizeof(QC_ESC_EXTENDED_FB_RESPONSE) - 4)) {
+            PX4_ERR("Got feedback response with invalid length %d", len);
 			return -1;
-
-		} else {
-			QC_ESC_FB_RESPONSE fb;
-			memcpy(&fb, buf, len);
-			uint8_t id = (fb.state & 0xF0) >> 4;
-
-			if (id < MODALAI_ESC_OUTPUT_CHANNELS) {
-				_esc_chans[id].rate_meas = fb.rpm;
-				_esc_chans[id].state = fb.state & 0x0F;
-				_esc_chans[id].cmd_counter = fb.cmd_counter;
-				_esc_chans[id].voltage = 9.0 + fb.voltage / 34.0;
-			}
 		}
 
-		break;
+		QC_ESC_EXTENDED_FB_RESPONSE fb;
+		memcpy(&fb, buf, len);
+		uint8_t id = (fb.state & 0xF0) >> 4;
 
+		if (id < MODALAI_ESC_OUTPUT_CHANNELS) {
+			_esc_chans[id].rate_meas = fb.rpm;
+			_esc_chans[id].state = fb.state & 0x0F;
+			_esc_chans[id].cmd_counter = fb.cmd_counter;
+			_esc_chans[id].power = fb.power;
+			_esc_chans[id].voltage = fb.voltage * 0.001;
+
+            if (extended_fb) {
+				_esc_chans[id].current = fb.current * 0.008;
+				_esc_chans[id].temperature = fb.temperature * 0.01;
+                PX4_INFO("EXT FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f, current %f, temperature %f",
+                          id, _esc_chans[id].rate_meas, _esc_chans[id].state,
+                          _esc_chans[id].cmd_counter, _esc_chans[id].power,
+                          _esc_chans[id].voltage, _esc_chans[id].current, _esc_chans[id].temperature);
+            } else {
+                PX4_INFO("FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f",
+                          id, _esc_chans[id].rate_meas, _esc_chans[id].state,
+                          _esc_chans[id].cmd_counter, _esc_chans[id].power,
+                          _esc_chans[id].voltage);
+            }
+		} else {
+            PX4_ERR("Invalid ESC id %d in feedback packet", id);
+        }
+		break;
+    }
 	default:
 		return -1;
 	}
@@ -388,7 +409,7 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 			return 0;
 		}
 
-	}  else if (!strcmp(verb, "rpm")) {
+	} else if (!strcmp(verb, "rpm")) {
 		if (0 < esc_id && esc_id < 16) {
 			PX4_INFO("Request RPM for ESC bit mask: %i - RPM: %i", esc_id, rate);
 			int16_t rate_req[MODALAI_ESC_OUTPUT_CHANNELS];
@@ -424,8 +445,33 @@ int ModalaiEsc::custom_command(int argc, char *argv[])
 							    sizeof(cmd.buf));
 			cmd.response = false;
 			cmd.repeats = 500;
-			return get_instance()->sendCommandThreadSafe(&cmd);
 
+			if (get_instance()->sendCommandThreadSafe(&cmd) == 0) {
+                // Gather ESC feedback if the test was successful
+            	Command fb_cmd;
+        	    memset(&fb_cmd.buf, 0x00, sizeof(fb_cmd.buf));
+                for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
+                	fb_cmd.len = qc_esc_create_rpm_packet4_fb(rate_req[0],
+        							                          rate_req[1],
+        							                          rate_req[2],
+        							                          rate_req[3],
+        			                                          (led_mask & 0x0007),
+        			                                          (led_mask & 0x0038) >> 3,
+        			                                          (led_mask & 0x01C0) >> 6,
+        			                                          (led_mask & 0x0E00) >> 9,
+                					                          i,
+                					                          fb_cmd.buf,
+                					                          sizeof(fb_cmd.buf));
+			        fb_cmd.response = true;
+                    if (get_instance()->sendCommandThreadSafe(&fb_cmd)) {
+                        PX4_ERR("Failed to execute rpm command with feedback %d", i);
+                        break;
+                    } else {
+                        PX4_INFO("Executed rpm command with feedback %d", i);
+                    }
+                }
+            }
+            return 0;
 		} else {
 			print_usage("Invalid ESC mask, use 1-15");
 			return 0;
@@ -830,7 +876,7 @@ void ModalaiEsc::Run()
 int ModalaiEsc::print_usage(const char *reason)
 {
 	if (reason) {
-		PX4_WARN("%s\n", reason);
+		PX4_ERR("%s\n", reason);
 	}
 
 	PRINT_MODULE_DESCRIPTION(

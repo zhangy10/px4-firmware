@@ -139,7 +139,10 @@ private:
 		uint16_t	rate_meas;
 		uint8_t		led;
 		uint8_t		cmd_counter;
+		int8_t		power;
 		double		voltage;
+		double		current;
+		double		temperature;
 	};
 
 	typedef struct {
