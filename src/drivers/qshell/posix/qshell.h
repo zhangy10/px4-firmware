@@ -67,5 +67,5 @@ private:
 
 	uORB::Subscription		_qshell_retval_sub{ORB_ID(qshell_retval)};
 
-	uint32_t			_current_sequence{0};
+	static uint32_t			_current_sequence;
 };

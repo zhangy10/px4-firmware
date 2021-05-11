@@ -139,8 +139,11 @@ __BEGIN_DECLS
 extern int dspal_main(int argc, char *argv[]);
 __END_DECLS
 
-int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs)
+int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
 {
+    // Make sure SLPI clock is, more or less, aligned with apps clock
+    hrt_set_absolute_time_offset(clock_offset_us);
+
 	// The uORB Manager needs to be initialized first up, otherwise the instance is nullptr.
 	uORB::Manager::initialize();
 	// Register the protobuf muorb with uORBManager.

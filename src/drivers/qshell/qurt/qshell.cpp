@@ -112,6 +112,7 @@ int QShell::main()
 			orb_copy(ORB_ID(qshell_req), sub_qshell_req, &m_qshell_req);
 
 			PX4_INFO("qshell gotten: %s", m_qshell_req.cmd);
+
 			char current_char;
 			std::string arg;
 			std::vector<std::string> appargs;
@@ -138,12 +139,12 @@ int QShell::main()
 
 			if (retval.return_value) {
 				PX4_ERR("Failed to execute command: %s", m_qshell_req.cmd);
-
 			} else {
 				PX4_INFO("Ok executing command: %s", m_qshell_req.cmd);
 			}
 
 			retval.timestamp = hrt_absolute_time();
+            PX4_INFO("Sending qshell retval with timestamp %llu, current timestamp %llu", retval.timestamp, hrt_absolute_time());
 			_qshell_retval_pub.publish(retval);
 
 		} else if (pret == 0) {

@@ -178,7 +178,7 @@ typedef struct {
 
 extern "C" {
 
-	int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs) __EXPORT;
+	int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us) __EXPORT;
 
 	int px4muorb_topic_advertised(const char *name) __EXPORT;
 

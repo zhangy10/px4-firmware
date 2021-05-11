@@ -49,7 +49,9 @@
 
 #include "qshell.h"
 
+// Static variables
 px4::AppState QShell::appState;
+uint32_t QShell::_current_sequence{0};
 
 int QShell::main(std::vector<std::string> argList)
 {
@@ -98,8 +100,8 @@ int QShell::_send_cmd(std::vector<std::string> &argList)
 	qshell_req.strlen = cmd.size();
 	strcpy((char *)qshell_req.cmd, cmd.c_str());
 	qshell_req.request_sequence = _current_sequence;
-
 	qshell_req.timestamp = hrt_absolute_time();
+
 	_qshell_req_pub.publish(qshell_req);
 
 	return 0;
@@ -108,18 +110,18 @@ int QShell::_send_cmd(std::vector<std::string> &argList)
 int QShell::_wait_for_retval()
 {
 	const hrt_abstime time_started_us = hrt_absolute_time();
+	qshell_retval_s retval;
+    memset(&retval, 0, sizeof(qshell_retval_s));
 
 	while (hrt_elapsed_time(&time_started_us) < 3000000) {
-		qshell_retval_s retval;
-
 		if (_qshell_retval_sub.update(&retval)) {
 			if (retval.return_sequence != _current_sequence) {
 				PX4_WARN("Ignoring return value with wrong sequence");
-
 			} else {
 				if (retval.return_value) {
 					PX4_WARN("cmd returned with: %d", retval.return_value);
 				}
+				PX4_INFO("qshell return value timestamp: %lu, local time: %lu", retval.timestamp, hrt_absolute_time());
 
 				return 0;
 			}
