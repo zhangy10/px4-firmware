@@ -9,6 +9,7 @@ adb push ../../../build/modalai_rb5-flight_default/bin/px4-alias.sh /usr/bin
 adb shell chmod a+x /usr/bin/px4-alias.sh
 adb shell mkdir -p /etc/modalai
 adb push mainapp.config /etc/modalai
+adb push full-m0051.config /etc/modalai
 # adb push px4-start.service /etc/systemd/system
 
 adb shell sync

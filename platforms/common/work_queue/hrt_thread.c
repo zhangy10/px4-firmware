@@ -136,7 +136,11 @@ static void hrt_work_process()
 	 */
 
 	/* Default to sleeping for 1 sec */
-	next  = 1000000;
+#ifdef __PX4_QURT
+	next = 1000;
+#else
+	next = 1000000;
+#endif
 
 	hrt_work_lock();
 
@@ -293,4 +297,3 @@ void hrt_work_queue_init(void)
 	signal(SIGCONT, _sighandler);
 #endif
 }
-

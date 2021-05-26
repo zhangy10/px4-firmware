@@ -258,11 +258,11 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
                           id, _esc_chans[id].rate_meas, _esc_chans[id].state,
                           _esc_chans[id].cmd_counter, _esc_chans[id].power,
                           _esc_chans[id].voltage, _esc_chans[id].current, _esc_chans[id].temperature);
-            } else {
-                PX4_INFO("FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f",
-                          id, _esc_chans[id].rate_meas, _esc_chans[id].state,
-                          _esc_chans[id].cmd_counter, _esc_chans[id].power,
-                          _esc_chans[id].voltage);
+            // } else {
+            //     PX4_INFO("FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f",
+            //               id, _esc_chans[id].rate_meas, _esc_chans[id].state,
+            //               _esc_chans[id].cmd_counter, _esc_chans[id].power,
+            //               _esc_chans[id].voltage);
             }
 		} else {
             PX4_ERR("Invalid ESC id %d in feedback packet", id);
