@@ -117,10 +117,12 @@ void param_client_set(param_t param, const void *val) {
 	switch (param_type(param)) {
 	case PARAM_TYPE_INT32:
 		event.int_value = *(int32_t *)val;
+        PX4_INFO("*** %s %d ***", event.parameter_name, event.int_value);
 		break;
 
 	case PARAM_TYPE_FLOAT:
 		event.float_value = *(float *)val;
+        PX4_INFO("*** %s %f ***", event.parameter_name, (double) event.float_value);
 		break;
 
 	default:

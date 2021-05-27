@@ -70,18 +70,38 @@ int RC_ControllerModule::print_status()
 
 int RC_ControllerModule::custom_command(int argc, char *argv[])
 {
-	/*
 	if (!is_running()) {
 		print_usage("not running");
 		return 1;
 	}
 
-	// additional custom commands can be handled like this:
-	if (!strcmp(argv[0], "do-something")) {
-		get_instance()->do_something();
+	if (!strcmp(argv[0], "throttle")) {
+        uint16_t val = atoi(argv[1]);
+		get_instance()->set_throttle(val);
+        PX4_INFO("Setting throttle to %u", val);
 		return 0;
 	}
-	 */
+
+	if (!strcmp(argv[0], "yaw")) {
+        uint16_t val = atoi(argv[1]);
+		get_instance()->set_yaw(val);
+        PX4_INFO("Setting yaw to %u", val);
+		return 0;
+	}
+
+	if (!strcmp(argv[0], "pitch")) {
+        uint16_t val = atoi(argv[1]);
+		get_instance()->set_pitch(val);
+        PX4_INFO("Setting pitch to %u", val);
+		return 0;
+	}
+
+	if (!strcmp(argv[0], "roll")) {
+        uint16_t val = atoi(argv[1]);
+		get_instance()->set_roll(val);
+        PX4_INFO("Setting roll to %u", val);
+		return 0;
+	}
 
 	return print_usage("unknown command");
 }
@@ -170,13 +190,18 @@ void RC_ControllerModule::run()
 
     	rc_data.input_source = input_rc_s::RC_INPUT_SOURCE_QURT;
         rc_data.channel_count = 4;
-    	for (unsigned i = 0; i < rc_data.channel_count; ++i) {
-    		rc_data.values[i] = 1024;
-    	}
+    	// for (unsigned i = 0; i < rc_data.channel_count; ++i) {
+    	// 	rc_data.values[i] = 1024;
+    	// }
+    	rc_data.values[0] = _throttle;
+    	rc_data.values[1] = _yaw;
+    	rc_data.values[2] = _pitch;
+    	rc_data.values[3] = _roll;
+
     	rc_data.timestamp = hrt_absolute_time();
     	rc_data.timestamp_last_signal = rc_data.timestamp;
     	rc_data.rc_ppm_frame_length = 0;
-		rc_data.rssi = 255;
+		rc_data.rssi = 100;
     	rc_data.rc_failsafe = false;
     	rc_data.rc_lost = 0;
     	rc_data.rc_lost_frame_count = 0;

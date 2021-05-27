@@ -236,7 +236,7 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
 		if (len == sizeof(QC_ESC_EXTENDED_FB_RESPONSE)) {
             extended_fb = true;
 		} else if (len != (sizeof(QC_ESC_EXTENDED_FB_RESPONSE) - 4)) {
-            PX4_ERR("Got feedback response with invalid length %d", len);
+            // PX4_ERR("Got feedback response with invalid length %d", len);
 			return -1;
 		}
 
@@ -264,6 +264,10 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
             //               _esc_chans[id].cmd_counter, _esc_chans[id].power,
             //               _esc_chans[id].voltage);
             }
+
+            // if (id == MODALAI_ESC_OUTPUT_CHANNELS - 1) {
+            //     PX4_INFO("FB  %u %u %u %u", _esc_chans[0].rate_meas, _esc_chans[1].rate_meas, _esc_chans[2].rate_meas, _esc_chans[3].rate_meas);
+            // }
 		} else {
             PX4_ERR("Invalid ESC id %d in feedback packet", id);
         }
@@ -720,6 +724,11 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 			}
 		}
 	}
+
+    // static uint32_t msg_counter = 0;
+    // if ((msg_counter++ % 10) == 0) {
+    //     PX4_INFO("ESC %u %u %u %u", outputs[0], outputs[1], outputs[2], outputs[3]);
+    // }
 
 	Command cmd;
 	cmd.len = qc_esc_create_rpm_packet4_fb(_esc_chans[0].rate_req,
