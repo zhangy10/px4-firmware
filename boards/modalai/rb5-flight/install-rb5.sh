@@ -10,6 +10,7 @@ adb shell chmod a+x /usr/bin/px4-alias.sh
 adb shell mkdir -p /etc/modalai
 adb push mainapp.config /etc/modalai
 adb push full-m0051.config /etc/modalai
+adb push test.config /etc/modalai
 # adb push px4-start.service /etc/systemd/system
 
 adb shell sync

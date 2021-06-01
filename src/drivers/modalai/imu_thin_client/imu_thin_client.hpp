@@ -9,7 +9,7 @@ public:
 	IMU_ThinClient();
 
     void start() { _started = true; }
-    void stop() { _started = true; }
+    void stop() { _started = false; }
 
     void update_accel(float x, float y, float z) {
         if (_started) _px4_accel.update(hrt_absolute_time(), x, y, z);
