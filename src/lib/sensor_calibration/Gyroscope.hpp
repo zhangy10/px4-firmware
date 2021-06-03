@@ -60,7 +60,7 @@ public:
 	void PrintStatus();
 
 	void set_calibration_index(uint8_t calibration_index) { _calibration_index = calibration_index; }
-	void set_device_id(uint32_t device_id, bool external = false);
+	void set_device_id(uint32_t device_id, bool external = true);
 	void set_external(bool external = true);
 	bool set_offset(const matrix::Vector3f &offset);
 	void set_rotation(Rotation rotation);

@@ -45,32 +45,32 @@ bool PreFlightCheck::cpuResourceCheck(orb_advert_t *mavlink_log_pub, const bool 
 {
 	bool success = true;
 
-	uORB::SubscriptionData<cpuload_s> cpuload_sub{ORB_ID(cpuload)};
-	cpuload_sub.update();
-
-	float cpuload_percent_max;
-	param_get(param_find("COM_CPU_MAX"), &cpuload_percent_max);
-
-	if (cpuload_percent_max > 0.f) {
-
-		if (hrt_elapsed_time(&cpuload_sub.get().timestamp) > 2_s) {
-			success = false;
-
-			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Fail: No CPU load information");
-			}
-		}
-
-		const float cpuload_percent = cpuload_sub.get().load * 100.f;
-
-		if (cpuload_percent > cpuload_percent_max) {
-			success = false;
-
-			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Fail: CPU load too high: %3.1f%%", (double)cpuload_percent);
-			}
-		}
-	}
+	// uORB::SubscriptionData<cpuload_s> cpuload_sub{ORB_ID(cpuload)};
+	// cpuload_sub.update();
+    //
+	// float cpuload_percent_max;
+	// param_get(param_find("COM_CPU_MAX"), &cpuload_percent_max);
+    //
+	// if (cpuload_percent_max > 0.f) {
+    //
+	// 	if (hrt_elapsed_time(&cpuload_sub.get().timestamp) > 2_s) {
+	// 		success = false;
+    //
+	// 		if (report_fail) {
+	// 			mavlink_log_critical(mavlink_log_pub, "Fail: No CPU load information");
+	// 		}
+	// 	}
+    //
+	// 	const float cpuload_percent = cpuload_sub.get().load * 100.f;
+    //
+	// 	if (cpuload_percent > cpuload_percent_max) {
+	// 		success = false;
+    //
+	// 		if (report_fail) {
+	// 			mavlink_log_critical(mavlink_log_pub, "Fail: CPU load too high: %3.1f%%", (double)cpuload_percent);
+	// 		}
+	// 	}
+	// }
 
 	return success;
 }

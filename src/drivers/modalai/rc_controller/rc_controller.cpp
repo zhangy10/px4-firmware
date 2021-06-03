@@ -174,6 +174,10 @@ RC_ControllerModule *RC_ControllerModule::instantiate(int argc, char *argv[])
 RC_ControllerModule::RC_ControllerModule()
 	: ModuleParams(nullptr)
 {
+    _throttle = 800;
+    _yaw      = 1500;
+    _pitch    = 1500;
+    _roll     = 1500;
 }
 
 void RC_ControllerModule::run()

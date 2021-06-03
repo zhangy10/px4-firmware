@@ -483,6 +483,8 @@ Commander::handle_command(const vehicle_command_s &cmd)
 		return false;
 	}
 
+    PX4_INFO("Handling Commander command %d", cmd.command);
+
 	/* result of the command */
 	unsigned cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
 
@@ -2442,6 +2444,7 @@ Commander::run()
 					if (hrt_elapsed_time(&_status.armed_time) < 500_ms) {
 						arm_disarm(false, true, arm_disarm_reason_t::FAILURE_DETECTOR);
 						mavlink_log_critical(&_mavlink_log_pub, "ESCs did not respond to arm request");
+						PX4_INFO("ESCs did not respond to arm request");
 					}
 				}
 
@@ -2454,6 +2457,7 @@ Commander::run()
 						_armed.lockdown = true;
 						_lockdown_triggered = true;
 						mavlink_log_emergency(&_mavlink_log_pub, "Critical failure detected: lockdown");
+						PX4_INFO("Critical failure detected: lockdown");
 
 					} else if (!_status_flags.circuit_breaker_flight_termination_disabled &&
 						   !_flight_termination_triggered && !_lockdown_triggered) {
@@ -2461,6 +2465,7 @@ Commander::run()
 						_armed.force_failsafe = true;
 						_flight_termination_triggered = true;
 						mavlink_log_emergency(&_mavlink_log_pub, "Critical failure detected: terminate flight");
+						PX4_INFO("Critical failure detected: terminate flight");
 						set_tune_override(tune_control_s::TUNE_ID_PARACHUTE_RELEASE);
 					}
 				}
@@ -2509,6 +2514,8 @@ Commander::run()
 		if (_was_armed != _armed.armed) {
 			_status_changed = true;
 
+            PX4_INFO("Armed state changed. Was %d, now %d", _was_armed, _armed.armed);
+
 			if (_armed.armed) {
 				if (!_land_detector.landed) { // check if takeoff already detected upon arming
 					_have_taken_off_since_arming = true;
@@ -2556,9 +2563,11 @@ Commander::run()
 
 			if (_status.failsafe) {
 				mavlink_log_info(&_mavlink_log_pub, "Failsafe mode activated");
+				PX4_INFO("Failsafe mode activated");
 
 			} else {
 				mavlink_log_info(&_mavlink_log_pub, "Failsafe mode deactivated");
+				PX4_INFO("Failsafe mode deactivated");
 			}
 
 			_failsafe_old = _status.failsafe;

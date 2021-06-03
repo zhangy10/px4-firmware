@@ -225,9 +225,11 @@ transition_result_t arming_state_transition(vehicle_status_s *status, const safe
 
 			if (was_armed && !armed->armed) { // disarm transition
 				status->latest_disarming_reason = (uint8_t)calling_reason;
+                PX4_INFO("Disarming reason %d", status->latest_disarming_reason);
 
 			} else if (!was_armed && armed->armed) { // arm transition
 				status->latest_arming_reason = (uint8_t)calling_reason;
+                PX4_INFO("Arming reason %d", status->latest_arming_reason);
 			}
 
 			if (new_arming_state == vehicle_status_s::ARMING_STATE_ARMED) {

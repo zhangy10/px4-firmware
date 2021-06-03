@@ -82,6 +82,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 				if (!magnetometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 					if (required) {
 						failed = true;
+                        PX4_INFO("Failed magnetometer preflight check");
 					}
 
 					report_fail = false; // only report the first failure
@@ -93,6 +94,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			/* mag consistency checks (need to be performed after the individual checks) */
 			if (!magConsistencyCheck(mavlink_log_pub, status, report_failures)) {
 				failed = true;
+                PX4_INFO("Failed magnetometer consistency preflight check");
 			}
 		}
 	}
@@ -109,6 +111,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			if (!accelerometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
 					failed = true;
+                    PX4_INFO("Failed accelerometer preflight check");
 				}
 
 				report_fail = false; // only report the first failure
@@ -130,6 +133,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			if (!gyroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
 					failed = true;
+                    PX4_INFO("Failed gyroscope preflight check");
 				}
 
 				report_fail = false; // only report the first failure
@@ -156,6 +160,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			if (!baroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
 					baro_fail_reported = true;
+                    PX4_INFO("Failed barometer preflight check");
 				}
 
 				report_fail = false; // only report the first failure
@@ -168,6 +173,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	{
 		if (!imuConsistencyCheck(mavlink_log_pub, status, report_failures)) {
 			failed = true;
+            PX4_INFO("Failed IMU consistency preflight check");
 		}
 	}
 
@@ -192,6 +198,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 				   arming_max_airspeed_allowed)
 		    && !(bool)optional) {
 			failed = true;
+            PX4_INFO("Failed airspeed preflight check");
 		}
 	}
 
@@ -203,6 +210,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			}
 
 			failed = true;
+            PX4_INFO("Failed RC calibration preflight check");
 
 			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_RCRECEIVER, status_flags.rc_signal_found_once, true, false, status);
 			status_flags.rc_calibration_valid = false;
@@ -219,6 +227,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	if (status_flags.condition_power_input_valid && !status_flags.circuit_breaker_engaged_power_check) {
 		if (!powerCheck(mavlink_log_pub, status, report_failures, prearm)) {
 			failed = true;
+            PX4_INFO("Failed system power preflight check");
 		}
 	}
 
@@ -243,10 +252,20 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			ekf_healthy = ekf2Check(mavlink_log_pub, status, false, report_failures) &&
 				      ekf2CheckSensorBias(mavlink_log_pub, report_failures);
 
+            if (! ekf2Check(mavlink_log_pub, status, false, report_failures)) {
+                PX4_INFO("Failed EKF health preflight check");
+            }
+
+            if (! ekf2CheckSensorBias(mavlink_log_pub, report_failures)) {
+                PX4_INFO("Failed EKF sensor bias preflight check");
+            }
+
 			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_AHRS, true, true, ekf_healthy, status);
 
 		} else {
 			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_AHRS, true, false, false, status);
+
+            PX4_INFO("Failed EKF health preflight check while waiting for filter to settle");
 		}
 
 		failed |= !ekf_healthy;
@@ -255,10 +274,17 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	/* ---- Failure Detector ---- */
 	if (!failureDetectorCheck(mavlink_log_pub, status, report_failures, prearm)) {
 		failed = true;
+        PX4_INFO("Failed failure detector preflight check");
 	}
 
 	failed = failed || !manualControlCheck(mavlink_log_pub, report_failures);
+    if (!manualControlCheck(mavlink_log_pub, report_failures)) {
+        PX4_INFO("Failed manual control preflight check");
+    }
 	failed = failed || !cpuResourceCheck(mavlink_log_pub, report_failures);
+    if (!cpuResourceCheck(mavlink_log_pub, report_failures)) {
+        PX4_INFO("Failed CPU resource check preflight check");
+    }
 
 	/* Report status */
 	return !failed;

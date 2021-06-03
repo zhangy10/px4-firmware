@@ -76,6 +76,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	const estimator_status_s &status = status_sub.get();
 
 	if (status.timestamp == 0) {
+        PX4_INFO("Preflight fail EKF couldn't get status");
 		success = false;
 		goto out;
 	}
@@ -88,15 +89,19 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 		if (report_fail) {
 			if (status.pre_flt_fail_innov_heading) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: heading estimate not stable");
+				PX4_INFO("Preflight Fail: heading estimate not stable");
 
 			} else if (status.pre_flt_fail_innov_vel_horiz) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: horizontal velocity estimate not stable");
+				PX4_INFO("Preflight Fail: horizontal velocity estimate not stable");
 
 			} else if (status.pre_flt_fail_innov_vel_vert) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: vertical velocity estimate not stable");
+				PX4_INFO("Preflight Fail: vertical velocity estimate not stable");
 
 			} else if (status.pre_flt_fail_innov_height) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: height estimate not stable");
+				PX4_INFO("Preflight Fail: height estimate not stable");
 			}
 		}
 
@@ -107,6 +112,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	if ((mag_strength_check_enabled == 1) && status.pre_flt_fail_mag_field_disturbed) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: strong magnetic interference detected");
+			PX4_INFO("Preflight Fail: strong magnetic interference detected");
 		}
 
 		success = false;
@@ -117,6 +123,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	if (status.hgt_test_ratio > hgt_test_ratio_limit) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Height estimate error");
+			PX4_INFO("Preflight Fail: Height estimate error");
 		}
 
 		success = false;
@@ -127,6 +134,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	if (status.vel_test_ratio > vel_test_ratio_limit) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Velocity estimate error");
+			PX4_INFO("Preflight Fail: Velocity estimate error");
 		}
 
 		success = false;
@@ -137,6 +145,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	if (status.pos_test_ratio > pos_test_ratio_limit) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Position estimate error");
+			PX4_INFO("Preflight Fail: Position estimate error");
 		}
 
 		success = false;
@@ -147,6 +156,7 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 	if (status.mag_test_ratio > mag_test_ratio_limit) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Yaw estimate error");
+			PX4_INFO("Preflight Fail: Yaw estimate error");
 		}
 
 		success = false;
@@ -167,43 +177,55 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 
 				if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_GPS_FIX)) {
 					message = "Preflight%s: GPS fix too low";
+					PX4_INFO("Preflight: GPS fix too low");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MIN_SAT_COUNT)) {
 					message = "Preflight%s: not enough GPS Satellites";
+					PX4_INFO("Preflight: not enough GPS Satellites");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MIN_PDOP)) {
 					message = "Preflight%s: GPS PDOP too low";
+					PX4_INFO("Preflight: GPS PDOP too low");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_ERR)) {
 					message = "Preflight%s: GPS Horizontal Pos Error too high";
+					PX4_INFO("Preflight: GPS Horizontal Pos Error too high");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_ERR)) {
 					message = "Preflight%s: GPS Vertical Pos Error too high";
+					PX4_INFO("Preflight: GPS Vertical Pos Error too high");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_SPD_ERR)) {
 					message = "Preflight%s: GPS Speed Accuracy too low";
+					PX4_INFO("Preflight: GPS Speed Accuracy too low");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_DRIFT)) {
 					message = "Preflight%s: GPS Horizontal Pos Drift too high";
+					PX4_INFO("Preflight: GPS Horizontal Pos Drift too high");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_DRIFT)) {
 					message = "Preflight%s: GPS Vertical Pos Drift too high";
+					PX4_INFO("Preflight: GPS Vertical Pos Drift too high");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_SPD_ERR)) {
 					message = "Preflight%s: GPS Hor Speed Drift too high";
+					PX4_INFO("Preflight: GPS Hor Speed Drift too high");
 
 				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_SPD_ERR)) {
 					message = "Preflight%s: GPS Vert Speed Drift too high";
+					PX4_INFO("Preflight: GPS Vert Speed Drift too high");
 
 				} else {
 					if (!ekf_gps_fusion) {
 						// Likely cause unknown
 						message = "Preflight%s: Estimator not using GPS";
+						PX4_INFO("Preflight: Estimator not using GPS");
 						gps_present = false;
 
 					} else {
 						// if we land here there was a new flag added and the code not updated. Show a generic message.
 						message = "Preflight%s: Poor GPS Quality";
+						PX4_INFO("Preflight: Poor GPS Quality");
 					}
 				}
 

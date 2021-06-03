@@ -60,6 +60,7 @@ bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_st
 			if (report_fail) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Compass %u", instance);
 			}
+			PX4_INFO("Preflight Fail: no valid data from Compass");
 		}
 
 		device_id = magnetometer.get().device_id;
@@ -70,12 +71,14 @@ bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_st
 			if (report_fail) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Compass %u uncalibrated", instance);
 			}
+			PX4_INFO("Preflight Fail: Compass uncalibrated");
 		}
 
 	} else {
 		if (!optional && report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Compass Sensor %u missing", instance);
 		}
+        if (instance == 0) PX4_INFO("Preflight Fail: Compass Sensor missing");
 	}
 
 	const bool success = calibration_valid && valid;

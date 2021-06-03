@@ -66,6 +66,26 @@ bool PreFlightCheck::failureDetectorCheck(orb_advert_t *mavlink_log_pub, const v
 			}
 		}
 
+		if (status.failure_detector_status & vehicle_status_s::FAILURE_ROLL) {
+			PX4_INFO("Preflight Fail: Roll failure detected");
+		}
+
+		if (status.failure_detector_status & vehicle_status_s::FAILURE_PITCH) {
+			PX4_INFO("Preflight Fail: Pitch failure detected");
+		}
+
+		if (status.failure_detector_status & vehicle_status_s::FAILURE_ALT) {
+			PX4_INFO("Preflight Fail: Altitude failure detected");
+		}
+
+		if (status.failure_detector_status & vehicle_status_s::FAILURE_EXT) {
+			PX4_INFO("Preflight Fail: Parachute failure detected");
+		}
+
+		if (status.failure_detector_status & vehicle_status_s::FAILURE_ARM_ESC) {
+			PX4_INFO("Preflight Fail: ESC failure detected");
+		}
+
 		return false;
 	}
 
