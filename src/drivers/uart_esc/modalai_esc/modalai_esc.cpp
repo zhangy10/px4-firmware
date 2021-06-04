@@ -254,10 +254,10 @@ int ModalaiEsc::parseResponse(uint8_t *buf, uint8_t len)
             if (extended_fb) {
 				_esc_chans[id].current = fb.current * 0.008;
 				_esc_chans[id].temperature = fb.temperature * 0.01;
-                PX4_INFO("EXT FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f, current %f, temperature %f",
-                          id, _esc_chans[id].rate_meas, _esc_chans[id].state,
-                          _esc_chans[id].cmd_counter, _esc_chans[id].power,
-                          _esc_chans[id].voltage, _esc_chans[id].current, _esc_chans[id].temperature);
+                // PX4_INFO("EXT FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f, current %f, temperature %f",
+                //           id, _esc_chans[id].rate_meas, _esc_chans[id].state,
+                //           _esc_chans[id].cmd_counter, _esc_chans[id].power,
+                //           _esc_chans[id].voltage, _esc_chans[id].current, _esc_chans[id].temperature);
             // } else {
             //     PX4_INFO("FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f",
             //               id, _esc_chans[id].rate_meas, _esc_chans[id].state,
