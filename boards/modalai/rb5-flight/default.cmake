@@ -49,50 +49,50 @@ px4_add_board(
 	TOOLCHAIN aarch64-linux-gnu
 	DRIVERS
 		#barometer # all available barometer drivers
-		batt_smbus
-		camera_trigger
-		differential_pressure # all available differential pressure drivers
-		distance_sensor # all available distance sensor drivers
-		gps
+		#batt_smbus
+		#camera_trigger
+		#differential_pressure # all available differential pressure drivers
+		#distance_sensor # all available distance sensor drivers
+		#gps
 		#imu # all available imu drivers
 		#lights/rgbled
 		#magnetometer # all available magnetometer drivers
-		pwm_out_sim
+		#pwm_out_sim
 		qshell/posix
-		rc_input
+		#rc_input
         modalai/rc_controller
-        modalai/uart_esc_driver
+        #modalai/uart_esc_driver
 		#telemetry # all available telemetry drivers
 	MODULES
-		airspeed_selector
-		attitude_estimator_q
-		camera_feedback
-		commander
+		#airspeed_selector
+		#attitude_estimator_q
+		#camera_feedback
+		#commander
 		dataman
-		ekf2
-		events
-		fw_att_control
-		fw_pos_control_l1
-		land_detector
-		landing_target_estimator
+		#ekf2
+		#events
+		#fw_att_control
+		#fw_pos_control_l1
+		#land_detector
+		#landing_target_estimator
 		#load_mon
-		local_position_estimator
+		#local_position_estimator
 		logger
 		mavlink
-		mc_att_control
-		mc_pos_control
-		mc_rate_control
+		#mc_att_control
+		#mc_pos_control
+		#mc_rate_control
 		#micrortps_bridge
 		muorb/apps
 		#muorb/test
 		navigator
 		# rc_update
-		rover_pos_control
-		sensors
+		#rover_pos_control
+		#sensors
 		#sih
 		simulator
-		vmount
-		vtol_att_control
+		#vmount
+		#vtol_att_control
 	SYSTEMCMDS
 		#bl_update
 		#config
