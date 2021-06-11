@@ -3725,7 +3725,11 @@ void Commander::data_link_check()
 					}
 				}
 
+#ifdef __PX4_QURT // TODO: Why is timestamp misaligned?
+				_datalink_last_heartbeat_gcs = hrt_absolute_time();
+#else
 				_datalink_last_heartbeat_gcs = telemetry.timestamp;
+#endif
 			}
 
 			if (telemetry.heartbeat_type_onboard_controller) {
