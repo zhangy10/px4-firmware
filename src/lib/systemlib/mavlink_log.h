@@ -118,5 +118,5 @@ __EXPORT void mavlink_vasprintf(int severity, orb_advert_t *mavlink_log_pub, con
 #define mavlink_log_critical(_pub, _text, ...) \
 	do { \
 		mavlink_vasprintf(_MSG_PRIO_CRITICAL, _pub, _text, ##__VA_ARGS__); \
-		PX4_WARN(_text, ##__VA_ARGS__); \
+		PX4_ERR(_text, ##__VA_ARGS__); \
 	} while(0);

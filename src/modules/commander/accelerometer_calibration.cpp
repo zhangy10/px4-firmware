@@ -168,25 +168,36 @@ static calibrate_return read_accelerometer_avg(float (&accel_avg)[MAX_ACCEL_SENS
 
 	unsigned errcount = 0;
 
+    PX4_INFO("Entering read_accelerometer_avg. Num samples %u", samples_num);
+
 	// sensor thermal corrections
 	uORB::Subscription sensor_correction_sub{ORB_ID(sensor_correction)};
 	sensor_correction_s sensor_correction{};
 	sensor_correction_sub.copy(&sensor_correction);
 
-	uORB::SubscriptionBlocking<sensor_accel_s> accel_sub[MAX_ACCEL_SENS] {
-		{ORB_ID(sensor_accel), 0, 0},
-		{ORB_ID(sensor_accel), 0, 1},
-		{ORB_ID(sensor_accel), 0, 2},
-		{ORB_ID(sensor_accel), 0, 3},
-	};
+	// uORB::SubscriptionBlocking<sensor_accel_s> accel_sub[MAX_ACCEL_SENS] {
+	// 	{ORB_ID(sensor_accel), 0, 0},
+	// 	{ORB_ID(sensor_accel), 0, 1},
+	// 	{ORB_ID(sensor_accel), 0, 2},
+	// 	{ORB_ID(sensor_accel), 0, 3},
+	// };
+	// uORB::Subscription accel_sub[MAX_ACCEL_SENS] {
+	// 	{ORB_ID(sensor_accel), 0},
+	// 	{ORB_ID(sensor_accel), 1},
+	// 	{ORB_ID(sensor_accel), 2},
+	// 	{ORB_ID(sensor_accel), 3},
+	// };
+	uORB::Subscription accel_sub{ORB_ID(sensor_accel)};
 
 	/* use the first sensor to pace the readout, but do per-sensor counts */
 	while (counts[0] < samples_num) {
-		if (accel_sub[0].updatedBlocking(100000)) {
-			for (unsigned accel_index = 0; accel_index < MAX_ACCEL_SENS; accel_index++) {
+		if (accel_sub.updated()) {
+			for (unsigned accel_index = 0; accel_index < 1; accel_index++) {
 				sensor_accel_s arp;
 
-				while (accel_sub[accel_index].update(&arp)) {
+				//while (accel_sub[accel_index].update(&arp)) {
+                {
+				    accel_sub.update(&arp);
 					// fetch optional thermal offset corrections in sensor/board frame
 					Vector3f offset{0, 0, 0};
 					sensor_correction_sub.update(&sensor_correction);
@@ -214,15 +225,20 @@ static calibrate_return read_accelerometer_avg(float (&accel_avg)[MAX_ACCEL_SENS
 
 					accel_sum[accel_index] += Vector3f{arp.x, arp.y, arp.z} - offset;
 					counts[accel_index]++;
+
+                    if ((counts[accel_index] % 100) == 0) {
+                        PX4_INFO("Accelerometer data %f %f %f %u", (double) arp.x, (double) arp.y, (double) arp.z, counts[accel_index]);
+                    }
 				}
 			}
 
 		} else {
 			errcount++;
+            px4_usleep(2000);
 			continue;
 		}
 
-		if (errcount > samples_num / 10) {
+		if (errcount > samples_num * 10) {
 			return calibrate_return_error;
 		}
 	}

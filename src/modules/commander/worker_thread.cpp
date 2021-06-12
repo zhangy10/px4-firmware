@@ -44,6 +44,8 @@
 #include <px4_platform_common/log.h>
 #include <parameters/param.h>
 
+WorkerThread* WorkerThread::instance = nullptr;
+
 WorkerThread::~WorkerThread()
 {
 	if (_state.load() == (int)State::Running) {
@@ -64,38 +66,47 @@ void WorkerThread::startTask(Request request)
 
 	_request = request;
 
+    instance = this;
+
+    int ret = px4_task_spawn_cmd("CmdWorkerThread",
+                                  SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT,
+                                  3250, threadEntryTrampoline, NULL);
+
 	/* initialize low priority thread */
 	pthread_attr_t low_prio_attr;
+    PX4_INFO("WorkerThread::startTask %p %p", pthread_attr_init, &low_prio_attr);
 	pthread_attr_init(&low_prio_attr);
-	pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3304));
+	// pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3304));
 
-#ifndef __PX4_QURT
-	// This is not supported by QURT (yet).
-	struct sched_param param;
-	pthread_attr_getschedparam(&low_prio_attr, &param);
+// #ifndef __PX4_QURT
+// 	// This is not supported by QURT (yet).
+// 	struct sched_param param;
+// 	pthread_attr_getschedparam(&low_prio_attr, &param);
+//
+// 	/* low priority */
+// 	param.sched_priority = SCHED_PRIORITY_DEFAULT - 50;
+// 	pthread_attr_setschedparam(&low_prio_attr, &param);
+// #endif
+	// int ret = pthread_create(&_thread_handle, &low_prio_attr, &threadEntryTrampoline, this);
+	// int ret = pthread_create(&_thread_handle, NULL, &threadEntryTrampoline, this);
+	// int ret = 1;
+	// pthread_attr_destroy(&low_prio_attr);
 
-	/* low priority */
-	param.sched_priority = SCHED_PRIORITY_DEFAULT - 50;
-	pthread_attr_setschedparam(&low_prio_attr, &param);
-#endif
-	int ret = pthread_create(&_thread_handle, &low_prio_attr, &threadEntryTrampoline, this);
-	pthread_attr_destroy(&low_prio_attr);
-
-	if (ret == 0) {
+	if (ret >= 0) {
 		_state.store((int)State::Running);
-
+        _thread_handle = 1;
 	} else {
 		PX4_ERR("Failed to start thread (%i)", ret);
 		_state.store((int)State::Finished);
 		_ret_value = ret;
+        _thread_handle = -1;
 	}
 }
 
-void *WorkerThread::threadEntryTrampoline(void *arg)
+int WorkerThread::threadEntryTrampoline(int argc, char *argv[])
 {
-	WorkerThread *worker_thread = (WorkerThread *)arg;
-	worker_thread->threadEntry();
-	return nullptr;
+	WorkerThread::instance->threadEntry();
+	return 0;
 }
 
 void WorkerThread::threadEntry()

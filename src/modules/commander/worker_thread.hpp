@@ -75,6 +75,8 @@ public:
 	bool hasResult() const { return _state.load() == (int)State::Finished; }
 	int getResultAndReset() { _state.store((int)State::Idle); return _ret_value; }
 
+    static WorkerThread* instance;
+
 private:
 	enum class State {
 		Idle,
@@ -82,7 +84,7 @@ private:
 		Finished
 	};
 
-	static void *threadEntryTrampoline(void *arg);
+    static int threadEntryTrampoline(int argc, char *argv[]);
 	void threadEntry();
 
 	px4::atomic_int _state{(int)State::Idle};
@@ -97,4 +99,3 @@ private:
 	float _longitude;
 
 };
-

@@ -82,7 +82,8 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 	bool had_motion = true;
 	int num_retries = 0;
 
-	uORB::SubscriptionBlocking<vehicle_attitude_s> att_sub{ORB_ID(vehicle_attitude)};
+	// uORB::SubscriptionBlocking<vehicle_attitude_s> att_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription att_sub{ORB_ID(vehicle_attitude)};
 
 	while (had_motion && num_retries++ < 50) {
 		Vector2f min_angles{100.f, 100.f};
@@ -98,12 +99,22 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 
 			vehicle_attitude_s att{};
 
-			if (!att_sub.updateBlocking(att, 100000)) {
-				// attitude estimator is not running
-				calibration_log_critical(mavlink_log_pub, "attitude estimator not running - check system boot");
-				calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
-				goto out;
-			}
+			// if (!att_sub.updateBlocking(att, 100000)) {
+			// if (!att_sub.update(&att)) {
+			// 	// attitude estimator is not running
+			// 	calibration_log_critical(mavlink_log_pub, "attitude estimator not running - check system boot");
+			// 	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
+			// 	goto out;
+			// }
+
+            if (att_sub.updated()) {
+                att_sub.update(&att);
+            } else {
+                px4_usleep(1000);
+                continue;
+            }
+
+
 
 			int progress = 100 * hrt_elapsed_time(&start) / calibration_duration;
 
@@ -171,7 +182,7 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 		success = true;
 	}
 
-out:
+// out:
 
 	if (success) {
 		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "level");
