@@ -1,9 +1,12 @@
 
 # Priorities
 
+First flight video
+
 Give PX4 overview in SW meeting 6/14
 
 Debug SLPI "going silent" after some period of time
+- Create a heartbeat task in slpi_proc to send out a periodic hello world message
 
 Parameters not stored in local file, have to be in config file at startup
 

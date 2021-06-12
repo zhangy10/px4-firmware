@@ -147,17 +147,6 @@
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
 
-## Partners
-
-### Auterion
-* Agree on initial release to use. Tentatively 8.1
-* Ship HW
-* Provide Debian package with PX4
-
-### Qualcomm
-
-### DIU
-
 ## Other
 
 * Update to latest PX4 master
