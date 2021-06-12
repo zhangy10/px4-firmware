@@ -1,9 +1,9 @@
 
-## Needed environment variables
+# User Manual
 
-export ARM_CROSS_GCC_ROOT=/home/ekatzfey/Qualcomm/Hexagon_SDK/4.1.0.4/4.1.0.4/tools/linaro64
-export HEXAGON_ARM_SYSROOT=$ARM_CROSS_GCC_ROOT/aarch64-linux-gnu/libc
-export HEXAGON_TOOLS_ROOT=$DEFAULT_HEXAGON_TOOLS_ROOT/Tools
+## SDK
+
+The SDK has been tarred and placed in the bucket gs://qrb5165-hexagon-sdk
 
 ## ARM tools
 
@@ -12,6 +12,12 @@ http://releases.linaro.org/archive/14.11/components/toolchain/binaries/aarch64-l
 Use this one instead:
 https://releases.linaro.org/components/toolchain/binaries/5.1-2015.08/aarch64-linux-gnu/gcc-linaro-5.1-2015.08-x86_64_aarch64-linux-gnu.tar.xz
 TODO: Try a newer one, like https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
+
+## Environment variables
+
+export ARM_CROSS_GCC_ROOT=/home/ekatzfey/Qualcomm/Hexagon_SDK/4.1.0.4/4.1.0.4/tools/linaro64
+export HEXAGON_ARM_SYSROOT=$ARM_CROSS_GCC_ROOT/aarch64-linux-gnu/libc
+export HEXAGON_TOOLS_ROOT=$DEFAULT_HEXAGON_TOOLS_ROOT/Tools
 
 ## Other
 
@@ -47,8 +53,9 @@ Default log directory is /home/linaro/log/
 ```bash
 px4 -s /etc/modalai/mainapp.config
 ```
-## SSH Notes
-* echo  "PermitRootLogin yes"  >> /etc/ssh/sshd_config
+
+## SSH
+* echo  "PermitRootLogin yes" >> /etc/ssh/sshd_config
 * /etc/init.d/ssh restart
 * ssh -o IdentitiesOnly=yes root@192.168.0.4
 * oelinux123

@@ -18,7 +18,7 @@ Logging bringup
 
 HIL bringup
 
-Consolidate / organize documentation into a set of markdowns in the repository
+Documentation
 
 Create a debian package to load everything onto target
 
@@ -30,4 +30,4 @@ Fix pthread issues in calibration procedures:
 qshell_retval sequence number mismatch and subsequent timeout
 
 Figure out how to call HAP_power_request from px4
-- Filed a case on 6/10
+- Filed a case with Qualcomm on 6/10

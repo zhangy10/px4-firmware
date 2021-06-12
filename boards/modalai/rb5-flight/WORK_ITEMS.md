@@ -14,7 +14,6 @@
    * ERROR [parameters] failed to open param file: /home/linaro/eeprom/parameters
    * ERROR [parameters] param auto save failed (-1)
 * Full error handling
-* Testing! Include Mavlink tests
 * Problems reported (ask Rich) pushing lots of parameters from QGC
 * Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
 
@@ -28,10 +27,8 @@
    * Cannot start thread a second time when using px4_task_spawn_cmd
 * Note: Can trigger calibration with ‘qshell commander calibrate’ command
 
-### HIL
-* Bringup
-
 ### Logging
+* Bringup
 * Determine best place for log file on server side (e.g. SD card)
 
 ## Drivers
@@ -43,7 +40,7 @@
 * Implement on apps side
    * Need UART. Use USB / FTDI if not available
 
-### MAG
+### Magnetometer
 * Why is it not running reliably every ~10ms???
    * pthread_kill doesn’t work on SLPI
    * Changed loop rate in hrt_thread to 1ms for QURT
@@ -69,7 +66,7 @@
 ### Fake RC
 * When moved to SLPI caused uorb issue and qshell timeouts
 
-### UART ESC
+### ModalAI UART ESC
 * Enable test motor command from QGC (Need newer QGC)
 * Allow leds to be set with led command
 * Test tones
@@ -78,6 +75,10 @@
 * Add voltage / current reporting as a configurable item. That would replace reporting from the APM and free up an I2C port. But, APM also reports companion computer voltage / current which is not available at ESC.
 * Separate packet to request feedback without sending motor controls?
 * Separate out the LED so that it doesn’t have to be sent with motor commands?
+
+### APM
+* May not be possible on M0051. Vinny provided a cable to hack it?
+* Perhaps just wait until M0052 (Expected early July)
 
 ### SYSTEM TIME (drv_hrt):
 * Does the slpi clock offset need to be updated periodically?
@@ -119,8 +120,8 @@
 
 ## Issues
 
+### Software
 * SLPI flight controller stops responding
-* Sometimes the debug board USB hub doesn’t show up
 * telemetry_status GCS heartbeat timestamp in Commander.cpp is ahead of current time? line 3728
 * ERROR [mavlink] vehicle_command lost, generation 0 -> 2
 * PX4 application has to link against libsee_sensor.so and all of its dependencies!
@@ -134,7 +135,6 @@
    * Set timeout to 5 seconds in msg/telemetry_status.msg
    * Root cause: This is due to a heartbeat timestamp sync issue. Not a networking problem at all.
 * Cannot vi /data/misc/wifi/wpa_supplicant.conf???
-* ADB flaky on M0051 with old APM. Get a root cause.
 * Cannot flash system image from adb sometimes on M0051 (Seems to work okay with perf build?)
 * “groups” error when launching bash shell
 * Strange wlan ip address configuration:
@@ -145,9 +145,15 @@
    * ERROR [mavlink] DM_KEY_MISSION_STATE lock failed
    * ERROR [mavlink] offboard mission init failed (-1)
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
-* SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
+* Why does apps side seg fault when too many PX4_INFO are sent out?
+* Calling shutdown from shell causes crash (It only stops apps side, not slpi)
+* Can only run once. Then needs a power cycle. Can it be made to run multiple times?
 
-## Other
+### Hardware
+* ADB flaky on M0051 with old APM. Get a root cause.
+* Sometimes the debug board USB hub doesn’t show up
+
+## Miscellaneous
 
 * Update to latest PX4 master
    * Then start upstreaming the code
@@ -155,26 +161,21 @@
    * Also idl, fastrpc, shmem, stubs, etc.
 * Clean up the build scripts
 * Move to QRB5165 release 9.1
-* APM (voxlpm) driver integration
-   * May not be possible on M0051. Wait until M0052.
 * Clean up header file includes in all source files
 * Create a debian package to load everything onto target
-* Get HIL working
 * Figure out how to better control log messages (DEBUG vs. INFO, etc.)
 * Need tcpdump on target
 * Clean up the code
    * Run astyle to properly format code
    * Correct copyright notices
 * Alternatives to mini-dm? Logcat?
-* CPU profiling on DSP?
+* CPU profiling on DSP
 * A better way to select high volume debug messages by category
 * When using client API to access i2c, spi we need to enable the power rails
    * Maybe not. Only for external device if hooked up that way?
 * Tie fake function calls (stubs) (e.g. HAP_power_request) back into SLPI process
-* Why does apps side seg fault when too many PX4_INFO are sent out?
 * Does adb reboot cause slpi reboot or not?
-* Can only run once. Then needs a power cycle. Can it be made to run multiple times?
-* Calling shutdown from shell causes crash (It only stops apps side, not slpi)
+* SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
 
 ### Preflight arm fails
 * Compass device id 73225 (CAL_MAG0_ID) mismatch
@@ -189,3 +190,11 @@
 * RC_STICK reason: arm / disarm with sticks down / center
    * Normal range is 800 to 2200. 1500 is center.
 * msg/telemetry_status.msg Changed heartbeat timeout to 5 seconds
+
+## Testing
+
+### HIL
+* Bringup
+
+### Stability over time
+* Fly on a tether?
