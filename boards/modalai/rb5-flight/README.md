@@ -11,6 +11,7 @@ The recommended toolchain doesn't support enough c++ for px4:
 http://releases.linaro.org/archive/14.11/components/toolchain/binaries/aarch64-linux-gnu/gcc-linaro-4.9-2014.11-x86_64_aarch64-linux-gnu.tar.xz
 Use this one instead:
 https://releases.linaro.org/components/toolchain/binaries/5.1-2015.08/aarch64-linux-gnu/gcc-linaro-5.1-2015.08-x86_64_aarch64-linux-gnu.tar.xz
+TODO: Try a newer one, like https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
 
 ## Other
 
@@ -46,3 +47,8 @@ Default log directory is /home/linaro/log/
 ```bash
 px4 -s /etc/modalai/mainapp.config
 ```
+## SSH Notes
+* echo  "PermitRootLogin yes"  >> /etc/ssh/sshd_config
+* /etc/init.d/ssh restart
+* ssh -o IdentitiesOnly=yes root@192.168.0.4
+* oelinux123
