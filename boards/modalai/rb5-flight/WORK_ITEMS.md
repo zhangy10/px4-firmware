@@ -1,5 +1,4 @@
-# Work items
-:construction:
+# Work items :construction:
 
 ## Modules
 
