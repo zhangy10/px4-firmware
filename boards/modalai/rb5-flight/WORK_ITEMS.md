@@ -80,7 +80,7 @@
 * May not be possible on M0051. Vinny provided a cable to hack it?
 * Perhaps just wait until M0052 (Expected early July)
 
-### SYSTEM TIME (drv_hrt):
+### System time (drv_hrt):
 * Does the slpi clock offset need to be updated periodically?
 * Move dsp offset from hrt_absolute time to px4_clock_gettime?
 
@@ -157,6 +157,7 @@
 
 * Update to latest PX4 master
    * Then start upstreaming the code
+* PX4 Autostart service
 * Remove as much dspal stuff as possible
    * Also idl, fastrpc, shmem, stubs, etc.
 * Clean up the build scripts
