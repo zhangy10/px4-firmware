@@ -8,24 +8,17 @@
    * You can listen to slpi uorb topics from apps side. Need to use “-n 1”.
 * Improve “uorb top” on Qurt
 * Remove topic_unadvertised from the IChannel interface
+* Is there an advertise loop if the topic is local and remote?
 
 ### Parameters
-* Startup errors:
-   * ERROR [parameters] failed to open param file: /home/linaro/eeprom/parameters
-   * ERROR [parameters] param auto save failed (-1)
 * Full error handling
 * Problems reported (ask Rich) pushing lots of parameters from QGC
 * Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
 
 ### Calibration
-* Fix calibration procedures from QGC
-   * Why doesn’t it start the graphics of orientations?
-   * Why doesn’t it signal progress and completion status?
 * Fix code problems
    * Fix pthread issues in commander/worker_thread.*
    * Fix SubscriptionBlocking issues in the calibration routines
-   * Cannot start thread a second time when using px4_task_spawn_cmd
-* Note: Can trigger calibration with ‘qshell commander calibrate’ command
 
 ### Logging
 * Bringup
@@ -44,9 +37,6 @@
 * Why is it not running reliably every ~10ms???
    * pthread_kill doesn’t work on SLPI
    * Changed loop rate in hrt_thread to 1ms for QURT
-* Still get some MAG timeouts
-* Occasional: Error: sns_scp_simple_rw failed
-   * Could just need a better cable
 * Activate temperature compensation in hmc5883 driver?
 * Move to the desired magnetometer, away from 3DR unit
 
@@ -154,6 +144,7 @@
 ### Hardware
 * ADB flaky on M0051 with old APM. Get a root cause.
 * Sometimes the debug board USB hub doesn’t show up
+* Always a different MAC ID on WiFi so always get different IP
 
 ## Miscellaneous
 
@@ -174,8 +165,6 @@
 * Alternatives to mini-dm? Logcat?
 * CPU profiling on DSP
 * A better way to select high volume debug messages by category
-* When using client API to access i2c, spi we need to enable the power rails
-   * Maybe not. Only for external device if hooked up that way?
 * Tie fake function calls (stubs) (e.g. HAP_power_request) back into SLPI process
 * Does adb reboot cause slpi reboot or not?
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
@@ -183,8 +172,6 @@
 ### Preflight arm fails
 * Compass device id 73225 (CAL_MAG0_ID) mismatch
    * How is that device id determined and does it need to be in config file?
-* vehicle_status_s::FAILURE_ROLL
-   * Needed GYRO / ACC ROT 8 (rotation 180) but was stuck on internal
 * ekf2Check.cpp 288 return true ekf2CheckSensorBias (accel bias)
    * Set EKF2_ABL_LIM to 0.8 to get around it for now...
 * cpuResourceCheck.cpp return true

@@ -718,8 +718,13 @@ param_control_autosave(bool enable)
 #endif
 }
 
+#if defined(PARAM_SERVER) || defined(PARAM_CLIENT)
 static int
 param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_changes, bool remote_update = true)
+#else
+static int
+param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_changes)
+#endif
 {
 	int result = -1;
 	bool params_changed = false;
@@ -855,11 +860,13 @@ param_set_no_notification(param_t param, const void *val)
 	return param_set_internal(param, val, false, false);
 }
 
+#if defined(PARAM_SERVER) || defined(PARAM_CLIENT)
 int
 param_set_no_remote_update(param_t param, const void *val, bool notify)
 {
 	return param_set_internal(param, val, false, notify, false);
 }
+#endif
 
 bool
 param_used(param_t param)
@@ -1104,7 +1111,10 @@ int param_save_default()
 	}
 
 	close(fd);
+
+#if defined(PARAM_SERVER)
     syncfs(fd);
+#endif
 
 	return res;
 #endif
