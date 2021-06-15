@@ -148,6 +148,7 @@
 * Why does apps side seg fault when too many PX4_INFO are sent out?
 * Calling shutdown from shell causes crash (It only stops apps side, not slpi)
 * Can only run once. Then needs a power cycle. Can it be made to run multiple times?
+* Cannot start mavlink shell from QGC. Get this error: ERROR [mavlink] Failed to start shell (-1)
 
 ### Hardware
 * ADB flaky on M0051 with old APM. Get a root cause.

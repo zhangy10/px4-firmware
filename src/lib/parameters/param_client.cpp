@@ -109,7 +109,7 @@ void param_client_set(param_t param, const void *val) {
     PX4_INFO("Param changed in client");
 
     // If this is the parameter client, make sure that the server is updated
-    bool send_event = false;
+    bool send_event = true;
     struct parameter_server_set_value_s event = {};
 	event.timestamp = hrt_absolute_time();
 	strncpy(event.parameter_name, param_name(param), 16);

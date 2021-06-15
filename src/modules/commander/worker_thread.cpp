@@ -44,8 +44,6 @@
 #include <px4_platform_common/log.h>
 #include <parameters/param.h>
 
-WorkerThread* WorkerThread::instance = nullptr;
-
 WorkerThread::~WorkerThread()
 {
 	if (_state.load() == (int)State::Running) {
@@ -66,47 +64,48 @@ void WorkerThread::startTask(Request request)
 
 	_request = request;
 
-    instance = this;
-
-    int ret = px4_task_spawn_cmd("CmdWorkerThread",
-                                  SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT,
-                                  3250, threadEntryTrampoline, NULL);
-
+#ifndef __PX4_QURT
 	/* initialize low priority thread */
 	pthread_attr_t low_prio_attr;
-    PX4_INFO("WorkerThread::startTask %p %p", pthread_attr_init, &low_prio_attr);
 	pthread_attr_init(&low_prio_attr);
-	// pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3304));
+	pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3304));
 
-// #ifndef __PX4_QURT
-// 	// This is not supported by QURT (yet).
-// 	struct sched_param param;
-// 	pthread_attr_getschedparam(&low_prio_attr, &param);
-//
-// 	/* low priority */
-// 	param.sched_priority = SCHED_PRIORITY_DEFAULT - 50;
-// 	pthread_attr_setschedparam(&low_prio_attr, &param);
-// #endif
-	// int ret = pthread_create(&_thread_handle, &low_prio_attr, &threadEntryTrampoline, this);
-	// int ret = pthread_create(&_thread_handle, NULL, &threadEntryTrampoline, this);
-	// int ret = 1;
-	// pthread_attr_destroy(&low_prio_attr);
+	// This is not supported by QURT (yet).
+	struct sched_param param;
+	pthread_attr_getschedparam(&low_prio_attr, &param);
 
-	if (ret >= 0) {
+	/* low priority */
+	param.sched_priority = SCHED_PRIORITY_DEFAULT - 50;
+	pthread_attr_setschedparam(&low_prio_attr, &param);
+
+	int ret = pthread_create(&_thread_handle, &low_prio_attr, &threadEntryTrampoline, this);
+	pthread_attr_destroy(&low_prio_attr);
+#else
+    // TODO: Fix this!!!
+    // Major hack! Qurt crashes with the pthread calls in this function so
+    // instead of spawning a new thread and doing the work there it is just done
+    // within the commander thread. This means that the task cannot be cancelled.
+    threadEntry();
+    int ret = -1;
+#endif
+
+	if (ret == 0) {
 		_state.store((int)State::Running);
-        _thread_handle = 1;
+
 	} else {
+#ifndef __PX4_QURT
 		PX4_ERR("Failed to start thread (%i)", ret);
+#endif
 		_state.store((int)State::Finished);
 		_ret_value = ret;
-        _thread_handle = -1;
 	}
 }
 
-int WorkerThread::threadEntryTrampoline(int argc, char *argv[])
+void *WorkerThread::threadEntryTrampoline(void *arg)
 {
-	WorkerThread::instance->threadEntry();
-	return 0;
+	WorkerThread *worker_thread = (WorkerThread *)arg;
+	worker_thread->threadEntry();
+	return nullptr;
 }
 
 void WorkerThread::threadEntry()

@@ -35,7 +35,7 @@ static int param_sync_thread(int argc, char *argv[]) {
     px4_pollfd_struct_t fds[2] = { { .fd = parameter_server_set_used_h, .events = POLLIN },
                                    { .fd = parameter_server_set_value_h, .events = POLLIN } };
     while (true) {
-    	px4_poll(fds, 1, 1000);
+    	px4_poll(fds, 2, 1000);
     	if (fds[0].revents & POLLIN) {
             struct parameter_server_set_used_s msg;
     		orb_copy(ORB_ID(parameter_server_set_used), parameter_server_set_used_h, &msg);

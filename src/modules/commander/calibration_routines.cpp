@@ -161,7 +161,7 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 			poll_errcount++;
 		}
 
-		if (poll_errcount > 1000) {
+		if (poll_errcount > 10000) {
 			calibration_log_critical(mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
 			return ORIENTATION_ERROR;
 		}
