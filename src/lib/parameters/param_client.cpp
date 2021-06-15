@@ -51,11 +51,11 @@ static int param_sync_thread(int argc, char *argv[]) {
             param_t param = param_find(s_req.parameter_name);
             switch (param_type(param)) {
     		case PARAM_TYPE_INT32:
-                param_set_no_notification(param, (const void *) &s_req.int_value);
+                param_set_no_remote_update(param, (const void *) &s_req.int_value, false);
     			break;
 
     		case PARAM_TYPE_FLOAT:
-                param_set_no_notification(param, (const void *) &s_req.float_value);
+                param_set_no_remote_update(param, (const void *) &s_req.float_value, false);
     			break;
 
     		default:

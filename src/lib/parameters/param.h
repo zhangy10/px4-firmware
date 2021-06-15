@@ -253,6 +253,8 @@ __EXPORT void		param_set_used(param_t param);
  */
 __EXPORT int		param_set_no_notification(param_t param, const void *val);
 
+__EXPORT int		param_set_no_remote_update(param_t param, const void *val, bool notify);
+
 /**
  * Notify the system about parameter changes. Can be used for example after several calls to
  * param_set_no_notification() to avoid unnecessary system notifications.

@@ -719,7 +719,7 @@ param_control_autosave(bool enable)
 }
 
 static int
-param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_changes)
+param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_changes, bool remote_update = true)
 {
 	int result = -1;
 	bool params_changed = false;
@@ -811,13 +811,13 @@ out:
 #if defined(PARAM_SERVER)
     // If this is the parameter server, make sure that the client is updated
     // TODO: Handle the possibility that this fails.
-    if (params_changed) param_server_set(param, val);
+    if (params_changed && remote_update) param_server_set(param, val);
 #endif
 
 #if defined(PARAM_CLIENT)
     // If this is the parameter client, make sure that the server is updated
     // TODO: Handle the possibility that this fails.
-    if (params_changed) param_client_set(param, val);
+    if (params_changed && remote_update) param_client_set(param, val);
 #endif
 
 	/*
@@ -853,6 +853,12 @@ int
 param_set_no_notification(param_t param, const void *val)
 {
 	return param_set_internal(param, val, false, false);
+}
+
+int
+param_set_no_remote_update(param_t param, const void *val, bool notify)
+{
+	return param_set_internal(param, val, false, notify, false);
 }
 
 bool
@@ -1098,6 +1104,7 @@ int param_save_default()
 	}
 
 	close(fd);
+    syncfs(fd);
 
 	return res;
 #endif
