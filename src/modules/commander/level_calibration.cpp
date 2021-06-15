@@ -177,6 +177,7 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 		}
 
 		param_set_no_notification(roll_offset_handle, &roll_mean_degrees);
+        px4_usleep(10000);
 		param_set_no_notification(pitch_offset_handle, &pitch_mean_degrees);
 		param_notify_changes();
 		success = true;

@@ -179,6 +179,8 @@ void Gyroscope::ParametersUpdate()
 			set_rotation(GetBoardRotation());
 		}
 
+        px4_usleep(10000);
+
 		// CAL_GYROx_PRIO
 		_priority = GetCalibrationParam(SensorString(), "PRIO", _calibration_index);
 
@@ -194,6 +196,8 @@ void Gyroscope::ParametersUpdate()
 			SetCalibrationParam(SensorString(), "PRIO", _calibration_index, new_priority);
 			_priority = new_priority;
 		}
+
+        px4_usleep(10000);
 
 		// CAL_GYROx_OFF{X,Y,Z}
 		set_offset(GetCalibrationParamsVector3f(SensorString(), "OFF", _calibration_index));
@@ -223,8 +227,11 @@ bool Gyroscope::ParametersSave()
 		// save calibration
 		bool success = true;
 		success &= SetCalibrationParam(SensorString(), "ID", _calibration_index, _device_id);
+        px4_usleep(10000);
 		success &= SetCalibrationParam(SensorString(), "PRIO", _calibration_index, _priority);
+        px4_usleep(10000);
 		success &= SetCalibrationParamsVector3f(SensorString(), "OFF", _calibration_index, _offset);
+        px4_usleep(10000);
 
 		if (_external) {
 			success &= SetCalibrationParam(SensorString(), "ROT", _calibration_index, (int32_t)_rotation_enum);

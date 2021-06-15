@@ -11,13 +11,16 @@
 * Is there an advertise loop if the topic is local and remote?
 
 ### Parameters
+* Add handshake for parameter_set from client to server (parameter_server_set_response)
 * Full error handling
 * Problems reported (ask Rich) pushing lots of parameters from QGC
 * Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
 
 ### Calibration
+* Remove the px4_usleeps when the parameter set handshake fixes are implemented
+   * Accelerometer.cpp, Gyroscope.cpp, level_calibration.cpp
 * Fix code problems
-   * Fix pthread issues in commander/worker_thread.*
+   * Fix pthread issues in commander/worker_thread.
    * Fix SubscriptionBlocking issues in the calibration routines
 
 ### Logging
