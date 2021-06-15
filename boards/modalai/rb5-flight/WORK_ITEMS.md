@@ -52,6 +52,7 @@
 
 ### IMU
 * Debug why the accel lookup is failing (Not important if we move to PX4 driver)
+* Allow specification of the rotation at the driver level.
 * Once there is SPI support in flight controller sensor, move to PX4 driver.
 
 ### Barometer

@@ -21,7 +21,8 @@
 
 static IMU_ThinClient *local_instance;
 
-IMU_ThinClient::IMU_ThinClient() : _px4_accel(1), _px4_gyro(1) {}
+// TODO: Allow configuration of the rotation. It is hardcoded now to match M0051
+IMU_ThinClient::IMU_ThinClient() : _px4_accel(1, ROTATION_YAW_90), _px4_gyro(1, ROTATION_YAW_90) {}
 
 int imu_thin_client_main(int argc, char *argv[])
 {
