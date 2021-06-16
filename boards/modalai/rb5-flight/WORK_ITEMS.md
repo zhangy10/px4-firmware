@@ -27,6 +27,10 @@
 * Bringup
 * Determine best place for log file on server side (e.g. SD card)
 
+### Mavlink
+* Run with MAV_BROADCAST 0 and implement mavlink proxy
+   * So we can direct the drone to a specific GCS
+
 ## Drivers
 
 ### RC
