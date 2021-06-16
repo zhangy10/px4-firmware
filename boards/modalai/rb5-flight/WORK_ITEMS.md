@@ -120,6 +120,8 @@
 
 ### Software
 * SLPI flight controller stops responding
+* qshell_retval sequence number mismatch and subsequent timeout
+   * Related to an orb_advertise / orb_publish race condition?
 * telemetry_status GCS heartbeat timestamp in Commander.cpp is ahead of current time? line 3728
 * ERROR [mavlink] vehicle_command lost, generation 0 -> 2
 * PX4 application has to link against libsee_sensor.so and all of its dependencies!
