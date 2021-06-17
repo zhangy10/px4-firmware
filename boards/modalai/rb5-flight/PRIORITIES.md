@@ -12,7 +12,7 @@ Figure out how to call HAP_power_request from px4
 
 PX4 Autostart service (Needs to wait for network connection first)
 
-Create a ipk to load everything onto target
+Create an ipk to load everything onto target
 - Verify with a fresh 8.1 installation
 
 GPS driver via USB-to-UART dongle
