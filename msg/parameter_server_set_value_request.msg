@@ -1,5 +1,5 @@
 
-# parameter_server_set_value : Used by a client to update the value for a parameter
+# parameter_server_set_value_request : Used by a client to update the value for a parameter
 
 uint64 timestamp			# time since system start (microseconds)
 

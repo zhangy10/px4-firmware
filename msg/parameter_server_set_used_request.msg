@@ -1,5 +1,5 @@
 
-# parameter_server_set_used : Used by a client to update the used flag for a parameter
+# parameter_server_set_used_request : Used by a client to update the used flag for a parameter
 
 uint64 timestamp			# time since system start (microseconds)
 

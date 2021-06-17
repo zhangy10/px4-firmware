@@ -95,10 +95,12 @@ set(msg_files
 	orbit_status.msg
     parameter_client_reset_request.msg
     parameter_client_reset_response.msg
-    parameter_client_set_request.msg
-    parameter_client_set_response.msg
-	parameter_server_set_used.msg
-    parameter_server_set_value.msg
+    parameter_client_set_value_request.msg
+    parameter_client_set_value_response.msg
+	parameter_server_set_used_request.msg
+	parameter_server_set_used_response.msg
+    parameter_server_set_value_request.msg
+    parameter_server_set_value_response.msg
 	parameter_update.msg
 	ping.msg
 	position_controller_landing_status.msg

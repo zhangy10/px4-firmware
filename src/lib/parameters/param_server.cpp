@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdbool.h>
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/tasks.h>
 
@@ -8,15 +9,24 @@
 // uORB topics needed to keep parameter server and client in sync
 #include <uORB/topics/parameter_client_reset_request.h>
 #include <uORB/topics/parameter_client_reset_response.h>
-#include <uORB/topics/parameter_client_set_request.h>
-#include <uORB/topics/parameter_client_set_response.h>
-#include <uORB/topics/parameter_server_set_used.h>
-#include <uORB/topics/parameter_server_set_value.h>
+#include <uORB/topics/parameter_server_set_value_request.h>
+#include <uORB/topics/parameter_server_set_value_response.h>
+#include <uORB/topics/parameter_client_set_value_request.h>
+#include <uORB/topics/parameter_client_set_value_response.h>
+#include <uORB/topics/parameter_server_set_used_request.h>
+#include <uORB/topics/parameter_server_set_used_response.h>
 
-static orb_advert_t param_set_req_topic = nullptr;
-static int          param_set_rsp_topic = PX4_ERROR;
-static orb_advert_t param_reset_req_topic = nullptr;
-static int          param_reset_rsp_topic = PX4_ERROR;
+// Debug flag
+static bool debug = false;
+
+// Advertisement handles
+static orb_advert_t param_set_value_req_h = nullptr;
+static orb_advert_t param_reset_req_h     = nullptr;
+
+// Subscription file descriptors
+static int param_set_rsp_fd   = PX4_ERROR;
+static int param_reset_rsp_fd = PX4_ERROR;
+
 static px4_task_t   sync_thread_tid;
 static const char  *sync_thread_name = "server_sync_thread";
 
@@ -29,35 +39,55 @@ static int param_sync_thread(int argc, char *argv[]) {
     // Check for muORB initialization with get_uorb_communicator
     while (uORB::Manager::get_instance()->get_uorb_communicator() == nullptr) { usleep(100); }
 
-    int parameter_server_set_used_h = orb_subscribe(ORB_ID(parameter_server_set_used));
-    int parameter_server_set_value_h = orb_subscribe(ORB_ID(parameter_server_set_value));
+    orb_advert_t param_set_used_rsp_h  = nullptr;
+    orb_advert_t param_set_value_rsp_h = nullptr;
 
-    px4_pollfd_struct_t fds[2] = { { .fd = parameter_server_set_used_h, .events = POLLIN },
-                                   { .fd = parameter_server_set_value_h, .events = POLLIN } };
+    int parameter_server_set_used_fd  = orb_subscribe(ORB_ID(parameter_server_set_used_request));
+    int parameter_server_set_value_fd = orb_subscribe(ORB_ID(parameter_server_set_value_request));
+
+    struct parameter_server_set_used_request_s   u_req;
+    struct parameter_server_set_used_response_s  u_rsp;
+    struct parameter_server_set_value_request_s  v_req;
+    struct parameter_server_set_value_response_s v_rsp;
+
+    px4_pollfd_struct_t fds[2] = { { .fd = parameter_server_set_used_fd,  .events = POLLIN },
+                                   { .fd = parameter_server_set_value_fd, .events = POLLIN } };
     while (true) {
     	px4_poll(fds, 2, 1000);
     	if (fds[0].revents & POLLIN) {
-            struct parameter_server_set_used_s msg;
-    		orb_copy(ORB_ID(parameter_server_set_used), parameter_server_set_used_h, &msg);
-    		PX4_INFO("Got parameter_server_set_used for %s", msg.parameter_name);
-            (void) param_find(msg.parameter_name);
+    		orb_copy(ORB_ID(parameter_server_set_used_request), parameter_server_set_used_fd, &u_req);
+    		if (debug) PX4_INFO("Got parameter_server_set_used_request for %s", u_req.parameter_name);
+            (void) param_find(u_req.parameter_name);
+
+            u_rsp.timestamp = hrt_absolute_time();
+            if (param_set_used_rsp_h == nullptr) {
+                param_set_used_rsp_h = orb_advertise(ORB_ID(parameter_server_set_used_response), &u_rsp);
+            } else {
+                orb_publish(ORB_ID(parameter_server_set_used_response), param_set_used_rsp_h, &u_rsp);
+            }
     	} else if (fds[1].revents & POLLIN) {
-            struct parameter_server_set_value_s msg;
-    		orb_copy(ORB_ID(parameter_server_set_value), parameter_server_set_value_h, &msg);
-    		PX4_INFO("Got parameter_server_set_value for %s", msg.parameter_name);
-            param_t param = param_find(msg.parameter_name);
+    		orb_copy(ORB_ID(parameter_server_set_value_request), parameter_server_set_value_fd, &v_req);
+    		PX4_INFO("Got parameter_server_set_value_request for %s", v_req.parameter_name);
+            param_t param = param_find(v_req.parameter_name);
             switch (param_type(param)) {
     		case PARAM_TYPE_INT32:
-                param_set_no_remote_update(param, (const void *) &msg.int_value, true);
+                param_set_no_remote_update(param, (const void *) &v_req.int_value, true);
     			break;
 
     		case PARAM_TYPE_FLOAT:
-                param_set_no_remote_update(param, (const void *) &msg.float_value, true);
+                param_set_no_remote_update(param, (const void *) &v_req.float_value, true);
     			break;
 
     		default:
     			PX4_ERR("Parameter must be either int or float");
                 break;
+            }
+
+            v_rsp.timestamp = hrt_absolute_time();
+            if (param_set_value_rsp_h == nullptr) {
+                param_set_value_rsp_h = orb_advertise(ORB_ID(parameter_server_set_value_response), &v_rsp);
+            } else {
+                orb_publish(ORB_ID(parameter_server_set_value_response), param_set_value_rsp_h, &v_rsp);
             }
     	}
     }
@@ -65,8 +95,7 @@ static int param_sync_thread(int argc, char *argv[]) {
     return 0;
 }
 
-void
-param_server_init() {
+void param_server_init() {
     sync_thread_tid = px4_task_spawn_cmd(sync_thread_name,
 				                         SCHED_DEFAULT,
 				                         SCHED_PRIORITY_PARAMS,
@@ -76,19 +105,20 @@ param_server_init() {
 }
 
 void param_server_set(param_t param, const void *val) {
-    PX4_INFO("Param changed in server");
     bool send_request = true;
-    struct parameter_client_set_request_s req;
+    struct parameter_client_set_value_request_s req;
 	req.timestamp = hrt_absolute_time();
 	strncpy(req.parameter_name, param_name(param), 16);
     req.parameter_name[16] = 0;
 	switch (param_type(param)) {
 	case PARAM_TYPE_INT32:
 		req.int_value = *(int32_t *)val;
+        if (debug) PX4_INFO("*** Setting %s to %d ***", req.parameter_name, req.int_value);
 		break;
 
 	case PARAM_TYPE_FLOAT:
 		req.float_value = *(float *)val;
+        if (debug) PX4_INFO("*** Setting %s to %f ***", req.parameter_name, (double) req.float_value);
 		break;
 
 	default:
@@ -97,48 +127,48 @@ void param_server_set(param_t param, const void *val) {
         break;
 	}
 
-	if (param_set_rsp_topic == PX4_ERROR) {
-        PX4_INFO("Subscribing to parameter_client_set_response");
-		param_set_rsp_topic = orb_subscribe(ORB_ID(parameter_client_set_response));
-    	if (param_set_rsp_topic == PX4_ERROR) {
-            PX4_INFO("Subscription to parameter_client_set_response failed");
+	if (param_set_rsp_fd == PX4_ERROR) {
+        if (debug) PX4_INFO("Subscribing to parameter_client_set_value_response");
+		param_set_rsp_fd = orb_subscribe(ORB_ID(parameter_client_set_value_response));
+    	if (param_set_rsp_fd == PX4_ERROR) {
+            PX4_ERR("Subscription to parameter_client_set_value_response failed");
     	} else {
-            PX4_INFO("Subscription to parameter_client_set_response succeeded");
+            if (debug) PX4_INFO("Subscription to parameter_client_set_value_response succeeded");
         }
 	}
 
     if (send_request) {
-        PX4_INFO("Sending param set request to client for %s", req.parameter_name);
+        if (debug) PX4_INFO("Sending param set request to client for %s", req.parameter_name);
 
-    	if (param_set_req_topic == nullptr) {
-    		param_set_req_topic = orb_advertise(ORB_ID(parameter_client_set_request), nullptr);
+    	if (param_set_value_req_h == nullptr) {
+    		param_set_value_req_h = orb_advertise(ORB_ID(parameter_client_set_value_request), nullptr);
     	}
 
-		orb_publish(ORB_ID(parameter_client_set_request), param_set_req_topic, &req);
+		orb_publish(ORB_ID(parameter_client_set_value_request), param_set_value_req_h, &req);
 
         // Wait for response
-        PX4_INFO("Waiting for parameter_client_set_response");
+        if (debug) PX4_INFO("Waiting for parameter_client_set_value_response for %s", req.parameter_name);
         usleep(100);
         bool updated = false;
         int count = 100;
         while (--count) {
-            (void) orb_check(param_set_rsp_topic, &updated);
+            (void) orb_check(param_set_rsp_fd, &updated);
             if (updated) {
-                PX4_INFO("Got parameter_client_set_response for %s", req.parameter_name);
-                struct parameter_client_set_response_s rsp;
-                orb_copy(ORB_ID(parameter_client_set_response), param_set_rsp_topic, &rsp);
+                if (debug) PX4_INFO("Got parameter_client_set_value_response for %s", req.parameter_name);
+                struct parameter_client_set_value_response_s rsp;
+                orb_copy(ORB_ID(parameter_client_set_value_response), param_set_rsp_fd, &rsp);
                 break;
         	}
             usleep(100);
         }
         if ( ! count) {
-            PX4_ERR("Timeout waiting for parameter_client_set_response");
+            PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
         }
     }
 }
 
 static void param_server_reset_internal(param_t param, bool reset_all) {
-    PX4_INFO("Param reset in server");
+    if (debug) PX4_INFO("Param reset in server");
     struct parameter_client_reset_request_s req;
 	req.timestamp = hrt_absolute_time();
     req.reset_all = reset_all;
@@ -147,35 +177,35 @@ static void param_server_reset_internal(param_t param, bool reset_all) {
         req.parameter_name[16] = 0;
     }
 
-	if (param_reset_rsp_topic == PX4_ERROR) {
-        PX4_INFO("Subscribing to parameter_client_reset_response");
-		param_reset_rsp_topic = orb_subscribe(ORB_ID(parameter_client_reset_response));
-    	if (param_reset_rsp_topic == PX4_ERROR) {
-            PX4_INFO("Subscription to parameter_client_reset_response failed");
+	if (param_reset_rsp_fd == PX4_ERROR) {
+        if (debug) PX4_INFO("Subscribing to parameter_client_reset_response");
+		param_reset_rsp_fd = orb_subscribe(ORB_ID(parameter_client_reset_response));
+    	if (param_reset_rsp_fd == PX4_ERROR) {
+            PX4_ERR("Subscription to parameter_client_reset_response failed");
     	} else {
-            PX4_INFO("Subscription to parameter_client_reset_response succeeded");
+            if (debug) PX4_INFO("Subscription to parameter_client_reset_response succeeded");
         }
 	}
 
-    PX4_INFO("Sending param reset request to client");
+    if (debug) PX4_INFO("Sending param reset request to client");
 
-	if (param_reset_req_topic == nullptr) {
-		param_reset_req_topic = orb_advertise(ORB_ID(parameter_client_reset_request), nullptr);
+	if (param_reset_req_h == nullptr) {
+		param_reset_req_h = orb_advertise(ORB_ID(parameter_client_reset_request), nullptr);
 	}
 
-	orb_publish(ORB_ID(parameter_client_reset_request), param_reset_req_topic, &req);
+	orb_publish(ORB_ID(parameter_client_reset_request), param_reset_req_h, &req);
 
     // Wait for response
-    PX4_INFO("Waiting for parameter_client_reset_response");
+    if (debug) PX4_INFO("Waiting for parameter_client_reset_response");
     usleep(100);
     bool updated = false;
     int count = 100;
     while (--count) {
-        (void) orb_check(param_reset_rsp_topic, &updated);
+        (void) orb_check(param_reset_rsp_fd, &updated);
         if (updated) {
-            PX4_INFO("Got parameter_client_reset_response");
+            if (debug) PX4_INFO("Got parameter_client_reset_response");
             struct parameter_client_reset_response_s rsp;
-            orb_copy(ORB_ID(parameter_client_reset_response), param_reset_rsp_topic, &rsp);
+            orb_copy(ORB_ID(parameter_client_reset_response), param_reset_rsp_fd, &rsp);
             break;
     	}
         usleep(100);

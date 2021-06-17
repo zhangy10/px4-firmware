@@ -1,23 +1,34 @@
 
 #include <string.h>
+#include <stdbool.h>
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/tasks.h>
 
 #include "param_client.h"
-#include "uORB/uORB.h"
+#include "uORB/uORBManager.hpp"
+
 
 // uORB topics needed to keep parameter server and client in sync
 #include <uORB/topics/parameter_client_reset_request.h>
 #include <uORB/topics/parameter_client_reset_response.h>
-#include <uORB/topics/parameter_client_set_request.h>
-#include <uORB/topics/parameter_client_set_response.h>
-#include <uORB/topics/parameter_server_set_used.h>
-#include <uORB/topics/parameter_server_set_value.h>
+#include <uORB/topics/parameter_server_set_value_request.h>
+#include <uORB/topics/parameter_server_set_value_response.h>
+#include <uORB/topics/parameter_client_set_value_request.h>
+#include <uORB/topics/parameter_client_set_value_response.h>
+#include <uORB/topics/parameter_server_set_used_request.h>
+#include <uORB/topics/parameter_server_set_used_response.h>
+
+// Debug flag
+static bool debug = false;
 
 static px4_task_t   sync_thread_tid;
 static const char  *sync_thread_name = "client_sync_thread";
-static orb_advert_t parameter_server_set_used_h = nullptr;
-static orb_advert_t parameter_server_set_value_h = nullptr;
+
+static orb_advert_t parameter_set_used_h  = nullptr;
+static orb_advert_t parameter_set_value_h = nullptr;
+
+static int param_set_used_rsp_fd  = PX4_ERROR;
+static int param_set_value_rsp_fd = PX4_ERROR;
 
 static int param_sync_thread(int argc, char *argv[]) {
 
@@ -29,24 +40,24 @@ static int param_sync_thread(int argc, char *argv[]) {
     // side could be missed.
     usleep(500);
 
-    int param_set_req_fd   = orb_subscribe(ORB_ID(parameter_client_set_request));
+    int param_set_req_fd   = orb_subscribe(ORB_ID(parameter_client_set_value_request));
     int param_reset_req_fd = orb_subscribe(ORB_ID(parameter_client_reset_request));
 
-    orb_advert_t param_set_rsp_fd   = nullptr;
-    orb_advert_t param_reset_rsp_fd = nullptr;
+    orb_advert_t param_set_rsp_h   = nullptr;
+    orb_advert_t param_reset_rsp_h = nullptr;
 
-	struct parameter_client_set_request_s    s_req;
-	struct parameter_client_set_response_s   s_rsp;
-	struct parameter_client_reset_request_s  r_req;
-	struct parameter_client_reset_response_s r_rsp;
+	struct parameter_client_set_value_request_s  s_req;
+	struct parameter_client_set_value_response_s s_rsp;
+	struct parameter_client_reset_request_s      r_req;
+	struct parameter_client_reset_response_s     r_rsp;
 
     bool updated = false;
     while (true) {
         usleep(100);
         (void) orb_check(param_set_req_fd, &updated);
         if (updated) {
-            orb_copy(ORB_ID(parameter_client_set_request), param_set_req_fd, &s_req);
-    		PX4_INFO("Got parameter_client_set_request for %s", s_req.parameter_name);
+            orb_copy(ORB_ID(parameter_client_set_value_request), param_set_req_fd, &s_req);
+    		if (debug) PX4_INFO("Got parameter_client_set_value_request for %s", s_req.parameter_name);
             // This will find the parameter and also set its used flag
             param_t param = param_find(s_req.parameter_name);
             switch (param_type(param)) {
@@ -64,16 +75,16 @@ static int param_sync_thread(int argc, char *argv[]) {
             }
 
             s_rsp.timestamp = hrt_absolute_time();
-            if (param_set_rsp_fd == nullptr) {
-                param_set_rsp_fd = orb_advertise(ORB_ID(parameter_client_set_response), &s_rsp);
+            if (param_set_rsp_h == nullptr) {
+                param_set_rsp_h = orb_advertise(ORB_ID(parameter_client_set_value_response), &s_rsp);
             } else {
-                orb_publish(ORB_ID(parameter_client_set_response), param_set_rsp_fd, &s_rsp);
+                orb_publish(ORB_ID(parameter_client_set_value_response), param_set_rsp_h, &s_rsp);
             }
     	}
         (void) orb_check(param_reset_req_fd, &updated);
         if (updated) {
             orb_copy(ORB_ID(parameter_client_reset_request), param_reset_req_fd, &r_req);
-    		PX4_INFO("Got parameter_client_reset_request");
+    		if (debug) PX4_INFO("Got parameter_client_reset_request");
             if (r_req.reset_all) {
                 param_reset_all();
             } else {
@@ -82,10 +93,10 @@ static int param_sync_thread(int argc, char *argv[]) {
             }
 
             r_rsp.timestamp = hrt_absolute_time();
-            if (param_reset_rsp_fd == nullptr) {
-                param_reset_rsp_fd = orb_advertise(ORB_ID(parameter_client_reset_response), &r_rsp);
+            if (param_reset_rsp_h == nullptr) {
+                param_reset_rsp_h = orb_advertise(ORB_ID(parameter_client_reset_response), &r_rsp);
             } else {
-                orb_publish(ORB_ID(parameter_client_reset_response), param_reset_rsp_fd, &r_rsp);
+                orb_publish(ORB_ID(parameter_client_reset_response), param_reset_rsp_h, &r_rsp);
             }
     	}
     }
@@ -106,23 +117,21 @@ param_client_init()
 
 void param_client_set(param_t param, const void *val) {
 
-    PX4_INFO("Param changed in client");
-
     // If this is the parameter client, make sure that the server is updated
     bool send_event = true;
-    struct parameter_server_set_value_s event = {};
-	event.timestamp = hrt_absolute_time();
-	strncpy(event.parameter_name, param_name(param), 16);
-    event.parameter_name[16] = 0;
+    struct parameter_server_set_value_request_s req;
+	req.timestamp = hrt_absolute_time();
+	strncpy(req.parameter_name, param_name(param), 16);
+    req.parameter_name[16] = 0;
 	switch (param_type(param)) {
 	case PARAM_TYPE_INT32:
-		event.int_value = *(int32_t *)val;
-        PX4_INFO("*** %s %d ***", event.parameter_name, event.int_value);
+		req.int_value = *(int32_t *)val;
+        PX4_INFO("*** Setting %s to %d ***", req.parameter_name, req.int_value);
 		break;
 
 	case PARAM_TYPE_FLOAT:
-		event.float_value = *(float *)val;
-        PX4_INFO("*** %s %f ***", event.parameter_name, (double) event.float_value);
+		req.float_value = *(float *)val;
+        PX4_INFO("*** Setting %s to %f ***", req.parameter_name, (double) req.float_value);
 		break;
 
 	default:
@@ -131,31 +140,91 @@ void param_client_set(param_t param, const void *val) {
         break;
 	}
 
+	if (param_set_value_rsp_fd == PX4_ERROR) {
+        if (debug) PX4_INFO("Subscribing to parameter_server_set_value_response");
+		param_set_value_rsp_fd = orb_subscribe(ORB_ID(parameter_server_set_value_response));
+    	if (param_set_value_rsp_fd == PX4_ERROR) {
+            PX4_ERR("Subscription to parameter_server_set_value_response failed");
+    	} else {
+            if (debug) PX4_INFO("Subscription to parameter_server_set_value_response succeeded");
+        }
+	}
+
     if (send_event) {
     	/*
     	 * If we don't have a handle to our topic, create one now; otherwise
     	 * just publish.
     	 */
-    	if (parameter_server_set_value_h == nullptr) {
-    		parameter_server_set_value_h = orb_advertise(ORB_ID(parameter_server_set_value), &event);
+    	if (parameter_set_value_h == nullptr) {
+    		parameter_set_value_h = orb_advertise(ORB_ID(parameter_server_set_value_request), &req);
 
     	} else {
-    		orb_publish(ORB_ID(parameter_server_set_value), parameter_server_set_value_h, &event);
+    		orb_publish(ORB_ID(parameter_server_set_value_request), parameter_set_value_h, &req);
     	}
+
+        // Wait for response
+        PX4_INFO("Waiting for parameter_server_set_value_response for %s", req.parameter_name);
+        usleep(100);
+        bool updated = false;
+        int count = 100;
+        while (--count) {
+            (void) orb_check(param_set_value_rsp_fd, &updated);
+            if (updated) {
+                PX4_INFO("Got parameter_server_set_value_response for %s", req.parameter_name);
+                struct parameter_server_set_value_response_s rsp;
+                orb_copy(ORB_ID(parameter_server_set_value_response), param_set_value_rsp_fd, &rsp);
+                break;
+        	}
+            usleep(100);
+        }
+        if ( ! count) {
+            PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
+        }
     }
 }
 
 void
 param_client_set_used(param_t param) {
     // Notify the parameter server that this parameter has been marked as used
-    struct parameter_server_set_used_s event = {};
-	event.timestamp = hrt_absolute_time();
-	strncpy(event.parameter_name, param_name(param), 16);
-    event.parameter_name[16] = 0;
-	if (parameter_server_set_used_h == nullptr) {
-		parameter_server_set_used_h = orb_advertise(ORB_ID(parameter_server_set_used), &event);
+    if (debug) PX4_INFO("Requesting server to mark %s as used", param_name(param));
+
+    struct parameter_server_set_used_request_s req;
+	req.timestamp = hrt_absolute_time();
+	strncpy(req.parameter_name, param_name(param), 16);
+    req.parameter_name[16] = 0;
+	if (parameter_set_used_h == nullptr) {
+		parameter_set_used_h = orb_advertise(ORB_ID(parameter_server_set_used_request), &req);
 
 	} else {
-		orb_publish(ORB_ID(parameter_server_set_used), parameter_server_set_used_h, &event);
+		orb_publish(ORB_ID(parameter_server_set_used_request), parameter_set_used_h, &req);
 	}
+
+	if (param_set_used_rsp_fd == PX4_ERROR) {
+        if (debug) PX4_INFO("Subscribing to parameter_server_set_used_response");
+		param_set_used_rsp_fd = orb_subscribe(ORB_ID(parameter_server_set_used_response));
+    	if (param_set_used_rsp_fd == PX4_ERROR) {
+            PX4_ERR("Subscription to parameter_server_set_used_response failed");
+    	} else {
+            if (debug) PX4_INFO("Subscription to parameter_server_set_used_response succeeded");
+        }
+	}
+
+    // Wait for response
+    if (debug) PX4_INFO("Waiting for parameter_server_set_used_response for %s", req.parameter_name);
+    usleep(100);
+    bool updated = false;
+    int count = 100;
+    while (--count) {
+        (void) orb_check(param_set_used_rsp_fd, &updated);
+        if (updated) {
+            if (debug) PX4_INFO("Got parameter_server_set_used_response for %s", req.parameter_name);
+            struct parameter_server_set_used_response_s rsp;
+            orb_copy(ORB_ID(parameter_server_set_used_response), param_set_used_rsp_fd, &rsp);
+            break;
+    	}
+        usleep(100);
+    }
+    if ( ! count) {
+        PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
+    }
 }
