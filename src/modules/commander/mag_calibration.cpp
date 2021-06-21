@@ -279,7 +279,7 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 
 	static constexpr float gyro_int_thresh_rad = 0.5f;
 
-	uORB::SubscriptionBlocking<sensor_gyro_s> gyro_sub{ORB_ID(sensor_gyro)};
+	uORB::Subscription gyro_sub{ORB_ID(sensor_gyro)};
 
 	while (fabsf(gyro_x_integral) < gyro_int_thresh_rad &&
 	       fabsf(gyro_y_integral) < gyro_int_thresh_rad &&
@@ -302,27 +302,39 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 		/* Wait clocking for new data on all gyro */
 		sensor_gyro_s gyro;
 
-		if (gyro_sub.updateBlocking(gyro, 1000_ms)) {
+        uint32_t counter = 0;
+        while (true) {
+    		if (gyro_sub.updated()) {
+                gyro_sub.update(&gyro);
+    			/* ensure we have a valid first timestamp */
+    			if (last_gyro > 0) {
 
-			/* ensure we have a valid first timestamp */
-			if (last_gyro > 0) {
+    				/* integrate */
+    				float delta_t = (gyro.timestamp - last_gyro) / 1e6f;
+    				gyro_x_integral += gyro.x * delta_t;
+    				gyro_y_integral += gyro.y * delta_t;
+    				gyro_z_integral += gyro.z * delta_t;
+    			}
 
-				/* integrate */
-				float delta_t = (gyro.timestamp - last_gyro) / 1e6f;
-				gyro_x_integral += gyro.x * delta_t;
-				gyro_y_integral += gyro.y * delta_t;
-				gyro_z_integral += gyro.z * delta_t;
-			}
+    			last_gyro = gyro.timestamp;
 
-			last_gyro = gyro.timestamp;
-		}
+                break;
+    		} else {
+                px4_usleep(10000);
+                counter++;
+                if (counter == 100) {
+                    PX4_INFO("Timed out waiting for gyro samples");
+                    break;
+                }
+            }
+        }
 	}
 
-	uORB::SubscriptionBlocking<sensor_mag_s> mag_sub[MAX_MAGS] {
-		{ORB_ID(sensor_mag), 0, 0},
-		{ORB_ID(sensor_mag), 0, 1},
-		{ORB_ID(sensor_mag), 0, 2},
-		{ORB_ID(sensor_mag), 0, 3},
+	uORB::Subscription mag_sub[MAX_MAGS] {
+		{ORB_ID(sensor_mag), 0},
+		{ORB_ID(sensor_mag), 1},
+		{ORB_ID(sensor_mag), 2},
+		{ORB_ID(sensor_mag), 3},
 	};
 
 	uint64_t calibration_deadline = hrt_absolute_time() + worker_data->calibration_interval_perside_us;
@@ -337,7 +349,23 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 			break;
 		}
 
-		if (mag_sub[0].updatedBlocking(1000_ms)) {
+        uint32_t poll_counter = 0;
+        bool new_sample = false;
+        while (true) {
+		    if (! mag_sub[0].updated()) {
+                px4_usleep(1000);
+                poll_counter++;
+                if (poll_counter == 100) {
+                    poll_errcount++;
+                    break;
+                }
+    		} else {
+                new_sample = true;
+                break;
+            }
+        }
+
+        if (new_sample) {
 			bool rejected = false;
 			Vector3f new_samples[MAX_MAGS] {};
 
@@ -441,9 +469,6 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 			}
 
 			PX4_DEBUG("side counter %d / %d", calibration_counter_side, worker_data->calibration_points_perside);
-
-		} else {
-			poll_errcount++;
 		}
 
 		if (poll_errcount > worker_data->calibration_points_perside * 3) {
@@ -623,7 +648,6 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 		}
 	}
 
-
 #if 0
 
 	// DO NOT REMOVE! Critical validation data!
@@ -664,7 +688,6 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 	}
 
 #endif // DO NOT REMOVE! Critical validation data!
-
 
 	// Attempt to automatically determine external mag rotations
 	if (result == calibrate_return_ok) {
@@ -847,7 +870,6 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 			}
 		}
 	}
-
 
 	// Data points are no longer needed
 	for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {

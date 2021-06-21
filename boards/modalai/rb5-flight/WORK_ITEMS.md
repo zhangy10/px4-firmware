@@ -17,6 +17,8 @@
 * Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
 
 ### Calibration
+* set_tune in mag_calibration_worker in mag_calibration.cpp not working
+* Move commander module to apps side to avoid all the changes needed for pthread issues?
 * Remove the px4_usleeps when the parameter set handshake fixes are implemented
    * Accelerometer.cpp, Gyroscope.cpp, level_calibration.cpp
 * Fix code problems
@@ -44,8 +46,7 @@
 * Why is it not running reliably every ~10ms???
    * pthread_kill doesn’t work on SLPI
    * Changed loop rate in hrt_thread to 1ms for QURT
-* Activate temperature compensation in hmc5883 driver?
-* Move to the desired magnetometer, away from 3DR unit
+* Activate temperature compensation in hmc5883 / ist8310 driver?
 
 ### IMU
 * Debug why the accel lookup is failing (Not important if we move to PX4 driver)
