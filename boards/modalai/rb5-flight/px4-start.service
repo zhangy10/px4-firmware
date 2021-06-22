@@ -1,0 +1,10 @@
+[Unit]
+Description=px4
+After=sscrpcd.service
+Requires=sscrpcd.service
+
+[Service]
+ExecStart=/bin/bash -c "PATH=/usr/bin px4 -d -s /etc/modalai/full-m0051.config"
+
+[Install]
+WantedBy=multi-user.target

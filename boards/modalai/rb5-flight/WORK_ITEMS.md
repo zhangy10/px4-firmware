@@ -4,14 +4,13 @@
 
 ### ORB
 * qshell_retval sequence number mismatch and subsequent timeout
+* Is there an advertise loop if the topic is local and remote?
 * Implement topic listener on Qurt - Maybe not really needed since apps side will subscribe to the message.
    * You can listen to slpi uorb topics from apps side. Need to use “-n 1”.
 * Improve “uorb top” on Qurt
 * Remove topic_unadvertised from the IChannel interface
-* Is there an advertise loop if the topic is local and remote?
 
 ### Parameters
-* Add handshake for parameter_set from client to server (parameter_server_set_response)
 * Full error handling
 * Problems reported (ask Rich) pushing lots of parameters from QGC
 * Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
@@ -50,7 +49,6 @@
 
 ### IMU
 * Debug why the accel lookup is failing (Not important if we move to PX4 driver)
-* Allow specification of the rotation at the driver level.
 * Once there is SPI support in flight controller sensor, move to PX4 driver.
 
 ### Barometer
@@ -69,7 +67,6 @@
 * Enable test motor command from QGC (Need newer QGC)
 * Allow leds to be set with led command
 * Test tones
-* Timeout on feedback request, lots of read errors. Probably due to flaky cable.
 * Dual id = 0 feedback responses per feedback cycle (0, 0, 1, 2, 3)
 * Add voltage / current reporting as a configurable item. That would replace reporting from the APM and free up an I2C port. But, APM also reports companion computer voltage / current which is not available at ESC.
 * Separate packet to request feedback without sending motor controls?
@@ -84,9 +81,6 @@
 * Move dsp offset from hrt_absolute time to px4_clock_gettime?
 
 ## External components
-
-### voxl2-slpi-power-request
-* Figure out how to call HAP_power_request from px4 and this won’t be needed anymore
 
 ### libfc_sensor_api
 * Move it to a public repo
@@ -116,6 +110,7 @@
 
 ### system image
 * Try to keep flight controller code out of system image build
+* Need tcpdump on target
 
 ## Issues
 
@@ -135,7 +130,7 @@
    * Connection to ground station lost (at QGC)
    * Set timeout to 5 seconds in msg/telemetry_status.msg
    * Root cause: This is due to a heartbeat timestamp sync issue. Not a networking problem at all.
-* Cannot vi /data/misc/wifi/wpa_supplicant.conf???
+* Cannot vi /data/misc/wifi/wpa_supplicant.conf on my home computer???
 * Cannot flash system image from adb sometimes on M0051 (Seems to work okay with perf build?)
 * “groups” error when launching bash shell
 * Strange wlan ip address configuration:
@@ -145,11 +140,13 @@
 * Startup errors:
    * ERROR [mavlink] DM_KEY_MISSION_STATE lock failed
    * ERROR [mavlink] offboard mission init failed (-1)
+   * This fails because it needs dataman running.
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
 * Why does apps side seg fault when too many PX4_INFO are sent out?
 * Calling shutdown from shell causes crash (It only stops apps side, not slpi)
 * Can only run once. Then needs a power cycle. Can it be made to run multiple times?
 * Cannot start mavlink shell from QGC. Get this error: ERROR [mavlink] Failed to start shell (-1)
+  - Comments in the code says it only works for NuttX. All others return error.
 
 ### Hardware
 * ADB flaky on M0051 with old APM. Get a root cause.
@@ -157,7 +154,6 @@
 * Always a different MAC ID on WiFi so always get different IP
 
 ## Miscellaneous
-
 * Update to latest PX4 master
    * Then start upstreaming the code
 * PX4 Autostart service
@@ -168,7 +164,6 @@
 * Clean up header file includes in all source files
 * Create a debian package to load everything onto target
 * Figure out how to better control log messages (DEBUG vs. INFO, etc.)
-* Need tcpdump on target
 * Clean up the code
    * Run astyle to properly format code
    * Correct copyright notices
@@ -180,8 +175,6 @@
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
 
 ### Preflight arm fails
-* Compass device id 73225 (CAL_MAG0_ID) mismatch
-   * How is that device id determined and does it need to be in config file?
 * ekf2Check.cpp 288 return true ekf2CheckSensorBias (accel bias)
    * Set EKF2_ABL_LIM to 0.8 to get around it for now...
 * cpuResourceCheck.cpp return true
