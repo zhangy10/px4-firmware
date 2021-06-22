@@ -9,7 +9,7 @@ Debug SLPI "going silent" after some period of time
 
 PX4 Autostart service (Needs to wait for network connection first)
 
-Create an ipk to load everything onto target
+Create a debian package to load everything onto target
 - Verify with a fresh 8.1 installation
 
 ## Secondary

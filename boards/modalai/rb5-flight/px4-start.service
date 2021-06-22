@@ -1,7 +1,7 @@
 [Unit]
 Description=px4
-After=sscrpcd.service
-Requires=sscrpcd.service
+After=net-check.service
+Requires=net-check.service
 
 [Service]
 ExecStart=/bin/bash -c "PATH=/usr/bin px4 -d -s /etc/modalai/full-m0051.config"
