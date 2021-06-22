@@ -7,8 +7,6 @@ Debug SLPI "going silent" after some period of time
 - Create a heartbeat task in slpi_proc to send out a periodic hello world message
 - Need a full meta build to run crash analysis portal (QCAP)
 
-PX4 Autostart service (Needs to wait for network connection first)
-
 Create a debian package to load everything onto target
 - Verify with a fresh 8.1 installation
 

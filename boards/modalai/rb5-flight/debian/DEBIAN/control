@@ -1,0 +1,8 @@
+Package: px4-rb5-flight
+Version: 1.0-1
+Section: devel
+Priority: optional
+Architecture: arm64
+Depends: libfc-sensor
+Maintainer: Eric Katzfey <eric.katzfey@modalai.com>
+Description: ModalAI PX4 flight controller

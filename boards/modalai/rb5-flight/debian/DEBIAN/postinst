@@ -1,0 +1,98 @@
+#!/bin/bash
+
+cd /usr/bin
+
+ln -f -s px4 px4-accelsim
+ln -f -s px4 px4-attitude_estimator_q
+ln -f -s px4 px4-barosim
+ln -f -s px4 px4-batt_smbus
+ln -f -s px4 px4-bottle_drop
+ln -f -s px4 px4-camera_feedback
+ln -f -s px4 px4-camera_trigger
+ln -f -s px4 px4-cdev_test
+ln -f -s px4 px4-cm8jl65
+ln -f -s px4 px4-commander
+ln -f -s px4 px4-commander_tests
+ln -f -s px4 px4-controllib_test
+ln -f -s px4 px4-dataman
+ln -f -s px4 px4-ekf2
+ln -f -s px4 px4-esc_calib
+ln -f -s px4 px4-ets_airspeed
+ln -f -s px4 px4-ex_fixedwing_control
+ln -f -s px4 px4-fw_att_control
+ln -f -s px4 px4-fw_pos_control_l1
+ln -f -s px4 px4-gnd_att_control
+ln -f -s px4 px4-gnd_pos_control
+ln -f -s px4 px4-gps
+ln -f -s px4 px4-gpssim
+ln -f -s px4 px4-gyrosim
+ln -f -s px4 px4-hello
+ln -f -s px4 px4-hrt_test
+ln -f -s px4 px4-land_detector
+ln -f -s px4 px4-landing_target_estimator
+ln -f -s px4 px4-led_control
+ln -f -s px4 px4-leddar_one
+ln -f -s px4 px4-linux_sbus
+ln -f -s px4 px4-listener
+ln -f -s px4 px4-ll40ls
+ln -f -s px4 px4-load_mon
+ln -f -s px4 px4-local_position_estimator
+ln -f -s px4 px4-logger
+ln -f -s px4 px4-mavlink
+ln -f -s px4 px4-mavlink_tests
+ln -f -s px4 px4-mb12xx
+ln -f -s px4 px4-mc_att_control
+ln -f -s px4 px4-mc_pos_control
+ln -f -s px4 px4-measairspeedsim
+ln -f -s px4 px4-mixer
+ln -f -s px4 px4-motor_ramp
+ln -f -s px4 px4-ms4525_airspeed
+ln -f -s px4 px4-ms5525_airspeed
+ln -f -s px4 px4-muorb
+ln -f -s px4 px4-muorb_test
+ln -f -s px4 px4-navigator
+ln -f -s px4 px4-param
+ln -f -s px4 px4-perf
+ln -f -s px4 px4-pga460
+ln -f -s px4 px4-position_estimator_inav
+ln -f -s px4 px4-pwm
+ln -f -s px4 px4-pwm_out_sim
+ln -f -s px4 px4-px4_mavlink_debug
+ln -f -s px4 px4-px4_simple_app
+ln -f -s px4 px4-qshell
+ln -f -s px4 px4-rc_tests
+ln -f -s px4 px4-reboot
+ln -f -s px4 px4-rgbled
+ln -f -s px4 px4-rover_steering_control
+ln -f -s px4 px4-sd_bench
+ln -f -s px4 px4-sdp3x_airspeed
+ln -f -s px4 px4-segway
+ln -f -s px4 px4-send_event
+ln -f -s px4 px4-sensors
+ln -f -s px4 px4-sf0x
+ln -f -s px4 px4-sf0x_tests
+ln -f -s px4 px4-sf1xx
+ln -f -s px4 px4-shutdown
+ln -f -s px4 px4-sih
+ln -f -s px4 px4-simulator
+ln -f -s px4 px4-srf02
+ln -f -s px4 px4-teraranger
+ln -f -s px4 px4-tests
+ln -f -s px4 px4-tfmini
+ln -f -s px4 px4-top
+ln -f -s px4 px4-tune_control
+ln -f -s px4 px4-ulanding_radar
+ln -f -s px4 px4-uorb
+ln -f -s px4 px4-uorb_tests
+ln -f -s px4 px4-ver
+ln -f -s px4 px4-vl53lxx
+ln -f -s px4 px4-vmount
+ln -f -s px4 px4-vtol_att_control
+ln -f -s px4 px4-wind_estimator
+ln -f -s px4 px4-rc_controller
+ln -f -s px4 px4-uart_esc_driver
+
+systemctl enable net-check
+systemctl enable px4-start
+
+cd -
