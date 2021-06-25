@@ -6,13 +6,11 @@
 Debug SLPI "going silent" after some period of time
 - Create a heartbeat task in slpi_proc to send out a periodic hello world message
 - Need a full meta build to run crash analysis portal (QCAP)
-
-Create a debian package to load everything onto target
-- Verify with a fresh 8.1 installation
+- Try to get gdb going to SLPI
 
 ## Secondary
 
-GPS driver via USB-to-UART dongle
+GPS driver via QUP18
 
 Logging bringup
 

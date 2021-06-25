@@ -150,13 +150,20 @@
 
 ### Hardware
 * ADB flaky on M0051 with old APM. Get a root cause.
-* Sometimes the debug board USB hub doesn’t show up
+* Sometimes the debug board USB hub doesn’t show up (Both M0062 and M0067)
+  - Do they need rework?
 * Always a different MAC ID on WiFi so always get different IP
+* TC SOM doesn't boot on one of my M0051
+* One TC SOM seems flaky
+  - Tom had trouble with QFIL
+  - Showed up without serial number on adb
 
 ## Miscellaneous
 * Update to latest PX4 master
    * Then start upstreaming the code
 * PX4 Autostart service
+* Version management of px4 and all components (eg libfc_sensor, slpi_proc, etc.)
+  - How to specify particular dependencies (eg system image 8.1)
 * Remove as much dspal stuff as possible
    * Also idl, fastrpc, shmem, stubs, etc.
 * Clean up the build scripts
