@@ -97,6 +97,7 @@ systemctl enable px4-start
 
 # Create directory to store parameters
 mkdir -p /home/linaro/eeprom
+mkdir -p /home/linaro
 
 # Always flush all changes to disk
 sync

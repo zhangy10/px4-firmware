@@ -137,10 +137,6 @@
    * wlan0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
    *         inet 169.254.86.150  netmask 255.255.0.0  broadcast 169.254.255.255
    * Only happens on my home network?
-* Startup errors:
-   * ERROR [mavlink] DM_KEY_MISSION_STATE lock failed
-   * ERROR [mavlink] offboard mission init failed (-1)
-   * This fails because it needs dataman running.
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
 * Why does apps side seg fault when too many PX4_INFO are sent out?
 * Calling shutdown from shell causes crash (It only stops apps side, not slpi)
@@ -159,7 +155,9 @@
   - Showed up without serial number on adb
 
 ## Miscellaneous
+* Why does it always switch to altitude hold mode?
 * Sometimes QFIL generates a read only filesystem
+  - But reflashing fixes it
 * Update to latest PX4 master
    * Then start upstreaming the code
 * PX4 Autostart service

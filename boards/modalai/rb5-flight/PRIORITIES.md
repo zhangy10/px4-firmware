@@ -5,15 +5,11 @@
 
 Debug SLPI "going silent" after some period of time
 - Need a full meta build to run crash analysis portal (QCAP)
-- Try to get lldb going to SLPI? Seems like it isn't supported.
+- Experiment with sysmon
 
 ## Secondary
 
-GPS driver via QUP18
-
 Logging bringup
-
-Dataman bringup
 
 Run with MAV_BROADCAST 0 and implement mavlink proxy
    * So we can direct the drone to a specific GCS
