@@ -17,12 +17,7 @@
 
 ### Calibration
 * set_tune in mag_calibration_worker in mag_calibration.cpp not working
-* Move commander module to apps side to avoid all the changes needed for pthread issues?
-* Remove the px4_usleeps when the parameter set handshake fixes are implemented
-   * Accelerometer.cpp, Gyroscope.cpp, level_calibration.cpp
-* Fix code problems
-   * Fix pthread issues in commander/worker_thread.
-   * Fix SubscriptionBlocking issues in the calibration routines
+* Try to get commander working on SLPI without all of the pthread hacks
 
 ### Logging
 * Logging to SD card option
@@ -35,12 +30,16 @@
 
 ## Drivers
 
+### APM
+* May not be possible on M0051. Vinny provided a cable to hack it?
+* Perhaps just wait until M0052 / M0053 (Expected mid July)
+
 ### RC
 * Implement on apps side on M0052 (Use UART that FC used on M0051)
+* Implement on slpi side on M0053
 
 ### GPS
-* Implement on apps side
-   * Need UART. Use USB / FTDI if not available
+* Implement on slpi side on M0053
 
 ### Magnetometer
 * Why is it not running reliably every ~10ms???
@@ -63,19 +62,16 @@
 
 ### Fake RC
 * When moved to SLPI caused uorb issue and qshell timeouts
+* Remove from codebase?
 
 ### ModalAI UART ESC
 * Enable test motor command from QGC (Need newer QGC)
 * Allow leds to be set with led command
 * Test tones
 * Dual id = 0 feedback responses per feedback cycle (0, 0, 1, 2, 3)
-* Add voltage / current reporting as a configurable item. That would replace reporting from the APM and free up an I2C port. But, APM also reports companion computer voltage / current which is not available at ESC.
+* Add voltage / current reporting as a configurable item. That would replace reporting from the APM and free up an I2C port. But, APM also reports companion computer voltage / current which is not available at ESC. (Very low priority)
 * Separate packet to request feedback without sending motor controls?
 * Separate out the LED so that it doesn’t have to be sent with motor commands?
-
-### APM
-* May not be possible on M0051. Vinny provided a cable to hack it?
-* Perhaps just wait until M0052 (Expected early July)
 
 ### System time (drv_hrt):
 * Does the slpi clock offset need to be updated periodically?
@@ -110,6 +106,7 @@
 * Make flight controller stuff a submodule?
 
 ### system image
+* Move to QRB5165 release 9.1 / 10.2
 * Try to keep flight controller code out of system image build
 * Need tcpdump on target
 
@@ -131,7 +128,6 @@
    * Connection to ground station lost (at QGC)
    * Set timeout to 5 seconds in msg/telemetry_status.msg
    * Root cause: This is due to a heartbeat timestamp sync issue. Not a networking problem at all.
-* Cannot vi /data/misc/wifi/wpa_supplicant.conf on my home computer???
 * Cannot flash system image from adb sometimes on M0051 (Seems to work okay with perf build?)
 * “groups” error when launching bash shell
 * Strange wlan ip address configuration:
@@ -167,9 +163,7 @@
 * Remove as much dspal stuff as possible
    * Also idl, fastrpc, shmem, stubs, etc.
 * Clean up the build scripts
-* Move to QRB5165 release 9.1
 * Clean up header file includes in all source files
-* Create a debian package to load everything onto target
 * Figure out how to better control log messages (DEBUG vs. INFO, etc.)
 * Clean up the code
    * Run astyle to properly format code
@@ -187,8 +181,6 @@
 * cpuResourceCheck.cpp return true
    * Can experiment with COM_CPU_MAX = -1 instead of hardcoding it.
    * Eventually need to figure out how to get the CPU percent
-* RC_STICK reason: arm / disarm with sticks down / center
-   * Normal range is 800 to 2200. 1500 is center.
 * msg/telemetry_status.msg Changed heartbeat timeout to 5 seconds
 
 ## Testing
