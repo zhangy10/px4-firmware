@@ -151,7 +151,7 @@
 ### Hardware
 * ADB flaky on M0051 with old APM. Get a root cause.
 * Sometimes the debug board USB hub doesn’t show up (Both M0062 and M0067)
-  - Do they need rework?
+  - Do they need rework? And / or special BSP support?
 * Always a different MAC ID on WiFi so always get different IP
 * TC SOM doesn't boot on one of my M0051
 * One TC SOM seems flaky
@@ -159,6 +159,7 @@
   - Showed up without serial number on adb
 
 ## Miscellaneous
+* Sometimes QFIL generates a read only filesystem
 * Update to latest PX4 master
    * Then start upstreaming the code
 * PX4 Autostart service

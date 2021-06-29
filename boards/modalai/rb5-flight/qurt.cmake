@@ -61,7 +61,7 @@ px4_add_board(
         uart_esc/modalai_esc
 	MODULES
 		attitude_estimator_q
-		commander
+		# commander
 		ekf2
 		fw_att_control
 		fw_pos_control_l1

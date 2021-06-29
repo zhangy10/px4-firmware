@@ -86,17 +86,11 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 	uORB::Subscription sensor_correction_sub{ORB_ID(sensor_correction)};
 	sensor_correction_s sensor_correction{};
 
-	// uORB::SubscriptionBlocking<sensor_gyro_s> gyro_sub[MAX_GYROS] {
-	// 	{ORB_ID(sensor_gyro), 0, 0},
-	// 	{ORB_ID(sensor_gyro), 0, 1},
-	// 	{ORB_ID(sensor_gyro), 0, 2},
-	// 	{ORB_ID(sensor_gyro), 0, 3},
-	// };
-	uORB::Subscription gyro_sub[MAX_GYROS] {
-		{ORB_ID(sensor_gyro), 0},
-		{ORB_ID(sensor_gyro), 1},
-		{ORB_ID(sensor_gyro), 2},
-		{ORB_ID(sensor_gyro), 3},
+	uORB::SubscriptionBlocking<sensor_gyro_s> gyro_sub[MAX_GYROS] {
+		{ORB_ID(sensor_gyro), 0, 0},
+		{ORB_ID(sensor_gyro), 0, 1},
+		{ORB_ID(sensor_gyro), 0, 2},
+		{ORB_ID(sensor_gyro), 0, 3},
 	};
 
 	/* use slowest gyro to pace, but count correctly per-gyro for statistics */
@@ -107,10 +101,10 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 			return calibrate_return_cancelled;
 		}
 
-		if (gyro_sub[0].updated()) {
+		if (gyro_sub[0].updatedBlocking(100000)) {
 			unsigned update_count = CALIBRATION_COUNT;
 
-			for (unsigned gyro_index = 0; gyro_index < 1; gyro_index++) {
+			for (unsigned gyro_index = 0; gyro_index < MAX_GYROS; gyro_index++) {
 				if (worker_data.calibrations[gyro_index].device_id() != 0) {
 
 					if (calibration_counter[gyro_index] >= CALIBRATION_COUNT) {
@@ -120,9 +114,7 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 
 					sensor_gyro_s gyro_report;
 
-					// while (gyro_sub[gyro_index].update(&gyro_report)) {
-					{
-                        gyro_sub[gyro_index].update(&gyro_report);
+					while (gyro_sub[gyro_index].update(&gyro_report)) {
 
 						// fetch optional thermal offset corrections in sensor/board frame
 						Vector3f offset{0, 0, 0};
@@ -177,11 +169,9 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 
 		} else {
 			poll_errcount++;
-            px4_usleep(500);
-            continue;
 		}
 
-		if (poll_errcount > 10000) {
+		if (poll_errcount > 1000) {
 			calibration_log_critical(worker_data.mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
 			return calibrate_return_error;
 		}

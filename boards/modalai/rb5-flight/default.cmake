@@ -67,28 +67,28 @@ px4_add_board(
 		#airspeed_selector
 		#attitude_estimator_q
 		#camera_feedback
-		#commander
+		commander
 		dataman
-		#ekf2
+		ekf2
 		#events
 		#fw_att_control
 		#fw_pos_control_l1
-		#land_detector
+		land_detector
 		#landing_target_estimator
 		#load_mon
 		#local_position_estimator
 		logger
 		mavlink
-		#mc_att_control
-		#mc_pos_control
-		#mc_rate_control
+		mc_att_control
+		mc_pos_control
+		mc_rate_control
 		#micrortps_bridge
 		muorb/apps
 		#muorb/test
 		navigator
-		# rc_update
+		rc_update
 		#rover_pos_control
-		#sensors
+		sensors
 		#sih
 		simulator
 		#vmount

@@ -86,18 +86,12 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 	unsigned poll_errcount = 0;
 
 	// Setup subscriptions to onboard accel sensor
-	// uORB::SubscriptionBlocking<vehicle_acceleration_s> vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
-	uORB::Subscription vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
+	uORB::SubscriptionBlocking<vehicle_acceleration_s> vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 
 	while (true) {
 		vehicle_acceleration_s accel;
 
-		if (!vehicle_acceleration_sub.advertised()) {
-            PX4_ERR("Topic vehicle_acceleration not yet advertised");
-        }
-
-		if (vehicle_acceleration_sub.updated()) {
-		    vehicle_acceleration_sub.update(&accel);
+		if (vehicle_acceleration_sub.updateBlocking(accel, 100000)) {
 			t = hrt_absolute_time();
 			float dt = (t - t_prev) / 1000000.0f;
 			t_prev = t;
@@ -154,14 +148,13 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 
 		} else {
 			poll_errcount++;
-            px4_usleep(10000);
 		}
 
 		if (t > t_timeout) {
 			poll_errcount++;
 		}
 
-		if (poll_errcount > 10000) {
+		if (poll_errcount > 1000) {
 			calibration_log_critical(mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
 			return ORIENTATION_ERROR;
 		}

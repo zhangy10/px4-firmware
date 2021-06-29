@@ -95,4 +95,10 @@ ln -f -s px4 px4-uart_esc_driver
 systemctl enable net-check
 systemctl enable px4-start
 
+# Create directory to store parameters
+mkdir -p /home/linaro/eeprom
+
+# Always flush all changes to disk
+sync
+
 cd -
