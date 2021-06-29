@@ -25,8 +25,9 @@
    * Fix SubscriptionBlocking issues in the calibration routines
 
 ### Logging
-* Bringup
-* Determine best place for log file on server side (e.g. SD card)
+* Logging to SD card option
+* Log file management (Deleting old logs)
+* Tune log buffer size, topic frequency, etc.
 
 ### Mavlink
 * Run with MAV_BROADCAST 0 and implement mavlink proxy
