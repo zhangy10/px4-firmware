@@ -53,7 +53,7 @@ px4_add_board(
 		#camera_trigger
 		#differential_pressure # all available differential pressure drivers
 		#distance_sensor # all available distance sensor drivers
-		#gps
+		gps
 		#imu # all available imu drivers
 		#lights/rgbled
 		#magnetometer # all available magnetometer drivers
