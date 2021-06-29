@@ -11,6 +11,8 @@ Debug SLPI "going silent" after some period of time
 
 Logging bringup
 
+Navigator bringup
+
 Run with MAV_BROADCAST 0 and implement mavlink proxy
    * So we can direct the drone to a specific GCS
 
