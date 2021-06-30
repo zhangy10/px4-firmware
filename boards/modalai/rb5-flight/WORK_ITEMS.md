@@ -22,6 +22,7 @@
 ### Logging
 * Logging to SD card option
 * Log file management (Deleting old logs)
+  - Move to a separate partition to prevent data overrun
 * Tune log buffer size, topic frequency, etc.
 
 ### Mavlink
@@ -48,6 +49,7 @@
 * Activate temperature compensation in hmc5883 / ist8310 driver?
 
 ### IMU
+* Move to 1KHz sampling
 * Debug why the accel lookup is failing (Not important if we move to PX4 driver)
 * Once there is SPI support in flight controller sensor, move to PX4 driver.
 
@@ -180,8 +182,7 @@
    * Set EKF2_ABL_LIM to 0.8 to get around it for now...
 * cpuResourceCheck.cpp return true
    * Can experiment with COM_CPU_MAX = -1 instead of hardcoding it.
-   * Eventually need to figure out how to get the CPU percent
-* msg/telemetry_status.msg Changed heartbeat timeout to 5 seconds
+   * Eventually need to figure out how to get the CPU percent (Combo of apps and slpi???)
 
 ## Testing
 

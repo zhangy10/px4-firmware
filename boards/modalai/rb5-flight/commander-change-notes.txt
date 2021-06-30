@@ -25,5 +25,7 @@ git checkout master -- src/modules/commander/mag_calibration.cpp
 # src/modules/commander/state_machine_helper.cpp
 # src/modules/commander/worker_thread.cpp
 
-
+# Fatal errors seen on SLPI
 [  +0.000290] slpi subsystem failure reason: err_qdi.c:1038:EF:sensor_process:0x1:SNS_CM:0x64:sns_thread_manager.c:602:NULL != task.
+[  +0.000118] slpi subsystem failure reason: err_qdi.c:1038:EF:sensor_process:0x1:SNS_CM:0x64:sns_stream_service.c:590:NULL != pending_req.
+[  +0.000160] slpi subsystem failure reason: err_qdi.c:1038:EX:sensor_process:0x1:Anonymous:0x4f:PC=0xe0946974.

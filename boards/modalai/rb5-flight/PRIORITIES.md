@@ -7,13 +7,9 @@ Debug SLPI "going silent" after some period of time
 - Need a full meta build to run crash analysis portal (QCAP)
 - Experiment with sysmon
 
-Investigate "manual control lost" error
+## Secondary
 
 Investigate switch to altitude mode when manual mode specified
-
-msg/telemetry_status.msg Changed heartbeat timeout to 5 seconds. Go back to default.
-
-## Secondary
 
 Run with MAV_BROADCAST 0 and implement mavlink proxy
    * So we can direct the drone to a specific GCS
