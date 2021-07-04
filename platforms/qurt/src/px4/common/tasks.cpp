@@ -66,167 +66,153 @@
 #include <px4_platform_common/tasks.h>
 #include <systemlib/err.h>
 
-#define MAX_CMD_LEN 100
+#include <qurt.h>
 
-#define PX4_MAX_TASKS 50
-#define SHELL_TASK_ID (PX4_MAX_TASKS+1)
+#define PX4_TASK_STACK_SIZE 4096
+#define PX4_TASK_MAX_NAME_LENGTH 32
+#define PX4_TASK_MAX_ARGC 32
+#define PX4_TASK_MAX_ARGV_LENGTH 32
+#define PX4_MAX_TASKS 32
 
-pthread_t _shell_task_id = 0;
-
-struct task_entry {
-	pthread_t pid;
-	std::string name;
-	bool isused;
-	task_entry() : isused(false) {}
-};
-
-static task_entry taskmap[PX4_MAX_TASKS];
-
-typedef struct {
+typedef struct task_entry {
+	qurt_thread_t tid;
+	char name[PX4_TASK_MAX_NAME_LENGTH + 4];
+    char stack[PX4_TASK_STACK_SIZE];
+    qurt_thread_attr_t attr;
 	px4_main_t entry;
 	int argc;
-	char *argv[];
-	// strings are allocated after the
-} pthdata_t;
+	char argv_storage[PX4_TASK_MAX_ARGC][PX4_TASK_MAX_ARGV_LENGTH];
+	char *argv[PX4_TASK_MAX_ARGC];
+	bool isused;
 
-static void *entry_adapter(void *ptr)
+	task_entry() : isused(false) {}
+} task_entry_t;
+
+static task_entry_t taskmap[PX4_MAX_TASKS];
+
+static bool task_mutex_initialized = false;
+static qurt_mutex_t task_mutex;
+
+static void entry_adapter(void *ptr)
 {
-	pthdata_t *data;
-	data = (pthdata_t *) ptr;
+	task_entry_t *data;
+	data = (task_entry_t*) ptr;
 
 	data->entry(data->argc, data->argv);
-	//PX4_WARN("Before waiting infinte busy loop");
-	//for( ;; )
-	//{
-	//   volatile int x = 0;
-	//   ++x;
-	// }
-	free(ptr);
-	px4_task_exit(0);
 
-	return NULL;
+    qurt_thread_exit(QURT_EOK);
 }
 
 px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_size, px4_main_t entry,
 			      char *const argv[])
 {
-	struct sched_param param;
-	pthread_attr_t attr;
-	pthread_t task;
-	int rv;
-	int argc = 0;
-	int i;
-	unsigned int len = 0;
-	unsigned long offset;
-	unsigned long structsize;
+	int retcode = 0;
+	int i = 0;
+	int task_index = 0;
 	char *p = (char *)argv;
 
-	PX4_DEBUG("Creating %s\n", name);
-	PX4_DEBUG("attr address: 0x%X, param address: 0x%X", &attr, &param);
+	PX4_INFO("Creating qurt thread %s\n", name);
+
+    // This part is not thread safe but it shouldn't
+    // matter because the dspal task starts before everything
+    // else and will successfully initialize the mutex for later.
+    if (task_mutex_initialized == false) {
+        task_mutex_initialized = true;
+        qurt_mutex_init(&task_mutex);
+    }
+
+    qurt_mutex_lock(&task_mutex);
+
+    // Get a free task structure
+    for (task_index = 0; task_index < PX4_MAX_TASKS; task_index++) {
+        if (taskmap[task_index].isused == false) break;
+    }
+    if (task_index == PX4_MAX_TASKS) {
+        qurt_mutex_unlock(&task_mutex);
+        PX4_ERR("Hit maximum number of threads");
+        return -1;
+    }
 
 	// Calculate argc
+	taskmap[task_index].argc = 0;
 	while (p) {
-		len += strlen(p) + 1;
-		argc++;
-		p = argv[argc];
+		taskmap[task_index].argc++;
+		p = argv[taskmap[task_index].argc];
 	}
+    if (taskmap[task_index].argc >= PX4_TASK_MAX_ARGC) {
+        qurt_mutex_unlock(&task_mutex);
+        PX4_ERR("Too many arguments for thread %d", taskmap[task_index].argc);
+        return -1;
+    }
 
-	structsize = sizeof(pthdata_t) + (argc + 1) * sizeof(char *);
-	pthdata_t *taskdata = nullptr;
+    // Copy arguments into our static storage and setup argv array
+    for (i = 0; i < PX4_TASK_MAX_ARGC; i++) {
+        if (i < taskmap[task_index].argc) {
+            int argument_length = strlen(argv[i]);
+            if (argument_length >= PX4_TASK_MAX_ARGV_LENGTH) {
+                qurt_mutex_unlock(&task_mutex);
+                PX4_ERR("Argument %d is too long %d", i, argument_length);
+                return -1;
+            } else {
+                strcpy(taskmap[task_index].argv_storage[i], argv[i]);
+                taskmap[task_index].argv[i] = taskmap[task_index].argv_storage[i];
+            }
+        } else {
+            // Must add NULL at end of argv
+            taskmap[task_index].argv[i] = nullptr;
+            break;
+        }
+    }
 
-	// not safe to pass stack data to the thread creation
-	taskdata = (pthdata_t *)malloc(structsize + len);
+    // Entry pointer for this task
+	taskmap[task_index].entry = entry;
 
-	if (taskdata == nullptr) {
-		return -ENOMEM;
-	}
+    // Convert priority into Qurt priority. Qurt has low number as highest
+    // priority. PX4 uses high number as highest priority.
+    if ((priority > 255) || (priority < 0)) {
+        qurt_mutex_unlock(&task_mutex);
+        PX4_ERR("Invalid priority %d", priority);
+        return -1;
+    }
+    priority = 255 - priority;
 
-	offset = ((unsigned long)taskdata) + structsize;
+    // Don't let the priority get above what the Qurt critical tasks need
+    if (priority < 5) priority = 5;
 
-	taskdata->entry = entry;
-	taskdata->argc = argc;
+    // Likewise, don't let the priority get too low as it will be below Qurt
+    // background tasks
+    if (priority > 250) priority = 250;
 
-	for (i = 0; i < argc; i++) {
-		PX4_DEBUG("arg %d %s\n", i, argv[i]);
-		taskdata->argv[i] = (char *)offset;
-		strcpy((char *)offset, argv[i]);
-		offset += strlen(argv[i]) + 1;
-	}
+    // Copy name into our storage and verify length
+    if (strlen(name) >= PX4_TASK_MAX_NAME_LENGTH) {
+        qurt_mutex_unlock(&task_mutex);
+        PX4_ERR("Task name is too long %s", name);
+        return -1;
+    }
+    strcpy(taskmap[task_index].name, "PX4-");
+    strcpy(&taskmap[task_index].name[4], name);
 
-	// Must add NULL at end of argv
-	taskdata->argv[argc] = (char *)0;
+    // Create the thread with desired attributes
+    qurt_thread_attr_init(&taskmap[task_index].attr);
+    qurt_thread_attr_set_name(&taskmap[task_index].attr, taskmap[task_index].name);
+    qurt_thread_attr_set_stack_addr(&taskmap[task_index].attr, taskmap[task_index].stack);
+    qurt_thread_attr_set_stack_size(&taskmap[task_index].attr, PX4_TASK_STACK_SIZE);
+    qurt_thread_attr_set_priority(&taskmap[task_index].attr, priority);
 
-	rv = pthread_attr_init(&attr);
+    retcode = qurt_thread_create(&taskmap[task_index].tid, &taskmap[task_index].attr, entry_adapter, (void*) &taskmap[task_index]);
+    if (retcode != QURT_EOK) {
+        qurt_mutex_unlock(&task_mutex);
+        PX4_ERR("Couldn't create qurt thread %s", name);
+        return -1;
+    } else {
+        PX4_INFO("Successfully created px4 task %s with tid %u",
+                 taskmap[task_index].name,
+                 (unsigned int) taskmap[task_index].tid);
+    }
 
-	if (rv != 0) {
-		PX4_WARN("px4_task_spawn_cmd: failed to init thread attrs");
-		return (rv < 0) ? rv : -rv;
-	}
+	taskmap[task_index].isused = true;
 
-	PX4_DEBUG("stack address after pthread_attr_init: 0x%X", attr.stackaddr);
-	PX4_DEBUG("attr address: 0x%X, param address: 0x%X", &attr, &param);
-	rv = pthread_attr_getschedparam(&attr, &param);
-	PX4_DEBUG("stack address after pthread_attr_getschedparam: 0x%X", attr.stackaddr);
-
-	if (rv != 0) {
-		PX4_WARN("px4_task_spawn_cmd: failed to get thread sched param");
-		return (rv < 0) ? rv : -rv;
-	}
-
-#if 0
-	rv = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-
-	if (rv != 0) {
-		PX4_WARN("px4_task_spawn_cmd: failed to set inherit sched");
-		return (rv < 0) ? rv : -rv;
-	}
-
-	rv = pthread_attr_setschedpolicy(&attr, scheduler);
-
-	if (rv != 0) {
-		PX4_WARN("px4_task_spawn_cmd: failed to set sched policy");
-		return (rv < 0) ? rv : -rv;
-	}
-
-#endif
-	size_t fixed_stacksize = -1;
-	pthread_attr_getstacksize(&attr, &fixed_stacksize);
-	PX4_DEBUG("stack size: %d passed stacksize(%d)", fixed_stacksize, stack_size);
-	fixed_stacksize = 8 * 4096;
-	fixed_stacksize = (fixed_stacksize < (size_t)stack_size) ? (size_t)stack_size : fixed_stacksize;
-
-	PX4_DEBUG("setting the thread[%s] stack size to[%d]", name, fixed_stacksize);
-	pthread_attr_setstacksize(&attr, PX4_STACK_ADJUSTED(fixed_stacksize));
-
-	PX4_DEBUG("stack address after pthread_attr_setstacksize: 0x%X", attr.stackaddr);
-	param.sched_priority = priority;
-
-	rv = pthread_attr_setschedparam(&attr, &param);
-
-	if (rv != 0) {
-		PX4_ERR("px4_task_spawn_cmd: failed to set sched param");
-		return (rv < 0) ? rv : -rv;
-	}
-
-	rv = pthread_create(&task, &attr, &entry_adapter, (void *) taskdata);
-
-	if (rv != 0) {
-		PX4_ERR("px4_task_spawn_cmd: pthread_create failed, error: %d", rv);
-		return (rv < 0) ? rv : -rv;
-	}
-
-	for (i = 0; i < PX4_MAX_TASKS; ++i) {
-		if (taskmap[i].isused == false) {
-			taskmap[i].pid = task;
-			taskmap[i].name = name;
-			taskmap[i].isused = true;
-			break;
-		}
-	}
-
-	if (i >= PX4_MAX_TASKS) {
-		return -ENOSPC;
-	}
+    qurt_mutex_unlock(&task_mutex);
 
 	return i;
 }
@@ -234,82 +220,93 @@ px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int
 int px4_task_delete(px4_task_t id)
 {
 	int rv = 0;
-	pthread_t pid;
-	PX4_WARN("Called px4_task_delete");
 
-	if (id < PX4_MAX_TASKS && taskmap[id].isused) {
-		pid = taskmap[id].pid;
+    PX4_ERR("Ignoring px4_task_delete for task %d", id);
 
-	} else {
-		return -EINVAL;
-	}
-
-	// If current thread then exit, otherwise cancel
-	if (pthread_self() == pid) {
-		taskmap[id].isused = false;
-		pthread_exit(0);
-
-	} else {
-		rv = pthread_cancel(pid);
-	}
-
-	taskmap[id].isused = false;
+	// pthread_t pid;
+	// PX4_WARN("Called px4_task_delete");
+    //
+	// if (id < PX4_MAX_TASKS && taskmap[id].isused) {
+	// 	pid = taskmap[id].pid;
+    //
+	// } else {
+	// 	return -EINVAL;
+	// }
+    //
+	// // If current thread then exit, otherwise cancel
+	// if (pthread_self() == pid) {
+	// 	taskmap[id].isused = false;
+	// 	pthread_exit(0);
+    //
+	// } else {
+	// 	rv = pthread_cancel(pid);
+	// }
+    //
+	// taskmap[id].isused = false;
 
 	return rv;
 }
 
 void px4_task_exit(int ret)
 {
-	int i;
-	pthread_t pid = pthread_self();
+    PX4_ERR("Ignoring px4_task_exit with return value %d", ret);
 
-	// Get pthread ID from the opaque ID
-	for (i = 0; i < PX4_MAX_TASKS; ++i) {
-		if (taskmap[i].pid == pid) {
-			taskmap[i].isused = false;
-			break;
-		}
-	}
-
-	if (i >= PX4_MAX_TASKS)  {
-		PX4_ERR("px4_task_exit: self task not found!");
-
-	} else {
-		PX4_DEBUG("px4_task_exit: %s", taskmap[i].name.c_str());
-	}
-
-	//pthread_exit((void *)(unsigned long)ret);
+	// int i;
+	// pthread_t pid = pthread_self();
+    //
+	// // Get pthread ID from the opaque ID
+	// for (i = 0; i < PX4_MAX_TASKS; ++i) {
+	// 	if (taskmap[i].pid == pid) {
+	// 		taskmap[i].isused = false;
+	// 		break;
+	// 	}
+	// }
+    //
+	// if (i >= PX4_MAX_TASKS)  {
+	// 	PX4_ERR("px4_task_exit: self task not found!");
+    //
+	// } else {
+	// 	PX4_DEBUG("px4_task_exit: %s", taskmap[i].name.c_str());
+	// }
+    //
+	// pthread_exit((void *)(unsigned long)ret);
 }
 
 int px4_task_kill(px4_task_t id, int sig)
 {
+    // This is supposed to bring a thread out of it's sleep. But for Qurt
+    // you cannot interrupt the sleep with a signal.
+    // TODO: Come up with a different scheme
+    PX4_DEBUG("Ignoring px4_task_kill with id %d and signal %d", id, sig);
+
 	int rv = 0;
-	pthread_t pid;
-	PX4_DEBUG("Called px4_task_kill %d, taskname %s", sig, taskmap[id].name.c_str());
-
-	if (id < PX4_MAX_TASKS && taskmap[id].pid != 0) {
-		pid = taskmap[id].pid;
-
-	} else {
-		return -EINVAL;
-	}
-
-	// If current thread then exit, otherwise cancel
-	rv = pthread_kill(pid, sig);
+	// pthread_t pid;
+	// PX4_DEBUG("Called px4_task_kill %d, taskname %s", sig, taskmap[id].name.c_str());
+    //
+	// if (id < PX4_MAX_TASKS && taskmap[id].pid != 0) {
+	// 	pid = taskmap[id].pid;
+    //
+	// } else {
+	// 	return -EINVAL;
+	// }
+    //
+	// // If current thread then exit, otherwise cancel
+	// rv = pthread_kill(pid, sig);
 
 	return rv;
 }
 
 void px4_show_tasks()
 {
-	int idx;
+	int idx = 0;
 	int count = 0;
 
 	PX4_INFO("Active Tasks:");
 
-	for (idx = 0; idx < PX4_MAX_TASKS; idx++) {
+	for (; idx < PX4_MAX_TASKS; idx++) {
 		if (taskmap[idx].isused) {
-			PX4_INFO("   %-10s %d", taskmap[idx].name.c_str(), taskmap[idx].pid);
+			PX4_INFO("   %-10s %u", taskmap[idx].name,
+                     (unsigned int) taskmap[idx].tid);
 			count++;
 		}
 	}
@@ -317,19 +314,15 @@ void px4_show_tasks()
 	if (count == 0) {
 		PX4_INFO("   No running tasks");
 	}
-
 }
 
 px4_task_t px4_getpid()
 {
-	pthread_t pid = pthread_self();
-//
-//	if (pid == _shell_task_id)
-//		return SHELL_TASK_ID;
+    qurt_thread_t tid = qurt_thread_get_id();
 
 	// Get pthread ID from the opaque ID
 	for (int i = 0; i < PX4_MAX_TASKS; ++i) {
-		if (taskmap[i].isused && taskmap[i].pid == pid) {
+		if (taskmap[i].tid == tid) {
 			return i;
 		}
 	}
@@ -340,11 +333,12 @@ px4_task_t px4_getpid()
 
 const char *px4_get_taskname()
 {
-	pthread_t pid = pthread_self();
+    qurt_thread_t tid = qurt_thread_get_id();
 
-	for (int i = 0; i < PX4_MAX_TASKS; i++) {
-		if (taskmap[i].isused && taskmap[i].pid == pid) {
-			return taskmap[i].name.c_str();
+	// Get pthread ID from the opaque ID
+	for (int i = 0; i < PX4_MAX_TASKS; ++i) {
+		if (taskmap[i].tid == tid) {
+			return taskmap[i].name;
 		}
 	}
 
@@ -378,20 +372,22 @@ int px4_sem_timedwait(px4_sem_t *sem, const struct timespec *ts)
 
 int px4_prctl(int option, const char *arg2, px4_task_t pid)
 {
-	int rv;
+	int rv = -1;
 
-	switch (option) {
-	case PR_SET_NAME:
-		// set the threads name - Not supported
-		// rv = pthread_setname_np(pthread_self(), arg2);
-		rv = -1;
-		break;
+    PX4_ERR("Ignoring px4_prctl %d, %p, %d", option, arg2, pid);
 
-	default:
-		rv = -1;
-		PX4_WARN("FAILED SETTING TASK NAME");
-		break;
-	}
+	// switch (option) {
+	// case PR_SET_NAME:
+	// 	// set the threads name - Not supported
+	// 	// rv = pthread_setname_np(pthread_self(), arg2);
+	// 	rv = -1;
+	// 	break;
+    //
+	// default:
+	// 	rv = -1;
+	// 	PX4_WARN("FAILED SETTING TASK NAME");
+	// 	break;
+	// }
 
 	return rv;
 }

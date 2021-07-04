@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drivers/drv_hrt.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 
@@ -11,12 +12,12 @@ public:
     void start() { _started = true; }
     void stop() { _started = false; }
 
-    void update_accel(float x, float y, float z) {
-        if (_started) _px4_accel.update(hrt_absolute_time(), x, y, z);
+    void update_accel(hrt_abstime time, float x, float y, float z) {
+        if (_started) _px4_accel.update(time, x, y, z);
     }
 
-    void update_gyro(float x, float y, float z) {
-        if (_started) _px4_gyro.update(hrt_absolute_time(), x, y, z);
+    void update_gyro(hrt_abstime time, float x, float y, float z) {
+        if (_started) _px4_gyro.update(time, x, y, z);
     }
 
     void update_temperature(float temperature) {

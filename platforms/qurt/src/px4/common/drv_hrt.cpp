@@ -105,7 +105,11 @@ int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
 
 int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
-	return clock_gettime(clk_id, tp);
+    int rv = clock_gettime(clk_id, tp);
+    hrt_abstime temp_abstime = ts_to_abstime(tp) + dsp_offset;
+    tp->tv_sec = temp_abstime / 1000000;
+    tp->tv_nsec = (temp_abstime % 1000000) * 1000;
+	return rv;
 }
 
 /*
@@ -115,7 +119,7 @@ hrt_abstime hrt_absolute_time()
 {
 	struct timespec ts;
 	px4_clock_gettime(CLOCK_MONOTONIC, &ts);
-	return ts_to_abstime(&ts) + dsp_offset;
+	return ts_to_abstime(&ts);
 }
 
 int hrt_set_absolute_time_offset(int32_t time_diff_us)

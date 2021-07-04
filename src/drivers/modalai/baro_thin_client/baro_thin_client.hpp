@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drivers/drv_hrt.h>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 
 class BaroThinClient
@@ -10,8 +11,8 @@ public:
     void start() { _started = true; }
     void stop() { _started = true; }
 
-    void update_pressure(float pressure) {
-        if (_started) _px4_baro.update(hrt_absolute_time(), pressure);
+    void update_pressure(hrt_abstime time, float pressure) {
+        if (_started) _px4_baro.update(time, pressure);
     }
 
     void update_temperature(float temperature) {

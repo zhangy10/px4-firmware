@@ -59,3 +59,20 @@ px4 -s /etc/modalai/mainapp.config
 * /etc/init.d/ssh restart
 * ssh -o IdentitiesOnly=yes root@192.168.0.4
 * oelinux123
+
+## SLPI sysmon profiling
+
+### sysMonApp commands on target
+
+* sysMonAppLE_64Bit tlp --q6 sdsp
+* sysMonAppLE_64Bit profiler --q6 sdsp
+
+* sysMonAppLE_64Bit getstate --q6 sdsp
+
+* sysMonAppLE_64Bit tinfo --getstack sensors --q6 sdsp
+
+### sysMonParser commands on host for post processing
+
+* $HEXAGON_SDK_ROOT/tools/utils/sysmon/parser_linux_v2/SysmonParser --tlp sysmontlp_sdsp.bin
+
+* $HEXAGON_SDK_ROOT/tools/utils/sysmon/parser_linux_v2/HTML_Parser/sysmon_parser --summary sysmontlp_sdsp.bin

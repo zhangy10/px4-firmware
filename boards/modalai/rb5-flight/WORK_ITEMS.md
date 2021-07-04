@@ -49,6 +49,8 @@
 * Activate temperature compensation in hmc5883 / ist8310 driver?
 
 ### IMU
+* Add configuration for the IMU rotation
+* Buffer incoming samples before publishing and add mutex
 * Move to 1KHz sampling
 * Debug why the accel lookup is failing (Not important if we move to PX4 driver)
 * Once there is SPI support in flight controller sensor, move to PX4 driver.
@@ -113,6 +115,10 @@
 * Need tcpdump on target
 
 ## Issues
+
+### tasks.cpp
+* Finish implementing the missing task functions
+* Make it thread safe
 
 ### Software
 * SLPI flight controller stops responding

@@ -59,8 +59,12 @@
 #define CONFIG_SCHED_HPWORK 1
 #define CONFIG_SCHED_LPWORK 1
 
-/** time in ms between checks for work in work queues **/
+/** time in us between checks for work in work queues **/
+#ifdef __PX4_QURT
+#define CONFIG_SCHED_WORKPERIOD 10000
+#else
 #define CONFIG_SCHED_WORKPERIOD 50000
+#endif
 
 #define CONFIG_SCHED_INSTRUMENTATION 1
 #define CONFIG_MAX_TASKS 32
