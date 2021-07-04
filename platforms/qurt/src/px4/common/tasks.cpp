@@ -68,11 +68,11 @@
 
 #include <qurt.h>
 
-#define PX4_TASK_STACK_SIZE 4096
+#define PX4_TASK_STACK_SIZE 8096
 #define PX4_TASK_MAX_NAME_LENGTH 32
 #define PX4_TASK_MAX_ARGC 32
 #define PX4_TASK_MAX_ARGV_LENGTH 32
-#define PX4_MAX_TASKS 32
+#define PX4_MAX_TASKS 24
 
 typedef struct task_entry {
 	qurt_thread_t tid;

@@ -8,15 +8,15 @@ Testing
 - Validate update rate of all drivers in SLPI
 - Use battery, calibrate, arm and "fly"
 
-Add queueing to make sure there are no lost IMU / Barometer samples in the thin clients
-
-Add mutex into tasks.cpp to protect the main data structure integrity.
-
 Change pthread_create in WorkQueueManager.cpp to use a new version of px4_task_spawn_cmd
+
+Tune task priorities and stack sizes
 
 Merge branch and produce v0.0.2 for testing. Load it all on to the new drone and test
 
 ## Secondary
+
+Add queueing to make sure there are no lost IMU / Barometer samples in the thin clients
 
 Investigate switch to altitude mode when manual mode specified
 - Something to do with the RC switches
@@ -37,3 +37,5 @@ Is there an advertise loop if the topic is local and remote?
 Search for all uses of pthread_create. Try to use px4_task_spawn_cmd instead
 
 Search for all uses of clock_gettime. Try to use px4_clock_gettime instead
+
+Log file management
