@@ -75,9 +75,9 @@ typedef int px4_task_t;
 
 #elif defined(__PX4_QURT)
 
-#define SCHED_PRIORITY_MAX 255
-#define SCHED_PRIORITY_MIN 0
-#define SCHED_PRIORITY_DEFAULT 20
+#define SCHED_PRIORITY_MAX (255 - 16)
+#define SCHED_PRIORITY_MIN 10
+#define SCHED_PRIORITY_DEFAULT 120
 
 #else
 #error "No target OS defined"
@@ -147,6 +147,10 @@ typedef struct {
 
 typedef int (*px4_main_t)(int argc, char *argv[]);
 
+#ifdef __PX4_QURT
+typedef void* (*px4_qurt_task_func_t)(void *arg);
+#endif
+
 __BEGIN_DECLS
 
 /** Starts a task and performs any specific accounting, scheduler setup, etc. */
@@ -156,6 +160,16 @@ __EXPORT px4_task_t px4_task_spawn_cmd(const char *name,
 				       int stack_size,
 				       px4_main_t entry,
 				       char *const argv[]);
+
+#ifdef __PX4_QURT
+
+/** Starts a task with standard entry function type */
+__EXPORT px4_task_t px4_task_spawn(const char *name,
+				       int priority,
+				       px4_qurt_task_func_t entry,
+				       void *arg);
+
+#endif
 
 /** Deletes a task - does not do resource cleanup **/
 __EXPORT int px4_task_delete(px4_task_t pid);

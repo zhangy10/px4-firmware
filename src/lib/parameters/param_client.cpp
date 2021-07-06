@@ -21,6 +21,9 @@
 // Debug flag
 static bool debug = false;
 
+#define TIMEOUT_WAIT 1000
+#define TIMEOUT_COUNT 50
+
 static px4_task_t   sync_thread_tid;
 static const char  *sync_thread_name = "client_sync_thread";
 
@@ -53,7 +56,7 @@ static int param_sync_thread(int argc, char *argv[]) {
 
     bool updated = false;
     while (true) {
-        usleep(100);
+        usleep(10000);
         (void) orb_check(param_set_req_fd, &updated);
         if (updated) {
             orb_copy(ORB_ID(parameter_client_set_value_request), param_set_req_fd, &s_req);
@@ -163,10 +166,10 @@ void param_client_set(param_t param, const void *val) {
     	}
 
         // Wait for response
-        PX4_INFO("Waiting for parameter_server_set_value_response for %s", req.parameter_name);
-        usleep(100);
         bool updated = false;
-        int count = 100;
+        PX4_INFO("Waiting for parameter_server_set_value_response for %s", req.parameter_name);
+        usleep(TIMEOUT_WAIT);
+        int count = TIMEOUT_COUNT;
         while (--count) {
             (void) orb_check(param_set_value_rsp_fd, &updated);
             if (updated) {
@@ -175,7 +178,7 @@ void param_client_set(param_t param, const void *val) {
                 orb_copy(ORB_ID(parameter_server_set_value_response), param_set_value_rsp_fd, &rsp);
                 break;
         	}
-            usleep(100);
+            usleep(TIMEOUT_WAIT);
         }
         if ( ! count) {
             PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
@@ -211,9 +214,9 @@ param_client_set_used(param_t param) {
 
     // Wait for response
     if (debug) PX4_INFO("Waiting for parameter_server_set_used_response for %s", req.parameter_name);
-    usleep(100);
+    usleep(TIMEOUT_WAIT);
     bool updated = false;
-    int count = 100;
+    int count = TIMEOUT_COUNT;
     while (--count) {
         (void) orb_check(param_set_used_rsp_fd, &updated);
         if (updated) {
@@ -222,7 +225,7 @@ param_client_set_used(param_t param) {
             orb_copy(ORB_ID(parameter_server_set_used_response), param_set_used_rsp_fd, &rsp);
             break;
     	}
-        usleep(100);
+        usleep(TIMEOUT_WAIT);
     }
     if ( ! count) {
         PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);

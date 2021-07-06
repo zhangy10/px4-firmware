@@ -68,7 +68,7 @@
 
 #include <qurt.h>
 
-#define PX4_TASK_STACK_SIZE 8096
+#define PX4_TASK_STACK_SIZE 8192
 #define PX4_TASK_MAX_NAME_LENGTH 32
 #define PX4_TASK_MAX_ARGC 32
 #define PX4_TASK_MAX_ARGV_LENGTH 32
@@ -79,7 +79,9 @@ typedef struct task_entry {
 	char name[PX4_TASK_MAX_NAME_LENGTH + 4];
     char stack[PX4_TASK_STACK_SIZE];
     qurt_thread_attr_t attr;
-	px4_main_t entry;
+	px4_main_t main_entry;
+	px4_qurt_task_func_t arg_entry;
+    void *arg;
 	int argc;
 	char argv_storage[PX4_TASK_MAX_ARGC][PX4_TASK_MAX_ARGV_LENGTH];
 	char *argv[PX4_TASK_MAX_ARGC];
@@ -98,20 +100,29 @@ static void entry_adapter(void *ptr)
 	task_entry_t *data;
 	data = (task_entry_t*) ptr;
 
-	data->entry(data->argc, data->argv);
+	if (data->main_entry) data->main_entry(data->argc, data->argv);
+	else if (data->arg_entry) data->arg_entry(data->arg);
+    else PX4_ERR("No valid task entry points");
 
     qurt_thread_exit(QURT_EOK);
 }
 
-px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_size, px4_main_t entry,
-			      char *const argv[])
-{
+static px4_task_t px4_task_spawn_internal(const char *name, int priority,
+                                          px4_main_t main_entry,
+			                              char *const argv[],
+                                          px4_qurt_task_func_t arg_entry,
+                   				          void *arg) {
 	int retcode = 0;
 	int i = 0;
 	int task_index = 0;
 	char *p = (char *)argv;
 
 	PX4_INFO("Creating qurt thread %s\n", name);
+
+    if ((main_entry != nullptr) && (arg_entry != nullptr)) {
+        PX4_ERR("Can only have one type of entry function");
+        return -1;
+    }
 
     // This part is not thread safe but it shouldn't
     // matter because the dspal task starts before everything
@@ -165,7 +176,9 @@ px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int
     }
 
     // Entry pointer for this task
-	taskmap[task_index].entry = entry;
+	taskmap[task_index].main_entry = main_entry;
+    taskmap[task_index].arg_entry = arg_entry;
+    taskmap[task_index].arg = arg;
 
     // Convert priority into Qurt priority. Qurt has low number as highest
     // priority. PX4 uses high number as highest priority.
@@ -189,7 +202,7 @@ px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int
         PX4_ERR("Task name is too long %s", name);
         return -1;
     }
-    strcpy(taskmap[task_index].name, "PX4-");
+    strcpy(taskmap[task_index].name, "PX4_");
     strcpy(&taskmap[task_index].name[4], name);
 
     // Create the thread with desired attributes
@@ -215,6 +228,28 @@ px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int
     qurt_mutex_unlock(&task_mutex);
 
 	return i;
+}
+
+px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_size, px4_main_t entry,
+			      char *const argv[]) {
+    if (entry == nullptr) {
+        PX4_ERR("Entry function pointer is null");
+        return -1;
+    }
+    return px4_task_spawn_internal(name, priority, entry, argv,
+                                   nullptr, nullptr);
+}
+
+px4_task_t px4_task_spawn(const char *name,
+				       int priority,
+				       px4_qurt_task_func_t entry,
+				       void *arg) {
+    if (entry == nullptr) {
+        PX4_ERR("Entry function pointer is null");
+        return -1;
+    }
+    return px4_task_spawn_internal(name, priority, nullptr, nullptr,
+                                   entry, arg);
 }
 
 int px4_task_delete(px4_task_t id)

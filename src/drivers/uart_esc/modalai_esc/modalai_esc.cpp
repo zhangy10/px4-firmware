@@ -730,8 +730,21 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
     //     PX4_INFO("ESC %u %u %u %u", outputs[0], outputs[1], outputs[2], outputs[3]);
     // }
 
+    // Ignore feedback for now since we are trying to save processing cycles.
+    // TODO: Enable feedback
 	Command cmd;
-	cmd.len = qc_esc_create_rpm_packet4_fb(_esc_chans[0].rate_req,
+	// cmd.len = qc_esc_create_rpm_packet4_fb(_esc_chans[0].rate_req,
+	// 				       _esc_chans[1].rate_req,
+	// 				       _esc_chans[2].rate_req,
+	// 				       _esc_chans[3].rate_req,
+	// 				       _esc_chans[0].led,
+	// 				       _esc_chans[1].led,
+	// 				       _esc_chans[2].led,
+	// 				       _esc_chans[3].led,
+	// 				       fb_idx,
+	// 				       cmd.buf,
+	// 				       sizeof(cmd.buf));
+	cmd.len = qc_esc_create_rpm_packet4(_esc_chans[0].rate_req,
 					       _esc_chans[1].rate_req,
 					       _esc_chans[2].rate_req,
 					       _esc_chans[3].rate_req,
@@ -739,10 +752,8 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 					       _esc_chans[1].led,
 					       _esc_chans[2].led,
 					       _esc_chans[3].led,
-					       fb_idx,
 					       cmd.buf,
 					       sizeof(cmd.buf));
-
 
 	if (_uart_port->uart_write(cmd.buf, cmd.len) != cmd.len) {
 		PX4_ERR("Failed to send packet");
@@ -753,27 +764,28 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 		fb_idx = 0;
 	}
 
-	/*
-	 * Comparing this to SNAV, there wasn't a delay between reading
-	 * feedback... without some delay on the PX4 side of things we
-	 * can have some read failures.  The update rate of this task
-	 * is ~2000us, we can afford to delay a little here
-	 */
-	px4_usleep(MODALAI_ESC_WRITE_WAIT_US);
 
-	memset(&cmd.buf, 0x00, sizeof(cmd.buf));
-
-	/*
-	 * Here we parse the feedback response.  Rarely the packet is mangled
-	 * but this means we simply miss a feedback response and will come back
-	 * around in roughly 8ms for another... so don't freak out and keep on
-	 * trucking I say
-	 */
-	int res = _uart_port->uart_read(cmd.buf, sizeof(cmd.buf));
-
-	if (res > 0) {
-		parseResponse(cmd.buf, res);
-	}
+	// /*
+	//  * Comparing this to SNAV, there wasn't a delay between reading
+	//  * feedback... without some delay on the PX4 side of things we
+	//  * can have some read failures.  The update rate of this task
+	//  * is ~2000us, we can afford to delay a little here
+	//  */
+	// px4_usleep(MODALAI_ESC_WRITE_WAIT_US);
+    //
+	// memset(&cmd.buf, 0x00, sizeof(cmd.buf));
+    //
+	// /*
+	//  * Here we parse the feedback response.  Rarely the packet is mangled
+	//  * but this means we simply miss a feedback response and will come back
+	//  * around in roughly 8ms for another... so don't freak out and keep on
+	//  * trucking I say
+	//  */
+	// int res = _uart_port->uart_read(cmd.buf, sizeof(cmd.buf));
+    //
+	// if (res > 0) {
+	// 	parseResponse(cmd.buf, res);
+	// }
 
 	perf_count(_output_update_perf);
 

@@ -69,6 +69,7 @@
 * Remove from codebase?
 
 ### ModalAI UART ESC
+* Enable feedback
 * Enable test motor command from QGC (Need newer QGC)
 * Allow leds to be set with led command
 * Test tones
@@ -90,6 +91,7 @@
    * Try -zlazyload -lsomelib to get rid of the stub library
 
 ### libfc_sensor
+* Average over 10 slpi time offsets? Throw out outliers?
 * Add test code
 * coordinate suid with slpi_proc code
 * Maybe rename this? fc_sensor doesn’t make any sense to the PX4 community

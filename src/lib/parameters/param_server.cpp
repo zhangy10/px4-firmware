@@ -19,6 +19,9 @@
 // Debug flag
 static bool debug = false;
 
+#define TIMEOUT_WAIT 1000
+#define TIMEOUT_COUNT 50
+
 // Advertisement handles
 static orb_advert_t param_set_value_req_h = nullptr;
 static orb_advert_t param_reset_req_h     = nullptr;
@@ -147,10 +150,10 @@ void param_server_set(param_t param, const void *val) {
 		orb_publish(ORB_ID(parameter_client_set_value_request), param_set_value_req_h, &req);
 
         // Wait for response
-        if (debug) PX4_INFO("Waiting for parameter_client_set_value_response for %s", req.parameter_name);
-        usleep(100);
         bool updated = false;
-        int count = 100;
+        if (debug) PX4_INFO("Waiting for parameter_client_set_value_response for %s", req.parameter_name);
+        usleep(TIMEOUT_WAIT);
+        int count = TIMEOUT_COUNT;
         while (--count) {
             (void) orb_check(param_set_rsp_fd, &updated);
             if (updated) {
@@ -159,7 +162,7 @@ void param_server_set(param_t param, const void *val) {
                 orb_copy(ORB_ID(parameter_client_set_value_response), param_set_rsp_fd, &rsp);
                 break;
         	}
-            usleep(100);
+            usleep(TIMEOUT_WAIT);
         }
         if ( ! count) {
             PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
@@ -197,9 +200,9 @@ static void param_server_reset_internal(param_t param, bool reset_all) {
 
     // Wait for response
     if (debug) PX4_INFO("Waiting for parameter_client_reset_response");
-    usleep(100);
+    usleep(TIMEOUT_WAIT);
     bool updated = false;
-    int count = 100;
+    int count = TIMEOUT_COUNT;
     while (--count) {
         (void) orb_check(param_reset_rsp_fd, &updated);
         if (updated) {
@@ -208,7 +211,7 @@ static void param_server_reset_internal(param_t param, bool reset_all) {
             orb_copy(ORB_ID(parameter_client_reset_response), param_reset_rsp_fd, &rsp);
             break;
     	}
-        usleep(100);
+        usleep(TIMEOUT_WAIT);
     }
     if ( ! count) {
         PX4_ERR("Timeout waiting for parameter_client_reset_response");

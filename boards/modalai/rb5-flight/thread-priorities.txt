@@ -1,0 +1,31 @@
+
+Thread priorities:
+
+      PX4-dspal     5   // Doesn't do anything after initial launch of PX4 (main.cpp)
+     PX4-hpwork     5   // High priority work queue
+     PX4-lpwork   250   // Low priority work queue
+    PX4-wkr_hrt     5   // High rate worker
+PX4-client_sync   250
+ PX4-wq:manager     5
+     PX4-qshell     5
+    PX4-wq:I2C1   205
+PX4-baro_thin_c    32
+PX4-imu_thin_cl     7
+PX4-wq:nav_and_   205
+PX4-wq:rate_ctr   205
+    PX4-wq:INS0   205
+
+
+      PX4-dspal    21
+     PX4-hpwork    17
+     PX4-lpwork   245
+    PX4-wkr_hrt    16
+PX4-client_sync   150
+ PX4-wq:manager    16
+     PX4-qshell    21
+    PX4-wq:I2C1   205
+PX4-baro_thin_c    32
+PX4-imu_thin_cl     7
+PX4-wq:nav_and_   205
+PX4-wq:rate_ctr   205
+    PX4-wq:INS0   205

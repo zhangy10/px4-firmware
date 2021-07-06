@@ -51,9 +51,11 @@
 // Forward declaration
 static void *WorkQueueRunner(void *ptr);
 
+#if !defined(__PX4_QURT)
 static pthread_attr_t wq_attr;
 static void *wq_static_ptr;
 static pthread_t wq_thread_id;
+#endif
 
 using namespace time_literals;
 
@@ -237,7 +239,12 @@ WorkQueueManagerRun(int, char **)
 
 		if (wq != nullptr) {
 			// create new work queue
-
+#if defined(__PX4_QURT)
+            px4_task_spawn(wq->name,
+            			   (255 - 10) + wq->relative_priority,
+            			   WorkQueueRunner,
+            			   (void *) wq);
+#else
 			int ret_attr_init = pthread_attr_init(&wq_attr);
 
 			if (ret_attr_init != 0) {
@@ -252,9 +259,7 @@ WorkQueueManagerRun(int, char **)
 			}
 
 			// stack size
-#if defined(__PX4_QURT)
-			const size_t stacksize = math::max(8 * 1024, PX4_STACK_ADJUSTED(wq->stacksize));
-#elif defined(__PX4_NUTTX)
+#if defined(__PX4_NUTTX)
 			const size_t stacksize = math::max((uint16_t)PTHREAD_STACK_MIN, wq->stacksize);
 #elif defined(__PX4_POSIX)
 			// On posix system , the desired stacksize round to the nearest multiplier of the system pagesize
@@ -269,16 +274,12 @@ WorkQueueManagerRun(int, char **)
 				PX4_ERR("setting stack size for %s failed (%i)", wq->name, ret_setstacksize);
 			}
 
-#ifndef __PX4_QURT
-
 			// schedule policy FIFO
 			int ret_setschedpolicy = pthread_attr_setschedpolicy(&wq_attr, SCHED_FIFO);
 
 			if (ret_setschedpolicy != 0) {
 				PX4_ERR("failed to set sched policy SCHED_FIFO (%i)", ret_setschedpolicy);
 			}
-
-#endif // ! QuRT
 
 			// priority
 			param.sched_priority = sched_get_priority_max(SCHED_FIFO) + wq->relative_priority;
@@ -305,6 +306,7 @@ WorkQueueManagerRun(int, char **)
 			if (ret_destroy != 0) {
 				PX4_ERR("failed to destroy thread attributes for %s (%i)", wq->name, ret_create);
 			}
+#endif // ! QuRT
 		}
 	}
 
@@ -318,9 +320,13 @@ WorkQueueManagerStart()
 
 		_wq_manager_should_exit.store(false);
 
-		int task_id = px4_task_spawn_cmd("wq:manager",
+		int task_id = px4_task_spawn_cmd("wq_manager",
 						 SCHED_DEFAULT,
+#ifdef __PX4_QURT
+						 SCHED_PRIORITY_MAX - 100,
+#else
 						 SCHED_PRIORITY_MAX,
+#endif
 						 1280,
 						 (px4_main_t)&WorkQueueManagerRun,
 						 nullptr);

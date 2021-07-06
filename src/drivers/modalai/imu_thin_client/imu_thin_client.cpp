@@ -28,9 +28,14 @@ static IMU_ThinClient *local_instance = nullptr;
 static px4_task_t imu_thread_tid = -1;
 
 static qurt_mutex_t imu_mutex;
+static qurt_signal_t imu_signal;
 
 static hrt_abstime accel_sample_time = 0;
 static hrt_abstime gyro_sample_time = 0;
+
+#define ACCEL_SIGNAL (1 << 0)
+#define GYRO_SIGNAL (1 << 1)
+#define ALL_SIGNALS (ACCEL_SIGNAL | GYRO_SIGNAL)
 
 static float accel_x = 0.0;
 static float accel_y = 0.0;
@@ -44,35 +49,34 @@ static uint32_t loop_counter = 0;
 
 static int imu_update_thread(int argc, char *argv[]) {
 
-    static hrt_abstime accel_update_time = 0;
-    static hrt_abstime gyro_update_time = 0;
+    unsigned int signals = 0;
 
     while (true) {
         loop_counter++;
 
-        if (accel_sample_time != accel_update_time) {
+        signals = qurt_signal_wait(&imu_signal, ALL_SIGNALS, QURT_SIGNAL_ATTR_WAIT_ANY);
+
+        if (signals & ACCEL_SIGNAL) {
+            qurt_signal_clear(&imu_signal, ACCEL_SIGNAL);
             qurt_mutex_lock(&imu_mutex);
             hrt_abstime accel_sample_time_copy = accel_sample_time;
             float accel_x_copy = accel_x;
             float accel_y_copy = accel_y;
             float accel_z_copy = accel_z;
             qurt_mutex_unlock(&imu_mutex);
-            if (local_instance) local_instance->update_accel(accel_sample_time_copy, accel_x_copy, accel_y_copy, accel_z_copy);
-            accel_update_time = accel_sample_time_copy;
+            local_instance->update_accel(accel_sample_time_copy, accel_x_copy, accel_y_copy, accel_z_copy);
         }
 
-        if (gyro_sample_time != gyro_update_time) {
+        if (signals & GYRO_SIGNAL) {
+            qurt_signal_clear(&imu_signal, GYRO_SIGNAL);
             qurt_mutex_lock(&imu_mutex);
             hrt_abstime gyro_sample_time_copy = gyro_sample_time;
             float gyro_x_copy = gyro_x;
             float gyro_y_copy = gyro_y;
             float gyro_z_copy = gyro_z;
             qurt_mutex_unlock(&imu_mutex);
-            if (local_instance) local_instance->update_gyro(gyro_sample_time_copy, gyro_x_copy, gyro_y_copy, gyro_z_copy);
-            gyro_update_time = gyro_sample_time_copy;
+            local_instance->update_gyro(gyro_sample_time_copy, gyro_x_copy, gyro_y_copy, gyro_z_copy);
         }
-
-        qurt_timer_sleep(100);
     }
 
     return 0;
@@ -92,6 +96,8 @@ int imu_thin_client_main(int argc, char *argv[])
 
     if (imu_thread_tid < 0) {
         qurt_mutex_init(&imu_mutex);
+        qurt_signal_init(&imu_signal);
+
         imu_thread_tid = px4_task_spawn_cmd("imu_thin_client",
     				                        SCHED_DEFAULT,
     				                        IMU_THREAD_PRIORITY,
@@ -130,6 +136,7 @@ void imu_thin_client_accel_data(float x, float y, float z) {
             accel_z = z;
             accel_sample_time = hrt_absolute_time();
             qurt_mutex_unlock(&imu_mutex);
+            qurt_signal_set(&imu_signal, ACCEL_SIGNAL);
         }
     }
 
@@ -140,10 +147,17 @@ void imu_thin_client_accel_data(float x, float y, float z) {
 }
 
 void imu_thin_client_gyro_data(float x, float y, float z) {
-    gyro_x = x;
-    gyro_y = y;
-    gyro_z = z;
-    gyro_sample_time = hrt_absolute_time();
+    if (local_instance != nullptr) {
+        if (local_instance->is_running()) {
+            qurt_mutex_lock(&imu_mutex);
+            gyro_x = x;
+            gyro_y = y;
+            gyro_z = z;
+            gyro_sample_time = hrt_absolute_time();
+            qurt_mutex_unlock(&imu_mutex);
+            qurt_signal_set(&imu_signal, GYRO_SIGNAL);
+        }
+    }
 }
 
 void imu_thin_client_temperature_data(float temperature) {

@@ -27,6 +27,10 @@ static BaroThinClient *local_instance = nullptr;
 static px4_task_t baro_thread_tid = -1;
 
 static qurt_mutex_t baro_mutex;
+static qurt_signal_t baro_signal;
+
+#define PRESSURE_SIGNAL (1 << 0)
+#define ALL_SIGNALS (PRESSURE_SIGNAL)
 
 static hrt_abstime baro_sample_time = 0;
 
@@ -36,20 +40,21 @@ static uint32_t loop_counter = 0;
 
 static int baro_update_thread(int argc, char *argv[]) {
 
-    static hrt_abstime baro_update_time = 0;
+    unsigned int signals = 0;
 
     while (true) {
         loop_counter++;
-        if (baro_sample_time != baro_update_time) {
+
+        signals = qurt_signal_wait(&baro_signal, ALL_SIGNALS, QURT_SIGNAL_ATTR_WAIT_ANY);
+
+        if (signals & PRESSURE_SIGNAL) {
+            qurt_signal_clear(&baro_signal, PRESSURE_SIGNAL);
             qurt_mutex_lock(&baro_mutex);
             hrt_abstime baro_sample_time_copy = baro_sample_time;
             float baro_pressure_copy = baro_pressure;
             qurt_mutex_unlock(&baro_mutex);
-            if (local_instance) local_instance->update_pressure(baro_sample_time_copy, baro_pressure_copy);
-            baro_update_time = baro_sample_time_copy;
+            local_instance->update_pressure(baro_sample_time_copy, baro_pressure_copy);
         }
-
-        qurt_timer_sleep(10000);
     }
 
     return 0;
@@ -68,6 +73,7 @@ int baro_thin_client_main(int argc, char *argv[])
 
     if (baro_thread_tid < 0) {
         qurt_mutex_init(&baro_mutex);
+        qurt_signal_init(&baro_signal);
         baro_thread_tid = px4_task_spawn_cmd("baro_thin_client",
     				                         SCHED_DEFAULT,
     				                         BARO_THREAD_PRIORITY,
@@ -96,7 +102,7 @@ int baro_thin_client_main(int argc, char *argv[])
 
 void baro_thin_client_pressure_data(float pressure) {
 
-    static uint32_t sample_msg_counter = 0;
+    // static uint32_t sample_msg_counter = 0;
 
     if (local_instance != nullptr) {
         if (local_instance->is_running()) {
@@ -104,13 +110,14 @@ void baro_thin_client_pressure_data(float pressure) {
             baro_pressure = pressure;
             baro_sample_time = hrt_absolute_time();
             qurt_mutex_unlock(&baro_mutex);
+            qurt_signal_set(&baro_signal, PRESSURE_SIGNAL);
         }
     }
 
-    if (++sample_msg_counter == 50) {
-        PX4_INFO("BARO sample at %llu %u", baro_sample_time, loop_counter);
-        sample_msg_counter = 0;
-    }
+    // if (++sample_msg_counter == 50) {
+    //     PX4_INFO("BARO sample at %llu %u", baro_sample_time, loop_counter);
+    //     sample_msg_counter = 0;
+    // }
 }
 
 void baro_thin_client_temperature_data(float temperature) {
