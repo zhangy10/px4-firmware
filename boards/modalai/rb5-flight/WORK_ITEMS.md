@@ -80,7 +80,9 @@
 
 ### System time (drv_hrt):
 * Does the slpi clock offset need to be updated periodically?
-* Move dsp offset from hrt_absolute time to px4_clock_gettime?
+
+### Safety switch
+* How would we wire this in? Need GPIO
 
 ## External components
 

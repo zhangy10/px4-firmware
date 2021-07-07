@@ -14,8 +14,7 @@ Tune task priorities and stack sizes
 
 Check CAL_MAG0_ROT: Internal? Not lined up on QGC?
 
-Merge branch / cleanup branches
-produce v0.0.2 for testing. Load it all on to the new drone and test
+Load v1.0.2 on to the new drone and test
 
 ## Secondary
 
