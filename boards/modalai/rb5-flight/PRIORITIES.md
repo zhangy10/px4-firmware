@@ -3,18 +3,17 @@
 
 ## Primary
 
-Testing
-- Issue fix (stability)
-- Validate update rate of all drivers in SLPI
-- Use battery, calibrate, arm and "fly"
+Test "px4-rc_update not found" fix
 
-Implement CPU utilization monitor
+Test "signer.py failing in qrb5165-px4-support if Hexagon SDK not installed" fix (Tom to check it out)
+
+Magnetometer broken. Check ATT_W_MAG. Check CAL_MAG0_ROT. Internal? Not lined up on QGC?
+
+Implement CPU utilization monitor (DSP vs. Apps)
+
+Testing!!! HIL and actual!!!
 
 Tune task priorities and stack sizes
-
-Check CAL_MAG0_ROT: Internal? Not lined up on QGC?
-
-Load v1.0.2 on to the new drone and test
 
 ## Secondary
 
