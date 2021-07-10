@@ -3,6 +3,10 @@
 
 ## Primary
 
+Verify PX4 version
+
+Add SoftAP mode to WiFi (In px4 support for now)
+
 Test "px4-rc_update not found" fix
 
 Test "signer.py failing in qrb5165-px4-support if Hexagon SDK not installed" fix (Tom to check it out)
