@@ -131,7 +131,7 @@ int
 I2C::transfer(const uint8_t *send, const unsigned send_len, uint8_t *recv, const unsigned recv_len)
 {
 	int ret = PX4_ERROR;
-	unsigned retry_count = 0;
+	unsigned retry_count = 1;
 
     if ((_i2c_fd != PX4_ERROR) && (_i2c_transfer != NULL)) {
     	do {
