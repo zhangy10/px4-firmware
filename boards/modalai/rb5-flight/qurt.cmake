@@ -59,6 +59,7 @@ px4_add_board(
         magnetometer/hmc5883
         magnetometer/isentek/ist8310
         uart_esc/modalai_esc
+        power_monitor/voxlpm
 	MODULES
 		attitude_estimator_q
 		# commander

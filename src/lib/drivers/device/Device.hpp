@@ -220,7 +220,7 @@ public:
 	 * @return The bus address
 	 */
 	uint8_t	get_device_address() const { return _device_id.devid_s.address; }
-	void	set_device_address(int address) { _device_id.devid_s.address = address; }
+	virtual void set_device_address(int address) { _device_id.devid_s.address = address; }
 
 	/**
 	 * Return the device type

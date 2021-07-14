@@ -32,8 +32,7 @@
 ## Drivers
 
 ### APM
-* May not be possible on M0051. Vinny provided a cable to hack it?
-* Perhaps just wait until M0052 / M0053 (Expected mid July)
+* Add support for second INA231
 
 ### RC
 * Implement on apps side on M0052 (Use UART that FC used on M0051)

@@ -3,8 +3,6 @@
 
 ## Primary
 
-Verify proper APM on all drones / get it updated if necessary
-
 Add SoftAP mode to WiFi (In px4 support for now)
 - Do range testing on this
 

@@ -62,11 +62,14 @@ public:
 	virtual int	init() override;
 
     typedef int (*_config_i2c_bus_func_t)(uint8_t, uint8_t, uint32_t);
+    typedef int (*_set_i2c_address_func_t)(int, uint8_t);
     typedef int (*_i2c_transfer_func_t)(int, const uint8_t*, const unsigned, uint8_t*, const unsigned);
 
     static void configure_callbacks(_config_i2c_bus_func_t config_func,
+                                    _set_i2c_address_func_t addr_func,
                                     _i2c_transfer_func_t transfer_func) {
         _config_i2c_bus = config_func;
+        _set_i2c_address = addr_func;
         _i2c_transfer = transfer_func;
     }
 
@@ -94,6 +97,8 @@ protected:
 	 */
 	virtual int	probe() { return PX4_OK; }
 
+	virtual void set_device_address(int address);
+
 	/**
 	 * Perform an I2C transaction to the device.
 	 *
@@ -112,11 +117,12 @@ protected:
 	virtual bool	external() const override { return false; }
 
 private:
-	uint32_t		              _frequency{0};
-    int                           _i2c_fd{-1};
-    static _config_i2c_bus_func_t _config_i2c_bus;
-    static _i2c_transfer_func_t   _i2c_transfer;
-    static pthread_mutex_t        _mutex;
+	uint32_t		               _frequency{0};
+    int                            _i2c_fd{-1};
+    static _config_i2c_bus_func_t  _config_i2c_bus;
+    static _set_i2c_address_func_t _set_i2c_address;
+    static _i2c_transfer_func_t    _i2c_transfer;
+    static pthread_mutex_t         _mutex;
 };
 
 } // namespace device

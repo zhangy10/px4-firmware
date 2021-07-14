@@ -170,6 +170,7 @@ typedef struct {
     int (*unsubscribe_func_ptr)(const char *topic_name);
     int (*topic_data_func_ptr)(const char *name, const uint8_t *data, int data_len_in_bytes);
     device::I2C::_config_i2c_bus_func_t config_i2c_bus;
+    device::I2C::_set_i2c_address_func_t set_i2c_address;
     device::I2C::_i2c_transfer_func_t i2c_transfer;
     open_uart_func_t open_uart_func;
     write_uart_func_t write_uart_func;

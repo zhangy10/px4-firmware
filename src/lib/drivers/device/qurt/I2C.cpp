@@ -47,8 +47,10 @@
 namespace device
 {
 
-I2C::_config_i2c_bus_func_t I2C::_config_i2c_bus = NULL;
-I2C::_i2c_transfer_func_t   I2C::_i2c_transfer   = NULL;
+I2C::_config_i2c_bus_func_t  I2C::_config_i2c_bus  = NULL;
+I2C::_set_i2c_address_func_t I2C::_set_i2c_address = NULL;
+I2C::_i2c_transfer_func_t    I2C::_i2c_transfer    = NULL;
+
 pthread_mutex_t I2C::_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 I2C::I2C(uint8_t device_type, const char *name, const int bus, const uint16_t address, const uint32_t frequency) :
@@ -109,6 +111,21 @@ out:
 
 	return ret;
 }
+
+void
+I2C::set_device_address(int address)
+{
+    if ((_i2c_fd != PX4_ERROR) && (_set_i2c_address != NULL)) {
+		PX4_INFO("Set i2c address 0x%x, fd %d", address, _i2c_fd);
+
+        pthread_mutex_lock(&_mutex);
+		_set_i2c_address(_i2c_fd, address);
+        pthread_mutex_unlock(&_mutex);
+
+        Device::set_device_address(address);
+    }
+}
+
 
 int
 I2C::transfer(const uint8_t *send, const unsigned send_len, uint8_t *recv, const unsigned recv_len)
