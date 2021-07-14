@@ -18,6 +18,8 @@ Tune task priorities and stack sizes
 
 ## Secondary
 
+Occasional voxlpm fail. Verify i2c retry fixes that.
+
 SDSP: Timeout waiting for parameter_client_set_value_response
 
 Add queueing to make sure there are no lost IMU / Barometer samples in the thin clients
