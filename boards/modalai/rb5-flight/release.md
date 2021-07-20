@@ -1,5 +1,6 @@
 # Release procedure
 
+- Add release notes to this document
 - On master branch
 - Bump package version number in debian/control
 - Commit and push everything
@@ -18,10 +19,14 @@
 
 # Releases
 
-## 1.0.4alpha
+## 1.0.6alpha
 
-- First functional release
+- Added support for Spektrum RC
 
 ## 1.0.5alpha
 
 - Support for new 9.1 based SLPI release
+
+## 1.0.4alpha
+
+- First functional release
