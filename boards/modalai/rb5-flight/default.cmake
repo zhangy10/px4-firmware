@@ -63,6 +63,7 @@ px4_add_board(
         modalai/rc_controller
         #modalai/uart_esc_driver
 		#telemetry # all available telemetry drivers
+        spektrum_rc
 	MODULES
 		#airspeed_selector
 		#attitude_estimator_q

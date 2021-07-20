@@ -1,0 +1,21 @@
+
+./min.sh
+
+qshell ist8310 start -X -b 1
+listener sensor_mag -n 1
+
+qshell baro_thin_client start
+listener sensor_baro -n 1
+
+qshell imu_thin_client start
+listener sensor_accel -n 1
+listener sensor_gyro -n 1
+
+gps start -d /dev/ttyHS1 -b 38400
+listener sensor_gps -n 1
+
+qshell modalai_esc start
+qshell modalai_esc status
+
+qshell voxlpm start -X -b 2
+listener battery_status -n 1

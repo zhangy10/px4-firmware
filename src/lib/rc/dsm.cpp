@@ -70,6 +70,8 @@ static enum DSM_DECODE_STATE {
 	DSM_DECODE_STATE_SYNC
 } dsm_decode_state = DSM_DECODE_STATE_DESYNC;
 
+#define MODULE_NAME "DSM"
+
 static int dsm_fd = -1;						/**< File handle to the DSM UART */
 static hrt_abstime dsm_last_rx_time;            /**< Timestamp when we last received data */
 static hrt_abstime dsm_last_frame_time;		/**< Timestamp for start of last valid dsm frame */
@@ -361,13 +363,63 @@ int dsm_config(int fd)
 
 	if (fd >= 0) {
 
-		struct termios t;
+    	struct termios uart_config;
 
-		/* 115200bps, no parity, one stop bit */
-		tcgetattr(fd, &t);
-		cfsetspeed(&t, 115200);
-		t.c_cflag &= ~(CSTOPB | PARENB);
-		tcsetattr(fd, TCSANOW, &t);
+    	int termios_state;
+
+    	/* fill the struct for the new configuration */
+    	tcgetattr(fd, &uart_config);
+
+    	/* properly configure the terminal (see also https://en.wikibooks.org/wiki/Serial_Programming/termios ) */
+
+    	//
+    	// Input flags - Turn off input processing
+    	//
+    	// convert break to null byte, no CR to NL translation,
+    	// no NL to CR translation, don't mark parity errors or breaks
+    	// no input parity check, don't strip high bit off,
+    	// no XON/XOFF software flow control
+    	//
+    	uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL |
+    				 INLCR | PARMRK | INPCK | ISTRIP | IXON);
+    	//
+    	// Output flags - Turn off output processing
+    	//
+    	// no CR to NL translation, no NL to CR-NL translation,
+    	// no NL to CR translation, no column 0 CR suppression,
+    	// no Ctrl-D suppression, no fill characters, no case mapping,
+    	// no local output processing
+    	//
+    	// config.c_oflag &= ~(OCRNL | ONLCR | ONLRET |
+    	//                     ONOCR | ONOEOT| OFILL | OLCUC | OPOST);
+    	uart_config.c_oflag = 0;
+
+    	//
+    	// No line processing
+    	//
+    	// echo off, echo newline off, canonical mode off,
+    	// extended input processing off, signal chars off
+    	//
+    	uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+
+    	/* no parity, one stop bit, disable flow control */
+    	uart_config.c_cflag &= ~(CSTOPB | PARENB | CRTSCTS);
+
+    	/* set baud rate */
+    	if ((termios_state = cfsetispeed(&uart_config, B115200)) < 0) {
+    		PX4_ERR("ERR: %d (cfsetispeed)", termios_state);
+    		return -1;
+    	}
+
+    	if ((termios_state = cfsetospeed(&uart_config, B115200)) < 0) {
+    		PX4_ERR("ERR: %d (cfsetospeed)", termios_state);
+    		return -1;
+    	}
+
+    	if ((termios_state = tcsetattr(fd, TCSANOW, &uart_config)) < 0) {
+    	   PX4_ERR("ERR: %d (tcsetattr)", termios_state);
+    		return -1;
+    	}
 
 		/* initialise the decoder */
 		dsm_partial_frame_count = 0;
@@ -406,6 +458,11 @@ int dsm_init(const char *device)
 	if (dsm_fd < 0) {
 		dsm_fd = open(device, O_RDWR | O_NONBLOCK);
 	}
+
+    if (dsm_fd < 0) {
+        PX4_ERR("Open failed on %s", device);
+        return -1;
+    }
 
 	dsm_proto_init();
 

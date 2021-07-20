@@ -1,24 +1,23 @@
 
 # Priorities
 
-## Primary
+Add Spektrum support in M0052
+
+Occasional voxlpm probe fail. Verify i2c retry fixes that.
+Occasional voxlpm start causes crash. Try Mutex.
+
+Implement CPU utilization monitor (DSP vs. Apps) (LoadMon.cpp)_
+
+Magnetometer broken. Check ATT_W_MAG. Check CAL_MAG0_ROT. Internal? Not lined up on QGC?
 
 Add SoftAP mode to WiFi (In px4 support for now)
 - Do range testing on this
 
 Test "signer.py failing in qrb5165-px4-support if Hexagon SDK not installed" fix (Tom to check it out)
 
-Magnetometer broken. Check ATT_W_MAG. Check CAL_MAG0_ROT. Internal? Not lined up on QGC?
+Move to PX4 barometer driver. Need to create one for ICP101xx
 
-Implement CPU utilization monitor (DSP vs. Apps)
-
-Testing!!! HIL and actual!!!
-
-Tune task priorities and stack sizes
-
-## Secondary
-
-Occasional voxlpm fail. Verify i2c retry fixes that.
+Move to PX4 IMU driver. Need to create SPI driver, interrupt driver
 
 SDSP: Timeout waiting for parameter_client_set_value_response
 

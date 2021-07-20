@@ -15,3 +15,13 @@
 - package
 - deploy / validate
 - post package to cloud bucket
+
+# Releases
+
+## 1.0.4alpha
+
+- First functional release
+
+## 1.0.5alpha
+
+- Support for new 9.1 based SLPI release

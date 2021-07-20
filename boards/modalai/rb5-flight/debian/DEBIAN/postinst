@@ -76,6 +76,7 @@ ln -f -s px4 px4-sf1xx
 ln -f -s px4 px4-shutdown
 ln -f -s px4 px4-sih
 ln -f -s px4 px4-simulator
+ln -f -s px4 px4-spektrum_rc
 ln -f -s px4 px4-srf02
 ln -f -s px4 px4-teraranger
 ln -f -s px4 px4-tests
