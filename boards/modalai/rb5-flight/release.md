@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.8dev
+
+- Do not hardcode Qurt I2C devices to be "internal". Experimental.
+
 ## 1.0.7alpha
 
 - Added verbose mode to Spektrum RC driver
