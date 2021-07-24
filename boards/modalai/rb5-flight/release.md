@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.0.7alpha
+
+- Added verbose mode to Spektrum RC driver
+- Fixed serial port numbers for GPS and Spektrum RC
+
 ## 1.0.6alpha
 
 - Added support for Spektrum RC

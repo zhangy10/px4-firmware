@@ -83,13 +83,17 @@ void task_main(int argc, char *argv[])
 	int ch;
 	int myoptind = 1;
 	const char *myoptarg = NULL;
+    bool verbose = false;
 
-	while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "vd:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'd':
 			device_path = myoptarg;
 			break;
-
+		case 'v':
+			PX4_INFO("Spektrum RC: Enabling verbose mode");
+			verbose = true;
+			break;
 		default:
 			break;
 		}
@@ -100,7 +104,9 @@ void task_main(int argc, char *argv[])
 	if (uart_fd < 1) {
 		PX4_ERR("dsm init failed");
 		return;
-	}
+	} else if (verbose) {
+		PX4_INFO("Spektrum RC: dsm_init succeeded");
+    }
 
 	orb_advert_t rc_pub = nullptr;
 
@@ -110,16 +116,21 @@ void task_main(int argc, char *argv[])
 	_is_running = true;
 	uint16_t raw_rc_values[input_rc_s::RC_INPUT_MAX_CHANNELS];
 	uint16_t raw_rc_count = 0;
+    uint32_t loop_counter = 0;
+    bool     print_msg = false;
 
 	// Main loop
 	while (!_task_should_exit) {
 
+        loop_counter++;
+        if (((loop_counter % 100) == 0) && verbose) print_msg = true;
+
 		int newbytes = ::read(uart_fd, &rx_buf[0], sizeof(rx_buf));
 
 		if (newbytes <= 0) {
-			// PX4_INFO("Spektrum RC read no bytes");
+			if (print_msg) PX4_INFO("Spektrum RC: Read no bytes from UART");
 		} else {
-			// PX4_INFO("Spektrum RC read %d bytes", newbytes);
+			if (print_msg) PX4_INFO("Spektrum RC: Read %d bytes from UART", newbytes);
 
     		const hrt_abstime now = hrt_absolute_time();
 
@@ -133,6 +144,7 @@ void task_main(int argc, char *argv[])
     		UNUSED(dsm_11_bit);
 
     		if (rc_updated) {
+			    if (print_msg) PX4_INFO("Spektrum RC: DSM message parsed successfully");
 
     			input_rc_s input_rc = {};
 
@@ -150,7 +162,6 @@ void task_main(int argc, char *argv[])
 
 		// sleep since no poll for qurt
 		usleep(10000);
-
 	}
 
 	orb_unadvertise(rc_pub);
