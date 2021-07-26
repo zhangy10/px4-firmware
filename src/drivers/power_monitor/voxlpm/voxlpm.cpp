@@ -127,6 +127,18 @@ VOXLPM::probe()
 	int ret = PX4_ERROR;
 	uint8_t data[2];
 
+#ifdef __PX4_QURT
+    // Only the TI INA231 monitor is supported on SLPI. That's partly
+    // because trying to change the device slave address on an already
+    // configured bus is flaky at best. It sometimes causes a crash and
+    // sometimes just causes the probe to fail.
+    if (get_device_address() != VOXLPM_INA231_ADDR_VBATT) {
+        PX4_INFO("Error, voxlpm not set up for INA231");
+    } else {
+    	/* Check config register */
+    	ret = read_reg_buf(INA231_REG_CONFIG, data, sizeof(data));
+    }
+#else
 	uint8_t addr;
 
 	/* Try LTC2946 first */
@@ -156,6 +168,7 @@ VOXLPM::probe()
 		/* Check config register */
 		ret = read_reg_buf(INA231_REG_CONFIG, data, sizeof(data));
 	}
+#endif
 
 	return ret;
 }
