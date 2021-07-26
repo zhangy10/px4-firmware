@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.9alpha
+
+- Changed voxlpm to only support AN231 on Qurt PX4 to avoid the issues with slave address reconfiguration
+
 ## 1.0.8dev
 
 - Do not hardcode Qurt I2C devices to be "internal". Experimental.
