@@ -20,12 +20,12 @@ Feature request: Mavlink shell from QGC
 
 ## Deployment considerations
 
+Generate test signature before shipping. Preserve it across updates.
+    - Better yet, find a way to not need signatures. (File a QC case)
+
 Customers cannot build our PX4. Can send out binary first.
 
 Customers cannot QFIL. Stuck with whatever is there on shipment.
-
-Generate test signature before shipping. Preserve it across updates.
-    - Better yet, find a way to not need signatures. (File a QC case)
 
 ## Other
 

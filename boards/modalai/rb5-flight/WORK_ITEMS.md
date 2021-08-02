@@ -127,6 +127,8 @@
 * Clean up the code
    * Run astyle to properly format code
    * Correct copyright notices
+* Move to latest Hexagon SDK release
+* Move to updated linaro64 release (e.g. http://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/)
 
 ## Issues
 
