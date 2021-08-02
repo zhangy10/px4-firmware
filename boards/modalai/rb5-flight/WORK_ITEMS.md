@@ -4,7 +4,7 @@
 
 ### ORB
 * qshell_retval sequence number mismatch and subsequent timeout
-* Is there an advertise loop if the topic is local and remote?
+  - Is there an advertise loop if the topic is local and remote?
 * Implement topic listener on Qurt - Maybe not really needed since apps side will subscribe to the message.
    * You can listen to slpi uorb topics from apps side. Need to use “-n 1”.
 * Improve “uorb top” on Qurt
@@ -12,14 +12,15 @@
 
 ### Parameters
 * Full error handling
-* Problems reported (ask Rich) pushing lots of parameters from QGC
-* Having a param start command could help with the startup synchronization issues. But that means params cannot be used by anything starting before it.
 
 ### Calibration
 * set_tune in mag_calibration_worker in mag_calibration.cpp not working
 * Try to get commander working on SLPI without all of the pthread hacks
+    - commander/worker_thread. Switched to commander thread (inline) as a hack
+    - SubscriptionBlocking causes crash due to some pthread call
 
 ### Logging
+* Logging SLPI mini-dm messages
 * Logging to SD card option
 * Log file management (Deleting old logs)
   - Move to a separate partition to prevent data overrun
@@ -35,7 +36,6 @@
 * Add support for second INA231
 
 ### RC
-* Implement on apps side on M0052 (Use UART that FC used on M0051)
 * Implement on slpi side on M0053
 
 ### GPS
@@ -113,9 +113,20 @@
 * Make flight controller stuff a submodule?
 
 ### system image
-* Move to QRB5165 release 9.1 / 10.2
+* Investigate chipcode release 10.2
 * Try to keep flight controller code out of system image build
 * Need tcpdump on target
+
+### PX4
+
+* Update to latest PX4 master
+   * Then start upstreaming the code
+* Remove as much dspal stuff as possible
+   * Also idl, fastrpc, shmem, stubs, etc.
+* Clean up the build scripts
+* Clean up the code
+   * Run astyle to properly format code
+   * Correct copyright notices
 
 ## Issues
 
@@ -124,69 +135,46 @@
 * Make it thread safe
 
 ### Software
-* SLPI flight controller stops responding
-* qshell_retval sequence number mismatch and subsequent timeout
-   * Related to an orb_advertise / orb_publish race condition?
 * telemetry_status GCS heartbeat timestamp in Commander.cpp is ahead of current time? line 3728
 * ERROR [mavlink] vehicle_command lost, generation 0 -> 2
-* PX4 application has to link against libsee_sensor.so and all of its dependencies!
-   * Build fake so with real api and put into public project.
-   * Try -zlazyload -lsomelib to get rid of the stub library
 * Problems with wifi connection? Also happens with Ethernet!
-   * Data link regained  3709  Commander.cpp (on dsp)
-   * ERROR [mavlink] channel 0 has missed 9 mavlink log messages (apps)
-   * ERROR [mavlink] channel 0 has missed 1 mavlink log messages
-   * Connection to ground station lost (at QGC)
-   * Set timeout to 5 seconds in msg/telemetry_status.msg
    * Root cause: This is due to a heartbeat timestamp sync issue. Not a networking problem at all.
-* Cannot flash system image from adb sometimes on M0051 (Seems to work okay with perf build?)
 * “groups” error when launching bash shell
 * Strange wlan ip address configuration:
    * wlan0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
    *         inet 169.254.86.150  netmask 255.255.0.0  broadcast 169.254.255.255
    * Only happens on my home network?
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
-* Why does apps side seg fault when too many PX4_INFO are sent out?
 * Calling shutdown from shell causes crash (It only stops apps side, not slpi)
 * Can only run once. Then needs a power cycle. Can it be made to run multiple times?
 * Cannot start mavlink shell from QGC. Get this error: ERROR [mavlink] Failed to start shell (-1)
   - Comments in the code says it only works for NuttX. All others return error.
 
 ### Hardware
+* Sometimes TC SOM not going into fastboot mode with command (Needs switch)
+* Always a different MAC ID on WiFi so always get different IP
 * ADB flaky on M0051 with old APM. Get a root cause.
 * Sometimes the debug board USB hub doesn’t show up (Both M0062 and M0067)
   - Do they need rework? And / or special BSP support?
-* Always a different MAC ID on WiFi so always get different IP
-* TC SOM doesn't boot on one of my M0051
 * One TC SOM seems flaky
   - Tom had trouble with QFIL
   - Showed up without serial number on adb
 
 ## Miscellaneous
-* Why does it always switch to altitude hold mode?
 * Sometimes QFIL generates a read only filesystem
   - But reflashing fixes it
-* Update to latest PX4 master
-   * Then start upstreaming the code
-* PX4 Autostart service
 * Version management of px4 and all components (eg libfc_sensor, slpi_proc, etc.)
   - How to specify particular dependencies (eg system image 8.1)
-* Remove as much dspal stuff as possible
-   * Also idl, fastrpc, shmem, stubs, etc.
-* Clean up the build scripts
 * Clean up header file includes in all source files
 * Figure out how to better control log messages (DEBUG vs. INFO, etc.)
-* Clean up the code
-   * Run astyle to properly format code
-   * Correct copyright notices
 * Alternatives to mini-dm? Logcat?
-* CPU profiling on DSP
 * A better way to select high volume debug messages by category
 * Tie fake function calls (stubs) (e.g. HAP_power_request) back into SLPI process
 * Does adb reboot cause slpi reboot or not?
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
 
 ### Preflight arm fails
+* Set timeout to 5 seconds in msg/telemetry_status.msg
 * ekf2Check.cpp 288 return true ekf2CheckSensorBias (accel bias)
    * Set EKF2_ABL_LIM to 0.8 to get around it for now...
 * cpuResourceCheck.cpp return true
@@ -199,4 +187,4 @@
 * Bringup
 
 ### Stability over time
-* Fly on a tether?
+* Fly on a tether or with strap down
