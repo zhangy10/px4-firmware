@@ -18,6 +18,15 @@ Add SoftAP mode to WiFi (In px4 support for now)
 
 Feature request: Mavlink shell from QGC
 
+## Deployment considerations
+
+Customers cannot build our PX4. Can send out binary first.
+
+Customers cannot QFIL. Stuck with whatever is there on shipment.
+
+Generate test signature before shipping. Preserve it across updates.
+    - Better yet, find a way to not need signatures. (File a QC case)
+
 ## Other
 
 Run with MAV_BROADCAST 0 and implement a mavlink proxy
