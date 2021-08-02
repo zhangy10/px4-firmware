@@ -21,11 +21,20 @@ Feature request: Mavlink shell from QGC
 ## Deployment considerations
 
 Generate test signature before shipping. Preserve it across updates.
-    - Better yet, find a way to not need signatures. (File a QC case)
+    - Better yet, find a way to not need signatures. (Filed a QC case...)
+    - We need to also store these in case customer loses it
 
 Customers cannot build our PX4. Can send out binary first.
 
 Customers cannot QFIL. Stuck with whatever is there on shipment.
+
+## Test team documentation
+
+Document each drone and it's HW configuration. Log all changes.
+
+Document each test flight. Include drone id, sw version, notes, etc.
+
+File issues in (Asana?)
 
 ## Other
 
