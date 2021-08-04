@@ -3,9 +3,14 @@
 
 ## For RB5-Flight MVP
 
-IMU widget to publish to pipe for VIO
+Accel timeout seen at QGC
+    - From sensors module voted_sensors_update.cpp
+    - Set with _accel.voter.set_timeout(50000); in constructor (50ms!!!)
+    - Did this ever happen on 9.1??? More believable with 8.1 than 9.1.
 
 Fix occasional log file corruption
+
+IMU widget to publish to pipe for VIO - See eric-m0052-imu-server branch
 
 Fix occasional parameters not being saved
 
