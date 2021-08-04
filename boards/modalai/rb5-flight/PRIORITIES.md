@@ -6,7 +6,7 @@
 Accel timeout seen at QGC
     - From sensors module voted_sensors_update.cpp
     - Set with _accel.voter.set_timeout(50000); in constructor (50ms!!!)
-    - Did this ever happen on 9.1??? More believable with 8.1 than 9.1.
+    - Move to PX4 IMU driver!!!
 
 Fix occasional log file corruption
 
