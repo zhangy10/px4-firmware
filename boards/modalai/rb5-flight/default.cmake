@@ -60,6 +60,7 @@ px4_add_board(
 		#pwm_out_sim
 		qshell/posix
 		#rc_input
+        modalai/imu_server
         modalai/rc_controller
         #modalai/uart_esc_driver
 		#telemetry # all available telemetry drivers
