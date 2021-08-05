@@ -94,11 +94,6 @@ ln -f -s px4 px4-wind_estimator
 ln -f -s px4 px4-rc_controller
 ln -f -s px4 px4-uart_esc_driver
 
-chmod a+x net-check.sh
-
-systemctl enable net-check
-systemctl enable px4-start
-
 # Create directories for px4 module use
 mkdir -p /home/linaro/eeprom
 mkdir -p /home/linaro
