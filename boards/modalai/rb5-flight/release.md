@@ -21,6 +21,7 @@
 
 ## 1.0.10alpha
 
+- Fixed orientation of magnetometer
 - Added an IMU server for integration with VIO. It isn't started by default.
 - Changed the way that parameters are loaded so that any changes won't get overwritten on the next reboot
 - Moved some of the drone specific scripts and startup service files out of this project
