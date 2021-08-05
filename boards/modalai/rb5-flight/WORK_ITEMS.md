@@ -174,6 +174,8 @@
 * Tie fake function calls (stubs) (e.g. HAP_power_request) back into SLPI process
 * Does adb reboot cause slpi reboot or not?
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
+* Automatic file sync doesn't happen very frequently. Make it happen more often.
+* Time doesn't start in 1970 anymore. Now it starts at last power down time?
 
 ### Preflight arm fails
 * Set timeout to 5 seconds in msg/telemetry_status.msg

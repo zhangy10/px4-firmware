@@ -22,6 +22,7 @@ Add SoftAP mode to WiFi (In px4 support for now)
 - Do range testing on this
 
 Feature request: Mavlink shell from QGC
+Feature request: Reboot from QGC
 
 ## Deployment considerations
 
