@@ -10,21 +10,19 @@ Accel timeout seen at QGC
 
 Fix occasional log file corruption
 
-IMU widget to publish to pipe for VIO - See eric-m0052-imu-server branch
+Fix occasional parameters not being saved???
 
-Fix occasional parameters not being saved
+CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm???
 
-CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm
-
-Remove "param load" in startup file. Add "param import" after all "param set"
-
-Add SoftAP mode to WiFi (In px4 support for now)
-- Do range testing on this
+Feature request: Add SoftAP mode to WiFi (In px4 support for now)
+    - Do range testing on this
 
 Feature request: Mavlink shell from QGC
 Feature request: Reboot from QGC
 
 ## Deployment considerations
+
+qrb5164-px4-support needs it's own version number (dummy package?)
 
 Generate test signature before shipping. Preserve it across updates.
     - Better yet, find a way to not need signatures. (Filed a QC case...)
@@ -34,18 +32,11 @@ Customers cannot build our PX4. Can send out binary first.
 
 Customers cannot QFIL. Stuck with whatever is there on shipment.
 
-## Test team documentation
-
-Document each drone and it's HW configuration. Log all changes.
-
-Document each test flight. Include drone id, sw version, notes, etc.
-
-File issues in (Asana?)
-
 ## Other
 
 Run with MAV_BROADCAST 0 and implement a mavlink proxy
    * So we can direct the drone to a specific GCS
+   * Only needed for WiFi station mode
 
 M0053 / M0054 RC / GPS on DSP using UART 6 and 7
 
@@ -55,7 +46,7 @@ Move to PX4 barometer driver. Need to create one for ICP101xx
 
 Move to PX4 IMU driver. Need to create SPI driver, interrupt driver
 
-SDSP: Timeout waiting for parameter_client_set_value_response
+SLPI: Timeout waiting for parameter_client_set_value_response
 
 Add queueing to make sure there are no lost IMU / Barometer samples in the thin clients
 

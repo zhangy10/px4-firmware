@@ -100,6 +100,9 @@ mkdir -p /home/linaro
 mkdir -p /home/linaro/log
 mkdir -p /home/linaro/mission_log
 
+# Make sure the run script is executable
+chmod a+x m0052-px4
+
 # Always flush all changes to disk
 sync
 

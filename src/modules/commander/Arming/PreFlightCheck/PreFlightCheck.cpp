@@ -82,7 +82,6 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 				if (!magnetometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 					if (required) {
 						failed = true;
-                        PX4_INFO("Failed magnetometer preflight check");
 					}
 
 					report_fail = false; // only report the first failure
@@ -111,7 +110,6 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			if (!accelerometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
 					failed = true;
-                    PX4_INFO("Failed accelerometer preflight check");
 				}
 
 				report_fail = false; // only report the first failure
@@ -133,7 +131,6 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			if (!gyroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
 					failed = true;
-                    PX4_INFO("Failed gyroscope preflight check");
 				}
 
 				report_fail = false; // only report the first failure

@@ -56,6 +56,7 @@ bool PreFlightCheck::baroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 		if (!valid) {
 			if (report_fail) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Baro %u", instance);
+				PX4_INFO("Preflight Fail: no valid data from Baro %u", instance);
 			}
 		}
 
