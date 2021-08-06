@@ -96,11 +96,11 @@ static int _imu_server_thread(int argc, char *argv[]) {
                 break;
             }
 
-            PX4_INFO("%.2f %.2f %.2f %.2f %.2f %.2f %.2f %lu",
-                     (double) imu_data.accl_ms2[0], (double) imu_data.accl_ms2[1],
-                     (double) imu_data.accl_ms2[2], (double) imu_data.gyro_rad[0],
-                     (double) imu_data.gyro_rad[1], (double) imu_data.gyro_rad[2],
-                     (double) imu_data.temp_c, (imu_data.timestamp_monotonic_ns / 1000));
+            // PX4_INFO("%.2f %.2f %.2f %.2f %.2f %.2f %.2f %lu",
+            //          (double) imu_data.accl_ms2[0], (double) imu_data.accl_ms2[1],
+            //          (double) imu_data.accl_ms2[2], (double) imu_data.gyro_rad[0],
+            //          (double) imu_data.gyro_rad[1], (double) imu_data.gyro_rad[2],
+            //          (double) imu_data.temp_c, (imu_data.timestamp_monotonic_ns / 1000));
         }
     }
 
