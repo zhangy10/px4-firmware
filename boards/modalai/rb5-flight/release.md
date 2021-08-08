@@ -19,6 +19,12 @@
 
 # Releases
 
+## 1.0.11alpha
+
+- Touch SYS_AUTOCONFIG to make QGC missing parameter error message go away
+- Remove annoying preflight fail debug messages
+- Remove IMU server high frequency debug messages
+
 ## 1.0.10alpha
 
 - Fixed orientation of magnetometer
