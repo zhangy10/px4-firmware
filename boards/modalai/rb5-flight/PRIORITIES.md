@@ -22,8 +22,6 @@ Feature request: Reboot from QGC
 
 ## Deployment considerations
 
-qrb5164-px4-support needs it's own version number (dummy package?)
-
 Generate test signature before shipping. Preserve it across updates.
     - Better yet, find a way to not need signatures. (Filed a QC case...)
     - We need to also store these in case customer loses it
@@ -37,6 +35,7 @@ Customers cannot QFIL. Stuck with whatever is there on shipment.
 Run with MAV_BROADCAST 0 and implement a mavlink proxy
    * So we can direct the drone to a specific GCS
    * Only needed for WiFi station mode
+   * Or use this: mavlink start -x -o 14547 -r 40000 -n wlan0 -t 192.168.1.138
 
 M0053 / M0054 RC / GPS on DSP using UART 6 and 7
 
