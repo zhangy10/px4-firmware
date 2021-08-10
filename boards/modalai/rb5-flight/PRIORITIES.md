@@ -3,8 +3,6 @@
 
 ## For RB5-Flight MVP
 
-Altitude hold and position hold modes not working!!!
-
 Accel timeout seen at QGC
     - Could be heat related?
     - From sensors module voted_sensors_update.cpp
@@ -14,6 +12,8 @@ Accel timeout seen at QGC
 Fix occasional log file corruption.
 
 Fix occasional parameters not being saved(?)
+
+Implement CPU utilization monitor for DSP (load_mon)_
 
 CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm
     - Requires system_power_s message for pre-flight power check
@@ -47,7 +47,7 @@ Run with MAV_BROADCAST 0 and implement a mavlink proxy
 
 M0053 / M0054 RC / GPS on DSP using UART 6 and 7
 
-Implement CPU utilization monitor (DSP vs. Apps) (LoadMon.cpp)_
+Implement CPU utilization monitor for apps as a second instance of load_mon
 
 Move to PX4 barometer driver. Need to create one for ICP101xx
 
