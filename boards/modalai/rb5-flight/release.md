@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.14alpha
+
+- Added module starts for the flight_mode_manager and mc_hover_thrust_estimator
+
 ## 1.0.13alpha
 
 - Added mc_hover_thrust_estimator module into qurt build
