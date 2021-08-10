@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.13alpha
+
+- Added mc_hover_thrust_estimator module into qurt build
+
 ## 1.0.12alpha
 
 - Set COM_ARM_WO_GPS to 0 to prevent QGC showing GPS as disabled
