@@ -3,24 +3,30 @@
 
 ## For RB5-Flight MVP
 
+Altitude hold and position hold modes not working!!!
+
 Accel timeout seen at QGC
+    - Could be heat related?
     - From sensors module voted_sensors_update.cpp
     - Set with _accel.voter.set_timeout(50000); in constructor (50ms!!!)
     - Move to PX4 IMU driver!!!
 
-Fix occasional log file corruption
+Fix occasional log file corruption.
 
-Fix occasional parameters not being saved???
+Fix occasional parameters not being saved(?)
 
 CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm
     - Requires system_power_s message for pre-flight power check
     - Checks voltage5v_v and brick_valid fields. Also COM_POWER_COUNT parameter.
 
-Feature request: Add SoftAP mode to WiFi (In px4 support for now)
+## Feature requests
+
+Add SoftAP mode to WiFi (In px4 support for now)
     - Do range testing on this
 
-Feature request: Mavlink shell from QGC
-Feature request: Reboot from QGC
+Mavlink shell from QGC
+
+Reboot from QGC
 
 ## Deployment considerations
 
