@@ -12,7 +12,9 @@ Fix occasional log file corruption
 
 Fix occasional parameters not being saved???
 
-CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm???
+CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm
+    - Requires system_power_s message for pre-flight power check
+    - Checks voltage5v_v and brick_valid fields. Also COM_POWER_COUNT parameter.
 
 Feature request: Add SoftAP mode to WiFi (In px4 support for now)
     - Do range testing on this
