@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.0.12alpha
+
+- Set COM_ARM_WO_GPS to 0 to prevent QGC showing GPS as disabled
+- Added flight_mode_manager module into apps (default) build
+
 ## 1.0.11alpha
 
 - Touch SYS_AUTOCONFIG to make QGC missing parameter error message go away
