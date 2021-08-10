@@ -93,6 +93,7 @@ ln -f -s px4 px4-vtol_att_control
 ln -f -s px4 px4-wind_estimator
 ln -f -s px4 px4-rc_controller
 ln -f -s px4 px4-uart_esc_driver
+ln -f -s px4 px4-flight_mode_manager
 
 # Create directories for px4 module use
 mkdir -p /home/linaro/eeprom
