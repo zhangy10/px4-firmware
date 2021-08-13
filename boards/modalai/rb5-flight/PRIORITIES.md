@@ -13,13 +13,15 @@ Fix occasional log file corruption.
 
 Fix occasional parameters not being saved(?)
 
-Implement CPU utilization monitor for DSP (load_mon)_
+Implement CPU utilization monitor for DSP (load_mon)
 
 CBRK_SUPPLY_CHK 894281 still required to arm, even with voxlpm
     - Requires system_power_s message for pre-flight power check
     - Checks voltage5v_v and brick_valid fields. Also COM_POWER_COUNT parameter.
 
 ## Feature requests
+
+Frsky rc receivers
 
 Add SoftAP mode to WiFi (In px4 support for now)
     - Do range testing on this
