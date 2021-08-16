@@ -77,9 +77,6 @@
 * Separate packet to request feedback without sending motor controls?
 * Separate out the LED so that it doesn’t have to be sent with motor commands?
 
-### System time (drv_hrt):
-* Does the slpi clock offset need to be updated periodically?
-
 ### Safety switch
 * How would we wire this in? Need GPIO
 
@@ -92,7 +89,6 @@
    * Try -zlazyload -lsomelib to get rid of the stub library
 
 ### libfc_sensor
-* Average over 10 slpi time offsets? Throw out outliers?
 * Add test code
 * coordinate suid with slpi_proc code
 * Maybe rename this? fc_sensor doesn’t make any sense to the PX4 community
@@ -189,6 +185,3 @@
 
 ### HIL
 * Bringup
-
-### Stability over time
-* Fly on a tether or with strap down
