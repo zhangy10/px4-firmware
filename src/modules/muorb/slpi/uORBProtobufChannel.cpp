@@ -146,6 +146,7 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
     // Make sure SLPI clock is, more or less, aligned with apps clock. This
     // alignment drifts over time so this function will get called to update
     // the offset.
+    // PX4_INFO("Got time offset %d", clock_offset_us);
     hrt_set_absolute_time_offset(clock_offset_us);
 
     // If this is the first time this function has been called, initialize

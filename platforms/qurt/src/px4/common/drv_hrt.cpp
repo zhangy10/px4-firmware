@@ -106,7 +106,14 @@ int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
 int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
     int rv = clock_gettime(clk_id, tp);
-    hrt_abstime temp_abstime = ts_to_abstime(tp) + dsp_offset;
+    hrt_abstime temp_abstime = ts_to_abstime(tp);
+    if (dsp_offset < 0) {
+        hrt_abstime temp_offset = -dsp_offset;
+        if (temp_offset >= temp_abstime) temp_abstime = 0;
+        else temp_abstime -= temp_offset;
+    } else {
+        temp_abstime += (hrt_abstime) dsp_offset;
+    }
     tp->tv_sec = temp_abstime / 1000000;
     tp->tv_nsec = (temp_abstime % 1000000) * 1000;
 	return rv;
