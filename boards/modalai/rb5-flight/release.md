@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.16alpha
+
+- Add imu_server start to default configuration
+
 ## 1.0.15alpha
 
 - Added method to update the time offset on SLPI
