@@ -139,51 +139,66 @@ __BEGIN_DECLS
 extern int dspal_main(int argc, char *argv[]);
 __END_DECLS
 
+static bool px4muorb_orb_initialized = false;
+
 int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
 {
-    // Make sure SLPI clock is, more or less, aligned with apps clock
+    // Make sure SLPI clock is, more or less, aligned with apps clock. This
+    // alignment drifts over time so this function will get called to update
+    // the offset.
     hrt_set_absolute_time_offset(clock_offset_us);
 
-	// The uORB Manager needs to be initialized first up, otherwise the instance is nullptr.
-	uORB::Manager::initialize();
-	// Register the protobuf muorb with uORBManager.
-	uORB::Manager::get_instance()->set_uorb_communicator(
-		uORB::ProtobufChannel::GetInstance());
+    // If this is the first time this function has been called, initialize
+    // everything. Otherwise it is just being called to update the time offset.
+    if ( ! px4muorb_orb_initialized) {
+    	// The uORB Manager needs to be initialized first up, otherwise the instance is nullptr.
+    	uORB::Manager::initialize();
+    	// Register the protobuf muorb with uORBManager.
+    	uORB::Manager::get_instance()->set_uorb_communicator(
+    		uORB::ProtobufChannel::GetInstance());
 
-	// Now continue with the usual dspal startup.
-	const char *argv[3] = { "dspal", "start" };
-	int argc = 2;
+    	// Now continue with the usual dspal startup.
+    	const char *argv[3] = { "dspal", "start" };
+    	int argc = 2;
 
-    // Make sure that argv has a NULL pointer in the end.
-    argv[argc] = NULL;
+        // Make sure that argv has a NULL pointer in the end.
+        argv[argc] = NULL;
 
-	if (dspal_main(argc, (char **) argv)) {
-        PX4_ERR("dspal_main failed in %s", __FUNCTION__);
-        return -1;
+    	if (dspal_main(argc, (char **) argv)) {
+            PX4_ERR("dspal_main failed in %s", __FUNCTION__);
+            return -1;
+        }
+
+        if (func_ptrs == NULL) {
+            PX4_ERR("NULL func_ptrs in %s", __FUNCTION__);
+            return -1;
+        }
+
+        // Save off the function pointers needed to get access to
+        // the SLPI protobuf functions.
+        muorb_func_ptrs = *func_ptrs;
+        if ((muorb_func_ptrs.advertise_func_ptr == NULL) ||
+            (muorb_func_ptrs.subscribe_func_ptr == NULL) ||
+            (muorb_func_ptrs.unsubscribe_func_ptr == NULL) ||
+            (muorb_func_ptrs.topic_data_func_ptr == NULL) ||
+            (muorb_func_ptrs.config_i2c_bus == NULL) ||
+            (muorb_func_ptrs.set_i2c_address == NULL) ||
+            (muorb_func_ptrs.i2c_transfer == NULL) ||
+            (muorb_func_ptrs.open_uart_func == NULL) ||
+            (muorb_func_ptrs.write_uart_func == NULL) ||
+            (muorb_func_ptrs.read_uart_func == NULL)) {
+            PX4_ERR("NULL function pointers in %s", __FUNCTION__);
+            return -1;
+        }
+
+        // Configure the I2C driver function pointers
+        device::I2C::configure_callbacks(muorb_func_ptrs.config_i2c_bus, muorb_func_ptrs.set_i2c_address, muorb_func_ptrs.i2c_transfer);
+
+        // Configure the UART driver function pointers
+        configure_uart_callbacks(muorb_func_ptrs.open_uart_func, muorb_func_ptrs.write_uart_func, muorb_func_ptrs.read_uart_func);
+
+        px4muorb_orb_initialized = true;
     }
-
-    // Save off the function pointers needed to get access to
-    // the SLPI protobuf functions.
-    muorb_func_ptrs = *func_ptrs;
-    if ((muorb_func_ptrs.advertise_func_ptr == NULL) ||
-        (muorb_func_ptrs.subscribe_func_ptr == NULL) ||
-        (muorb_func_ptrs.unsubscribe_func_ptr == NULL) ||
-        (muorb_func_ptrs.topic_data_func_ptr == NULL) ||
-        (muorb_func_ptrs.config_i2c_bus == NULL) ||
-        (muorb_func_ptrs.set_i2c_address == NULL) ||
-        (muorb_func_ptrs.i2c_transfer == NULL) ||
-        (muorb_func_ptrs.open_uart_func == NULL) ||
-        (muorb_func_ptrs.write_uart_func == NULL) ||
-        (muorb_func_ptrs.read_uart_func == NULL)) {
-        PX4_ERR("NULL function pointers in %s", __FUNCTION__);
-        return -1;
-    }
-
-    // Configure the I2C driver function pointers
-    device::I2C::configure_callbacks(muorb_func_ptrs.config_i2c_bus, muorb_func_ptrs.set_i2c_address, muorb_func_ptrs.i2c_transfer);
-
-    // Configure the UART driver function pointers
-    configure_uart_callbacks(muorb_func_ptrs.open_uart_func, muorb_func_ptrs.write_uart_func, muorb_func_ptrs.read_uart_func);
 
 	return 0;
 }
