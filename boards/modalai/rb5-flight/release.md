@@ -19,6 +19,12 @@
 
 # Releases
 
+## 1.0.15alpha
+
+- Added method to update the time offset on SLPI
+- Changed motor mappings to match default for seeker drone
+- Changed RC parameters to no longer assume joystick
+
 ## 1.0.14alpha
 
 - Added module starts for the flight_mode_manager and mc_hover_thrust_estimator
