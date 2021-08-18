@@ -19,6 +19,12 @@
 
 # Releases
 
+## 1.0.17alpha
+
+- Removed the -e option from logger start
+- Upped default MAX RPM to 10500
+- Moved sensor driver start before the modules that rely on them to prevent timeouts
+
 ## 1.0.16alpha
 
 - Add imu_server start to default configuration
