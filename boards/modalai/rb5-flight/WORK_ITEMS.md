@@ -38,6 +38,7 @@
 
 ### RC
 * Implement on slpi side on M0053
+* Move from spektrum_rc driver to input_rc driver
 
 ### GPS
 * Implement on slpi side on M0053
