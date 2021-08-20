@@ -20,6 +20,7 @@
     - SubscriptionBlocking causes crash due to some pthread call
 
 ### Logging
+* Make unique log file name in case of collision
 * Logging SLPI mini-dm messages
 * Logging to SD card option
 * Log file management (Deleting old logs)

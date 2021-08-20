@@ -118,19 +118,24 @@ void task_main(int argc, char *argv[])
 	uint16_t raw_rc_count = 0;
     uint32_t loop_counter = 0;
     bool     print_msg = false;
+    bool     first_full_frame_received = false;
 
 	// Main loop
 	while (!_task_should_exit) {
 
+        if (((loop_counter % 20) == 0) && verbose) print_msg = true;
         loop_counter++;
-        if (((loop_counter % 100) == 0) && verbose) print_msg = true;
 
-		int newbytes = ::read(uart_fd, &rx_buf[0], sizeof(rx_buf));
+		int newbytes = read(uart_fd, &rx_buf[0], sizeof(rx_buf));
 
 		if (newbytes <= 0) {
 			if (print_msg) PX4_INFO("Spektrum RC: Read no bytes from UART");
+        } else if ((newbytes < DSM_FRAME_SIZE) && ( ! first_full_frame_received)){
+			PX4_INFO("Spektrum RC: Read less than full DSM frame on first read. Got %d bytes", newbytes);
 		} else {
 			if (print_msg) PX4_INFO("Spektrum RC: Read %d bytes from UART", newbytes);
+
+            first_full_frame_received = true;
 
     		const hrt_abstime now = hrt_absolute_time();
 
@@ -155,10 +160,33 @@ void task_main(int argc, char *argv[])
     				rc_pub = orb_advertise(ORB_ID(input_rc), &input_rc);
 
     			} else {
+			        if (print_msg) PX4_INFO("Spektrum RC: Publishing input_rc");
     				orb_publish(ORB_ID(input_rc), rc_pub, &input_rc);
     			}
     		}
+
+            if (print_msg) {
+                PX4_INFO("0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x",
+                         rx_buf[0],
+                         rx_buf[1],
+                         rx_buf[2],
+                         rx_buf[3],
+                         rx_buf[4],
+                         rx_buf[5],
+                         rx_buf[6],
+                         rx_buf[7],
+                         rx_buf[8],
+                         rx_buf[9],
+                         rx_buf[10],
+                         rx_buf[11],
+                         rx_buf[12],
+                         rx_buf[13],
+                         rx_buf[14],
+                         rx_buf[15]);
+            }
         }
+
+        print_msg = false;
 
 		// sleep since no poll for qurt
 		usleep(10000);

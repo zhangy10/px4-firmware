@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.0.18alpha
+
+- Spektrum RC driver throws out first packet if it is too small. Prevents
+  the loss of RC when the occasional first packet is a "runt" and corrupts DSM parser.
+
 ## 1.0.17alpha
 
 - Removed the -e option from logger start
