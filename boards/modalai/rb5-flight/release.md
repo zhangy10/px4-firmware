@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.0.19alpha
+
+- Added fsync on log file close
+
 ## 1.0.18alpha
 
 - Spektrum RC driver throws out first packet if it is too small. Prevents
