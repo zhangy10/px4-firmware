@@ -503,6 +503,8 @@ void LogWriterFile::LogFileBuffer::close_file()
 	_count = 0;
 
 	if (_fd >= 0) {
+        // Always sync when closing the file.
+        fsync();
 		int res = close(_fd);
 		_fd = -1;
 

@@ -21,6 +21,8 @@
 
 ### Logging
 * Make unique log file name in case of collision
+* sysctl parameters vm.dirty_writeback_centisecs and vm.dirty_expire_centisecs are set in qrb5165-px4-support
+  - Should be modified in system image
 * Logging SLPI mini-dm messages
 * Logging to SD card option
 * Log file management (Deleting old logs)
