@@ -187,7 +187,8 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
             (muorb_func_ptrs.i2c_transfer == NULL) ||
             (muorb_func_ptrs.open_uart_func == NULL) ||
             (muorb_func_ptrs.write_uart_func == NULL) ||
-            (muorb_func_ptrs.read_uart_func == NULL)) {
+            (muorb_func_ptrs.read_uart_func == NULL) ||
+            (muorb_func_ptrs.register_interrupt_callback == NULL)) {
             PX4_ERR("NULL function pointers in %s", __FUNCTION__);
             return -1;
         }
@@ -197,6 +198,9 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
 
         // Configure the UART driver function pointers
         configure_uart_callbacks(muorb_func_ptrs.open_uart_func, muorb_func_ptrs.write_uart_func, muorb_func_ptrs.read_uart_func);
+
+        // Initialize the interrupt callback registration
+        register_interrupt_callback_initalizer(muorb_func_ptrs.register_interrupt_callback);
 
         px4muorb_orb_initialized = true;
     }

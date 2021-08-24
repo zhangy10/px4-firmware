@@ -45,6 +45,10 @@
 
 #include <px4_platform_common/spi.h>
 
+// Perhaps not the best place for these but they are only used for the IMU SPI driver on Qurt
+int px4_arch_gpiosetevent(spi_drdy_gpio_t pin, bool r, bool f, bool e, int (*func)(int, void*, void*), void* arg);
+void register_interrupt_callback_initalizer(int (*)(int (*)(int, void*, void*), void* arg));
+
 enum spi_mode_e {
 	SPIDEV_MODE0 = 0, /* CPOL=0 CHPHA=0 */
 	SPIDEV_MODE1 = 1, /* CPOL=0 CHPHA=1 */

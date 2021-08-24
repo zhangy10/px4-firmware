@@ -41,6 +41,7 @@
 #include <set>
 #include <px4_platform_common/sem.h>
 #include <drivers/device/i2c.h>
+#include <drivers/device/spi.h>
 #include <drivers/device/qurt/uart.h>
 
 namespace uORB
@@ -175,6 +176,7 @@ typedef struct {
     open_uart_func_t open_uart_func;
     write_uart_func_t write_uart_func;
     read_uart_func_t read_uart_func;
+    int (*register_interrupt_callback)(int (*)(int, void*, void*), void* arg);
 } fc_func_ptrs;
 
 extern "C" {

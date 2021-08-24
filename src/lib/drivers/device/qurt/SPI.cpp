@@ -48,6 +48,17 @@
 
 #include <px4_platform_common/px4_config.h>
 
+static int (*register_interrupt_callback_func)(int (*)(int, void*, void*), void* arg) = NULL;
+
+int px4_arch_gpiosetevent(spi_drdy_gpio_t pin, bool r, bool f, bool e, int (*func)(int, void*, void*), void* arg) {
+    if (register_interrupt_callback_func != NULL) return register_interrupt_callback_func(func, arg);
+    return -1;
+}
+
+void register_interrupt_callback_initalizer(int (*func)(int (*)(int, void*, void*), void* arg)) {
+    register_interrupt_callback_func = func;
+}
+
 namespace device
 {
 

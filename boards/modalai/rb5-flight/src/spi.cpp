@@ -37,7 +37,7 @@
 constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 	initSPIBus(1, {
 #ifdef __QURT
-		initSPIDevice(DRV_IMU_DEVTYPE_MPU9250),
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM42688P),
 #else
 		initSPIDevice(DRV_IMU_DEVTYPE_MPU9250, 0),
 #endif
