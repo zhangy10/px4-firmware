@@ -62,11 +62,17 @@ void register_interrupt_callback_initalizer(int (*func)(int (*)(int, void*, void
 namespace device
 {
 
+SPI::_config_spi_bus_func_t  SPI::_config_spi_bus  = NULL;
+SPI::_spi_transfer_func_t    SPI::_spi_transfer    = NULL;
+
+pthread_mutex_t SPI::_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 SPI::SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency) :
-	CDev(name, nullptr),
-	_device(device),
-	_mode(mode),
-	_frequency(frequency)
+	CDev(name, nullptr)
+	// CDev(name, nullptr),
+	// _device(device),
+	// _mode(mode),
+	// _frequency(frequency)
 {
 	_device_id.devid_s.devtype = device_type;
 	// fill in _device_id fields for a SPI device
@@ -86,22 +92,27 @@ SPI::~SPI()
 int
 SPI::init()
 {
-	// Open the actual SPI device
-	char dev_path[16];
-	snprintf(dev_path, sizeof(dev_path), DEV_FS_SPI_DEVICE_TYPE_STRING"%lu", PX4_SPI_DEV_ID(_device));
-	DEVICE_DEBUG("%s", dev_path);
-	_fd = ::open(dev_path, O_RDWR);
+	int ret = PX4_ERROR;
 
-	if (_fd < 0) {
-		PX4_ERR("could not open %s", dev_path);
-		return PX4_ERROR;
-	}
+	if (_config_spi_bus == NULL) {
+		PX4_ERR("NULL spi init function");
+		return ret;
+    }
+
+    pthread_mutex_lock(&_mutex);
+	_fd = _config_spi_bus();
+    pthread_mutex_unlock(&_mutex);
+
+	if (_fd == PX4_ERROR) {
+		PX4_ERR("spi init failed");
+		return ret;
+    }
 
 	/* call the probe function to check whether the device is present */
-	int ret = probe();
+	ret = probe();
 
 	if (ret != OK) {
-		DEVICE_DEBUG("probe failed");
+		PX4_INFO("SPI probe failed");
 		return ret;
 	}
 
@@ -109,14 +120,12 @@ SPI::init()
 	ret = CDev::init();
 
 	if (ret != OK) {
-		DEVICE_DEBUG("cdev init failed");
+		PX4_ERR("cdev init failed");
 		return ret;
 	}
 
 	/* tell the world where we are */
-	DEVICE_DEBUG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
-
-    if (_mode == SPIDEV_MODE0) DEVICE_DEBUG("SPI Mode 0");
+	PX4_INFO("on SPI bus %d", get_device_bus());
 
 	return PX4_OK;
 }
@@ -124,90 +133,34 @@ SPI::init()
 int
 SPI::transfer(uint8_t *send, uint8_t *recv, unsigned len)
 {
-	if ((send == nullptr) && (recv == nullptr)) {
-		return -EINVAL;
-	}
+	int ret = PX4_ERROR;
+	unsigned retry_count = 1;
 
-	// set bus frequency
-	dspal_spi_ioctl_set_bus_frequency bus_freq{};
+    if ((_fd != PX4_ERROR) && (_spi_transfer != NULL)) {
+    	do {
+    		PX4_DEBUG("SPI transfer out %p in %p len %u", send, recv, len);
 
-	bus_freq.bus_frequency_in_hz = _frequency;
+            if (_spi_transfer != NULL) {
+                pthread_mutex_lock(&_mutex);
+        		ret = _spi_transfer(_fd, send, recv, len);
+                pthread_mutex_unlock(&_mutex);
+            } else {
+                PX4_ERR("SPI transfer function is NULL");
+            }
 
-	if (::ioctl(_fd, SPI_IOCTL_SET_BUS_FREQUENCY_IN_HZ, &bus_freq) < 0) {
-		PX4_ERR("setting bus frequency failed");
-		return PX4_ERROR;
-	}
+            if (ret != PX4_ERROR) break;
 
-	// set bus mode
-	// dspal_spi_ioctl_set_spi_mode bus_mode{};
-	// bus_mode.eClockPolarity = SPI_CLOCK_IDLE_HIGH;
-	// bus_mode.eShiftMode = SPI_OUTPUT_FIRST;
+    	} while (retry_count++ < _retries);
+    }
 
-	// if (::ioctl(spi_fildes, SPI_IOCTL_SET_SPI_MODE, &bus_mode) < 0) {
-	// 	PX4_ERR("setting mode failed");
-	// 	return PX4_ERROR;
-	// }
-
-	// transfer data
-	dspal_spi_ioctl_read_write ioctl_write_read{};
-
-	ioctl_write_read.read_buffer = send;
-	ioctl_write_read.read_buffer_length = len;
-	ioctl_write_read.write_buffer = recv;
-	ioctl_write_read.write_buffer_length = len;
-
-	int result = ::ioctl(_fd, SPI_IOCTL_RDWR, &ioctl_write_read);
-
-	if (result < 0) {
-		PX4_ERR("transfer error %d", result);
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
+	return ret;
 }
 
 int
 SPI::transferhword(uint16_t *send, uint16_t *recv, unsigned len)
 {
-	if ((send == nullptr) && (recv == nullptr)) {
-		return -EINVAL;
-	}
-
-	// set bus frequency
-	dspal_spi_ioctl_set_bus_frequency bus_freq{};
-	bus_freq.bus_frequency_in_hz = _frequency;
-
-	if (::ioctl(_fd, SPI_IOCTL_SET_BUS_FREQUENCY_IN_HZ, &bus_freq) < 0) {
-		PX4_ERR("setting bus frequency failed");
-		return PX4_ERROR;
-	}
-
-	// set bus mode
-	// dspal_spi_ioctl_set_spi_mode bus_mode{};
-	// bus_mode.eClockPolarity = SPI_CLOCK_IDLE_HIGH;
-	// bus_mode.eShiftMode = SPI_OUTPUT_FIRST;
-
-	// if (::ioctl(spi_fildes, SPI_IOCTL_SET_SPI_MODE, &bus_mode) < 0) {
-	// 	PX4_ERR("setting mode failed");
-	// 	return PX4_ERROR;
-	// }
-
-	// transfer data
-	dspal_spi_ioctl_read_write ioctl_write_read{};
-
-	ioctl_write_read.read_buffer = send;
-	ioctl_write_read.read_buffer_length = len * 2;
-	ioctl_write_read.write_buffer = recv;
-	ioctl_write_read.write_buffer_length = len * 2;
-
-	int result = ::ioctl(_fd, SPI_IOCTL_RDWR, &ioctl_write_read);
-
-	if (result < 0) {
-		PX4_ERR("transfer error %d", result);
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
+    // Not supported on SLPI
+	return PX4_ERROR;
 }
 
 } // namespace device

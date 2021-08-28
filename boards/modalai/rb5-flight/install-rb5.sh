@@ -8,5 +8,6 @@ adb shell chmod a+x /usr/bin/px4-alias.sh
 adb shell mkdir -p /etc/modalai
 adb push min-m0052.config /etc/modalai
 adb push full-m0052.config /etc/modalai
+adb push m0052-set-default-parameters.config /etc/modalai
 
 adb shell sync

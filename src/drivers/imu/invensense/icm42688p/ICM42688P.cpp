@@ -191,6 +191,7 @@ void ICM42688P::RunImpl()
 		break;
 
 	case STATE::FIFO_READ: {
+#ifndef __PX4_QURT
 			uint32_t samples = 0;
 
 			if (_data_ready_interrupt_enabled) {
@@ -267,6 +268,7 @@ void ICM42688P::RunImpl()
 				perf_count(_bad_register_perf);
 				Reset();
 			}
+#endif
 		}
 
 		break;
@@ -373,11 +375,18 @@ int ICM42688P::DataReadyInterruptCallback(int irq, void *context, void *arg)
 
 void ICM42688P::DataReady()
 {
+#ifndef __PX4_QURT
 	uint32_t expected = 0;
 
 	if (_drdy_fifo_read_samples.compare_exchange(&expected, _fifo_gyro_samples)) {
 		ScheduleNow();
 	}
+#else
+    uint16_t fifo_byte_count = FIFOReadCount();
+    PX4_DEBUG("ICM42688P::DataReady reading %u bytes", fifo_byte_count);
+
+    FIFORead(hrt_absolute_time(), fifo_byte_count / sizeof(FIFO::DATA));
+#endif
 }
 
 bool ICM42688P::DataReadyInterruptConfigure()

@@ -182,6 +182,8 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
             (muorb_func_ptrs.subscribe_func_ptr == NULL) ||
             (muorb_func_ptrs.unsubscribe_func_ptr == NULL) ||
             (muorb_func_ptrs.topic_data_func_ptr == NULL) ||
+            (muorb_func_ptrs.config_spi_bus == NULL) ||
+            (muorb_func_ptrs.spi_transfer == NULL) ||
             (muorb_func_ptrs.config_i2c_bus == NULL) ||
             (muorb_func_ptrs.set_i2c_address == NULL) ||
             (muorb_func_ptrs.i2c_transfer == NULL) ||
@@ -195,6 +197,9 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
 
         // Configure the I2C driver function pointers
         device::I2C::configure_callbacks(muorb_func_ptrs.config_i2c_bus, muorb_func_ptrs.set_i2c_address, muorb_func_ptrs.i2c_transfer);
+
+        // Configure the SPI driver function pointers
+        device::SPI::configure_callbacks(muorb_func_ptrs.config_spi_bus, muorb_func_ptrs.spi_transfer);
 
         // Configure the UART driver function pointers
         configure_uart_callbacks(muorb_func_ptrs.open_uart_func, muorb_func_ptrs.write_uart_func, muorb_func_ptrs.read_uart_func);
