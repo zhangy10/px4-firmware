@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.0.20alpha
+
+- Added pwm_out_sim driver to qurt build to support HIL testing
+- Add rc_update start back into startup configuration
+
 ## 1.0.19alpha
 
 - Added fsync on log file close
