@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.1.0alpha
+
+- Moved from Invensense IMU driver to PX4 IMU driver
+- Bumped minor revision number since the IMU change is quite significant
+
 ## 1.0.20alpha
 
 - Added pwm_out_sim driver to qurt build to support HIL testing
