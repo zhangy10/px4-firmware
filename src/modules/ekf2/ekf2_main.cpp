@@ -1220,7 +1220,7 @@ void Ekf2::Run()
 								PX4_ERR("GPS now under a stable lock");
 							}
 
-						} else if ((_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED)) {
+						} else if (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 							waitForOneFix = false;
 							mavlink_log_warning(&mavlink_log_pub, "Indoor Takeoff under VIO.");
 							PX4_ERR("Indoor takeoff detected.");
