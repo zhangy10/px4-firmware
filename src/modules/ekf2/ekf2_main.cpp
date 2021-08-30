@@ -1241,7 +1241,8 @@ void Ekf2::Run()
 //							if (current_alt > 4.0f || fabs(last_orig_evvel) >= 5.0)
 // DEBUG
 							// if  vio went negative, or vio is flying off, cancel vio localization
-							const bool vio_state_invalid = (current_alt <= -3.0f) || (fabs(last_orig_evvel) >= 7.0);
+							const bool vio_state_invalid = 
+								((double)current_alt <= -3.0) || ((double)fabs(last_orig_evvel) >= 7.0);
 
 							if (vio_state_invalid) {
 								if (_vehicle_status.nav_state != vehicle_status_s::NAVIGATION_STATE_MANUAL && has_poor_gps_quality) {
