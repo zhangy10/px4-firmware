@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +31,71 @@
  *
  ****************************************************************************/
 
-#include <px4_arch/i2c_hw_description.h>
+#include "ICP10100.hpp"
 
-constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {
-	initI2CBusExternal(1),
-	initI2CBusExternal(2),
-	initI2CBusInternal(5)
-	//initI2CBusExternal(3),
-	//initI2CBusExternal(9),
-};
+#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
+
+void
+ICP10100::print_usage()
+{
+	PRINT_MODULE_USAGE_NAME("icp10100", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("baro");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+}
+
+I2CSPIDriverBase *ICP10100::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+		int runtime_instance)
+{
+	ICP10100 *dev = new ICP10100(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency);
+
+    PX4_INFO("In ICP10100::instantiate. %p", dev);
+
+	if (dev == nullptr) {
+		return nullptr;
+	}
+
+	if (OK != dev->init()) {
+		delete dev;
+		return nullptr;
+	}
+
+	return dev;
+}
+
+extern "C" int icp10100_main(int argc, char *argv[])
+{
+	using ThisDriver = ICP10100;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 400000;
+
+	const char *verb = cli.parseDefaultArguments(argc, argv);
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
+	}
+
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_BARO_DEVTYPE_ICP10100);
+
+    PX4_INFO("In %s", __FUNCTION__);
+
+	if (!strcmp(verb, "start")) {
+        PX4_INFO("Starting");
+
+		return ThisDriver::module_start(cli, iterator);
+	}
+
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
+}
