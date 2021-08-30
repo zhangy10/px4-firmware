@@ -1794,6 +1794,7 @@ protected:
 			mavlink_msg_gps_metadata_send_struct(_mavlink->get_channel(), &msg);
 			return true;
 		}
+
 		return false;
 	}
 };

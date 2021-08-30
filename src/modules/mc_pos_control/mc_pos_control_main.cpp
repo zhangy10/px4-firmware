@@ -402,8 +402,10 @@ MulticopterPositionControl::poll_subscriptions()
 {
 	_vehicle_status_sub.update(&_vehicle_status);
 	_vehicle_land_detected_sub.update(&_vehicle_land_detected);
-	if (_control_mode_sub.updated())
+
+	if (_control_mode_sub.updated()) {
 		_control_mode_sub.copy(&_control_mode);
+	}
 
 	_home_pos_sub.update(&_home_pos);
 
@@ -562,12 +564,12 @@ MulticopterPositionControl::Run()
 		if (_control_mode.flag_control_force_enabled && _control_mode.flag_armed) {
 			FlightTaskError error = FlightTaskError::NoError;
 			error =  _flight_tasks.switchTask(FlightTaskIndex::Descend);
+
 			if (error != FlightTaskError::NoError) {
 				PX4_ERR("Force failsafe. Can't descend!");
 			}
-		}
-		else
-		{
+
+		} else {
 			// switch to the required flighttask
 			start_flight_task();
 		}

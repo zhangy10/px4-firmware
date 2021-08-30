@@ -1074,8 +1074,7 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_CUSTOM_0:
-		if (status.nav_state != vehicle_status_s::NAVIGATION_STATE_MANUAL)
-		{
+		if (status.nav_state != vehicle_status_s::NAVIGATION_STATE_MANUAL) {
 			force_failsafe_blind_land = true;
 			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 			mavlink_log_critical(&mavlink_log_pub, "BLIND LAND. Fail localization.");
@@ -3361,14 +3360,13 @@ Commander::update_control_mode()
 	}
 
 	// MODAL: override everything on a any localization blow up.
-	if (force_failsafe_blind_land)
-	{
-		if (_land_detector.landed || _land_detector.maybe_landed || !control_mode.flag_armed) // !is_ground_rover(&status)
-		{
+	if (force_failsafe_blind_land) {
+		if (_land_detector.landed || _land_detector.maybe_landed || !control_mode.flag_armed) { // !is_ground_rover(&status)
 			PX4_WARN("Blind land complete");
 			control_mode.flag_control_force_enabled = false;
 			force_failsafe_blind_land = false;  // turn off, we're done
 		}
+
 		// failsafe, blind land option
 		control_mode.flag_control_manual_enabled = true;
 		control_mode.flag_control_auto_enabled = false;

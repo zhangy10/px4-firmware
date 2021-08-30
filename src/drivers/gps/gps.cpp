@@ -728,7 +728,7 @@ GPS::run()
 			/* FALLTHROUGH */
 			case GPS_DRIVER_MODE_UBX:
 				_helper = new GPSDriverUBXModal(_interface, &GPS::callback, this, &_report_gps_pos, _p_report_sat_info,
-							   gps_ubx_dynmodel);
+								gps_ubx_dynmodel);
 				break;
 
 			case GPS_DRIVER_MODE_MTK:
@@ -779,8 +779,7 @@ GPS::run()
 					if (_p_report_sat_info && (helper_ret & 2)) {
 						bool full_set = this->monitorSignalQuality();
 
-						if (!wait_for_first_lock && (_report_gps_pos.fix_type >= 3 || full_set))
-						{
+						if (!wait_for_first_lock && (_report_gps_pos.fix_type >= 3 || full_set)) {
 							PX4_WARN("Achieved first lock. Waiting to be stable.");
 							wait_for_first_lock = true;
 						}
@@ -1010,36 +1009,37 @@ GPS::monitorSignalQuality()
 {
 	bool is_ready = false;
 	int16_t cno = -1;
+
 	switch (_mode) {
 
 	//TODO: fill in support for other GPS hardware
 
-			case GPS_DRIVER_MODE_UBX:
-				// do we have a database of sats that can perform the monitoring
-				// mainly for status reporting
-				 is_ready = ((GPSDriverUBXModal*)_helper)->monitorGPSSignalQualitySize();
-				 // get the average CN0
-				 cno = ((GPSDriverUBXModal*)_helper)->monitorGPSSignalQuality();
-				_report_gps_metadata.timestamp = _report_gps_pos.timestamp; // _report_gps_pos.time_utc_usec;
-				_report_gps_metadata.avg_cno = cno;
-				_report_gps_metadata.hdop = _report_gps_pos.hdop;
-				_report_gps_metadata.vdop = _report_gps_pos.vdop;
-				_report_gps_metadata.vn = _report_gps_pos.vel_n_m_s;
-				_report_gps_metadata.ve = _report_gps_pos.vel_e_m_s;
-				_report_gps_metadata.vd = _report_gps_pos.vel_d_m_s;
-				_report_gps_metadata.speed_accuracy = _report_gps_pos.s_variance_m_s;
+	case GPS_DRIVER_MODE_UBX:
+		// do we have a database of sats that can perform the monitoring
+		// mainly for status reporting
+		is_ready = ((GPSDriverUBXModal *)_helper)->monitorGPSSignalQualitySize();
+		// get the average CN0
+		cno = ((GPSDriverUBXModal *)_helper)->monitorGPSSignalQuality();
+		_report_gps_metadata.timestamp = _report_gps_pos.timestamp; // _report_gps_pos.time_utc_usec;
+		_report_gps_metadata.avg_cno = cno;
+		_report_gps_metadata.hdop = _report_gps_pos.hdop;
+		_report_gps_metadata.vdop = _report_gps_pos.vdop;
+		_report_gps_metadata.vn = _report_gps_pos.vel_n_m_s;
+		_report_gps_metadata.ve = _report_gps_pos.vel_e_m_s;
+		_report_gps_metadata.vd = _report_gps_pos.vel_d_m_s;
+		_report_gps_metadata.speed_accuracy = _report_gps_pos.s_variance_m_s;
 
-				break;
+		break;
 
-			case GPS_DRIVER_MODE_ASHTECH:
-				break;
+	case GPS_DRIVER_MODE_ASHTECH:
+		break;
 
-			case GPS_DRIVER_MODE_EMLIDREACH:
-				break;
+	case GPS_DRIVER_MODE_EMLIDREACH:
+		break;
 
-			default:
-				break;
-			}
+	default:
+		break;
+	}
 
 	return is_ready;
 }
@@ -1050,6 +1050,7 @@ GPS::publishSignalQuality()
 
 	if (_instance == Instance::Main) {
 		_report_gps_metadata_pub.publish(_report_gps_metadata);
+
 	} else {
 		//we don't publish for the secondary gps
 	}

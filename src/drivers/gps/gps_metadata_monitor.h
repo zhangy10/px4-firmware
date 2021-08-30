@@ -52,11 +52,11 @@ class GPSDriverUBXModal : public GPSDriverUBX
 public:
 
 	GPSDriverUBXModal(Interface gpsInterface,
-			GPSCallbackPtr callback,
-			void *callback_user,
-		     struct vehicle_gps_position_s *gps_position,
-		     struct satellite_info_s *satellite_info,
-		     uint8_t dynamic_model = 7);
+			  GPSCallbackPtr callback,
+			  void *callback_user,
+			  struct vehicle_gps_position_s *gps_position,
+			  struct satellite_info_s *satellite_info,
+			  uint8_t dynamic_model = 7);
 
 	virtual ~GPSDriverUBXModal();
 

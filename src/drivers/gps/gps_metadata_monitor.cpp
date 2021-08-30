@@ -52,17 +52,17 @@
 
 
 GPSDriverUBXModal::GPSDriverUBXModal(Interface gpsInterface, GPSCallbackPtr callback, void *callback_user,
-		   struct vehicle_gps_position_s *gps_position,
-		   struct satellite_info_s *satellite_info,
-		   uint8_t dynamic_model) :
-				GPSDriverUBX(gpsInterface,
-							callback,
-							callback_user,
-							gps_position,
-							satellite_info,
-							dynamic_model)
-				, _position(gps_position)
-				, _sat_info(satellite_info)
+				     struct vehicle_gps_position_s *gps_position,
+				     struct satellite_info_s *satellite_info,
+				     uint8_t dynamic_model) :
+	GPSDriverUBX(gpsInterface,
+		     callback,
+		     callback_user,
+		     gps_position,
+		     satellite_info,
+		     dynamic_model)
+	, _position(gps_position)
+	, _sat_info(satellite_info)
 {
 	init();
 }
@@ -79,7 +79,8 @@ void GPSDriverUBXModal::init()
 	param_get(param_find("GPS_MIN_EL"), &_min_sat_elevation);
 	param_get(param_find("GPS_MIN_CNO"), &_min_sat_avg_cno);
 
-	GPS_WARN("ModalAi: GPS metadata configuration is Min_sat_elevation:  %f, Min_sat_CNO:  %f", (double)_min_sat_elevation, (double) _min_sat_avg_cno);
+	GPS_WARN("ModalAi: GPS metadata configuration is Min_sat_elevation:  %f, Min_sat_CNO:  %f", (double)_min_sat_elevation,
+		 (double) _min_sat_avg_cno);
 
 }
 
@@ -113,30 +114,26 @@ GPSDriverUBXModal::monitorGPSSignalQuality()
 
 	// if the fix is not a lock, rset the database
 	// very likely we are indoors
-	if (_position->fix_type < 3)
-	{
+	if (_position->fix_type < 3) {
 		reset_data = true;
-	}
-	else
-	{
 
-		if (cnoChanged)
-		{
+	} else {
+
+		if (cnoChanged) {
 			cnoChanged = false;
-			for (int k=0; k<satellite_info_s::SAT_INFO_MAX_SATELLITES; k++)
-			{
+
+			for (int k = 0; k < satellite_info_s::SAT_INFO_MAX_SATELLITES; k++) {
 				GPS_INFO("GPS inventory sat\t#%u\tused %u\tsnr %u\televation %u\tsvid %u",
-																	 (unsigned) k,
-																	 (unsigned)_sat_info->used[k],
-																	 (unsigned)_sat_info->snr[k],
-																	 (unsigned)_sat_info->elevation[k],
-																	 (unsigned)_sat_info->svid[k]);
+					 (unsigned) k,
+					 (unsigned)_sat_info->used[k],
+					 (unsigned)_sat_info->snr[k],
+					 (unsigned)_sat_info->elevation[k],
+					 (unsigned)_sat_info->svid[k]);
 			}
 		}
 
 		// rebuild the selective monitoring database
-		if (reset_data)
-		{
+		if (reset_data) {
 			avgSNR = 0;
 			reset_data = false;
 			memset(_monitored_sats, 0, sizeof(_monitored_sats));
@@ -145,74 +142,65 @@ GPSDriverUBXModal::monitorGPSSignalQuality()
 		}
 
 		// build a database of sats that meet the elevation requirement
-		if (_sats_being_monitored < CFG_MIN_SATS_TO_MONITOR)
-		{
+		if (_sats_being_monitored < CFG_MIN_SATS_TO_MONITOR) {
 			// wait until we grab enough sats to do the calculation based on the overhead criteria
-			for (int i=0; i<satellite_info_s::SAT_INFO_MAX_SATELLITES; i++)
-			{
-				if (_sat_info->used[i])
-				{
-					if (_sat_info->elevation[i] > _min_sat_elevation && _sat_info->snr[i] > _min_sat_avg_cno)
-					{
+			for (int i = 0; i < satellite_info_s::SAT_INFO_MAX_SATELLITES; i++) {
+				if (_sat_info->used[i]) {
+					if (_sat_info->elevation[i] > _min_sat_elevation && _sat_info->snr[i] > _min_sat_avg_cno) {
 						// add to manifest
 						bool is_exists = false;
-						for (int j=0;j<CFG_MIN_SATS_TO_MONITOR;j++)
-						{
-							if (_monitored_sats_id[j] == _sat_info->svid[i])
-							{
+
+						for (int j = 0; j < CFG_MIN_SATS_TO_MONITOR; j++) {
+							if (_monitored_sats_id[j] == _sat_info->svid[i]) {
 								is_exists = true;
 								break;
 							}
 						}
-						if (!is_exists)
-						{
+
+						if (!is_exists) {
 							GPS_INFO("Adding sat %d", _sats_being_monitored);
 							_monitored_sats[_sats_being_monitored] = i;
 							_monitored_sats_id[_sats_being_monitored] = _sat_info->svid[i];
 							_sats_being_monitored++;
-							if (_sats_being_monitored >= CFG_MIN_SATS_TO_MONITOR)
+
+							if (_sats_being_monitored >= CFG_MIN_SATS_TO_MONITOR) {
 								break;
+							}
 						}
 					}
 				}
 			}
 
-		}
-		else 		/* we have enough sats to conduct selective cn0 analysis */
-		{
-			for (int i=0; i< CFG_MIN_SATS_TO_MONITOR; i++)
-			{
-				if (_sat_info->elevation[_monitored_sats[i]] > _min_sat_elevation)
-				{
+		} else {	/* we have enough sats to conduct selective cn0 analysis */
+			for (int i = 0; i < CFG_MIN_SATS_TO_MONITOR; i++) {
+				if (_sat_info->elevation[_monitored_sats[i]] > _min_sat_elevation) {
 					avgSNR +=  _sat_info->snr[_monitored_sats[i]];
-				}
-				else
-				{
+
+				} else {
 					PX4_WARN("Tracking satellite has disappeared from horizon for unknown reason--please check location! %d %d",
-							_sat_info->svid[_monitored_sats[i]], _monitored_sats_id[i]);
+						 _sat_info->svid[_monitored_sats[i]], _monitored_sats_id[i]);
 					reset_data = true; // Force a reset of the table to monitor
 					break;
 
 				}
 			}
 
-			if (!reset_data)
-			{
+			if (!reset_data) {
 				avgSNR /= CFG_MIN_SATS_TO_MONITOR;
 
-				if (avgSNR < _min_sat_avg_cno)
-				{
+				if (avgSNR < _min_sat_avg_cno) {
 					avgSNR = 0; // force failure
 				}
 
-				if ((lastAvgSNR > 0.0f && (int) avgSNR == 0) || (lastAvgSNR <= 0.0f && avgSNR > 0.0f))
-				{
+				if ((lastAvgSNR > 0.0f && (int) avgSNR == 0) || (lastAvgSNR <= 0.0f && avgSNR > 0.0f)) {
 					cnoChanged = true;
 				}
+
 				lastAvgSNR = avgSNR;
 			}
 
 		}
 	}
+
 	return avgSNR;
 }
