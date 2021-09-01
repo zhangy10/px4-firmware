@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.1.1alpha
+
+- Changed IMU from using raw sensor data to using calibrated / filtered sensor data
+
 ## 1.1.0alpha
 
 - Moved from Invensense IMU driver to PX4 IMU driver

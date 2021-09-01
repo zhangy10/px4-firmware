@@ -205,7 +205,11 @@ void VehicleAcceleration::ParametersUpdate(bool force)
 void VehicleAcceleration::Run()
 {
 	// backup schedule
+#ifdef __PX4_QURT
+	ScheduleDelayed(1_ms);
+#else
 	ScheduleDelayed(10_ms);
+#endif
 
 	// update corrections first to set _selected_sensor
 	bool selection_updated = SensorSelectionUpdate();

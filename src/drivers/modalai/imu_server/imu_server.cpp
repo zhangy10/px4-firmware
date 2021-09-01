@@ -1,8 +1,8 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/posix.h>
-#include <uORB/topics/sensor_accel.h>
-#include <uORB/topics/sensor_gyro.h>
+#include <uORB/topics/vehicle_acceleration.h>
+#include <uORB/topics/vehicle_angular_velocity.h>
 
 #include "imu_server.hpp"
 
@@ -56,11 +56,11 @@ static int _imu_server_thread(int argc, char *argv[]) {
         PX4_INFO("Opened pipe %s for writing", imu_fifo);
     }
 
-    int sensor_accel_fd = orb_subscribe(ORB_ID(sensor_accel));
-    int sensor_gyro_fd  = orb_subscribe(ORB_ID(sensor_gyro));
+    int vehicle_acceleration_fd = orb_subscribe(ORB_ID(vehicle_acceleration));
+    int vehicle_angular_velocity_fd = orb_subscribe(ORB_ID(vehicle_angular_velocity));
 
-    struct sensor_accel_s accel_data;
-    struct sensor_gyro_s  gyro_data;
+    struct vehicle_acceleration_s accel_data;
+    struct vehicle_angular_velocity_s gyro_data;
     icm4x6xx_imu_data_t   imu_data;
     uint64_t              previous_timestamp = 0;
 
@@ -72,27 +72,27 @@ static int _imu_server_thread(int argc, char *argv[]) {
     accel_data.timestamp_sample = 0;
     gyro_data.timestamp_sample = 1;
 
-    px4_pollfd_struct_t fds[2] = { { .fd = sensor_accel_fd,  .events = POLLIN },
-                                   { .fd = sensor_gyro_fd, .events = POLLIN } };
+    px4_pollfd_struct_t fds[2] = { { .fd = vehicle_acceleration_fd,  .events = POLLIN },
+                                   { .fd = vehicle_angular_velocity_fd, .events = POLLIN } };
     while (true) {
     	px4_poll(fds, 2, 1000);
     	if (fds[0].revents & POLLIN) {
-		    orb_copy(ORB_ID(sensor_accel), sensor_accel_fd, &accel_data);
-            imu_data.accl_ms2[0] = accel_data.x;
-            imu_data.accl_ms2[1] = accel_data.y;
-            imu_data.accl_ms2[2] = accel_data.z;
+            orb_copy(ORB_ID(vehicle_acceleration), vehicle_acceleration_fd, &accel_data);
+            imu_data.accl_ms2[0] = accel_data.xyz[0];
+            imu_data.accl_ms2[1] = accel_data.xyz[1];
+            imu_data.accl_ms2[2] = accel_data.xyz[2];
             // PX4_INFO("Got accel data %lu", accel_data.timestamp_sample);
     	} else if (fds[1].revents & POLLIN) {
-		    orb_copy(ORB_ID(sensor_gyro), sensor_gyro_fd, &gyro_data);
-            imu_data.gyro_rad[0] = gyro_data.x;
-            imu_data.gyro_rad[1] = gyro_data.y;
-            imu_data.gyro_rad[2] = gyro_data.z;
-            // PX4_INFO("Got gyro data %lu", gyro_data.timestamp_sample);
+            orb_copy(ORB_ID(vehicle_angular_velocity), vehicle_angular_velocity_fd, &gyro_data);
+            imu_data.gyro_rad[0] = gyro_data.xyz[0];
+            imu_data.gyro_rad[1] = gyro_data.xyz[1];
+            imu_data.gyro_rad[2] = gyro_data.xyz[2];
+            // PX4_INFO("Got gyro data  %lu", gyro_data.timestamp_sample);
         }
 
         if (accel_data.timestamp_sample == gyro_data.timestamp_sample) {
 
-            imu_data.temp_c                 = gyro_data.temperature;
+            imu_data.temp_c = 0;
             imu_data.timestamp_monotonic_ns = gyro_data.timestamp_sample * 1000;
 
             if (previous_timestamp < imu_data.timestamp_monotonic_ns) {
