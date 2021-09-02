@@ -34,7 +34,6 @@
 #include "ICP10100.hpp"
 
 #define ICP10100_ADDRESS        0x63
-// #define ICP10100_ADDRESS        (0x63 << 1)
 
 // ICP10100 command set
 #define ICP10100_SOFT_RESET_CMD 0x805D
@@ -174,6 +173,8 @@ int ICP10100::init()
 
 int ICP10100::probe()
 {
+    reset();
+
     uint8_t buf[4];
 
     _retries = 10;
@@ -194,6 +195,7 @@ int ICP10100::probe()
     }
 
 	return PX4_ERROR;
+	return PX4_OK;
 }
 
 int ICP10100::SendCommand(uint16_t cmd)
@@ -233,15 +235,7 @@ int ICP10100::reset()
 {
     PX4_INFO("In %s", __FUNCTION__);
 
-	// int max = 10;
-	// RegisterWrite(ICP10100_CTRL_REG1, CTRL_REG1_RST);
-	// int rv = CTRL_REG1_RST;
-	// int ret = 1;
-
-	// while (ret == 1 && (rv & CTRL_REG1_RST) && max--) {
-	// 	usleep(400);
-	// 	ret = RegisterRead(ICP10100_CTRL_REG1, &rv);
-	// }
+    SendCommand(ICP10100_SOFT_RESET_CMD);
 
 	return PX4_OK;
 }
