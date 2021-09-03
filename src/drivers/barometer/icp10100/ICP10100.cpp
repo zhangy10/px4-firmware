@@ -39,6 +39,7 @@
 #define ICP10100_SOFT_RESET_CMD 0x805D
 #define ICP10100_READ_ID_CMD    0xEFC8
 #define ICP10100_READ_OTP_CMD   0xC7F7
+#define ICP10100_START_LN_CMD   0x5059
 
 // ICP10100 read values
 #define ICP10100_ID_MASK        0x3F
@@ -97,52 +98,6 @@ int ICP10100::read_otp_from_i2c() {
 
     return 0;
 }
-
-// // p_LSB -- Raw pressure data from sensor
-// // T_LSB -- Raw temperature data from sensor
-// int ICP10100::inv_invpres_process_data(struct inv_invpres * s, int p_LSB, int T_LSB,
-// float * pressure, float * temperature)
-// {
-//     float t;
-//     float s1,s2,s3;
-//     float in[3];
-//     float out[3];
-//     float A,B,C;
-//     t = (float)(T_LSB - 32768);
-//     s1 = s->LUT_lower + (float)(s->sensor_constants[0] * t * t) * s->quadr_factor;
-//     s2 = s->offst_factor * s->sensor_constants[3] + (float)(s->sensor_constants[1] * t * t) * s->quadr_factor;
-//     s3 = s->LUT_upper + (float)(s->sensor_constants[2] * t * t) * s->quadr_factor;
-//     in[0] = s1;
-//     in[1] = s2;
-//     in[2] = s3;
-//     calculate_conversion_constants(s, s->p_Pa_calib, in, out);
-//     A = out[0];
-//     B = out[1];
-//     C = out[2];
-//     *pressure = A + B / (C + p_LSB);
-//     *temperature = -45.f + 175.f/65536.f * T_LSB;
-//     return 0;
-// }
-//
-// // p_Pa -- List of 3 values corresponding to applied pressure in Pa
-// // p_LUT -- List of 3 values corresponding to the measured p_LUT values at the applied pressures.
-// void ICP10100::calculate_conversion_constants(struct inv_invpres * s, float *p_Pa,
-//                                     float *p_LUT, float *out) {
-//     float A,B,C;
-//     C = (p_LUT[0] * p_LUT[1] * (p_Pa[0] - p_Pa[1]) +
-//     p_LUT[1] * p_LUT[2] * (p_Pa[1] - p_Pa[2]) +
-//     p_LUT[2] * p_LUT[0] * (p_Pa[2] - p_Pa[0])) /
-//     (p_LUT[2] * (p_Pa[0] - p_Pa[1]) +
-//     p_LUT[0] * (p_Pa[1] - p_Pa[2]) +
-//     p_LUT[1] * (p_Pa[2] - p_Pa[0]));
-//
-//     A = (p_Pa[0] * p_LUT[0] - p_Pa[1] * p_LUT[1] - (p_Pa[1] - p_Pa[0]) * C) / (p_LUT[0] - p_LUT[1]);
-//     B = (p_Pa[0] - A) * (p_LUT[0] + C);
-//
-//     out[0] = A;
-//     out[1] = B;
-//     out[2] = C;
-// }
 
 int ICP10100::init()
 {
@@ -215,7 +170,21 @@ int ICP10100::ReadData(uint8_t *data, uint8_t len)
 {
 	int ret = transfer(NULL, 0, data, len);
 
-    PX4_INFO("0x%x 0x%x 0x%x 0x%x", data[0], data[1], data[2], data[3]);
+    if (ret == PX4_OK) {
+        // if (len == 3) {
+        //     PX4_INFO("0x%x 0x%x 0x%x",
+        //               data[0], data[1], data[2]);
+        // } else if (len == 4) {
+        //     PX4_INFO("0x%x 0x%x 0x%x 0x%x",
+        //               data[0], data[1], data[2], data[3]);
+        // } else if (len == 9) {
+        //     PX4_INFO("0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
+        //               data[0], data[1], data[2], data[3], data[4],
+        //               data[5], data[6], data[7], data[8]);
+        // }
+    } else {
+        PX4_ERR("%s transfer failed", __FUNCTION__);
+    }
 
     return ret;
 }
@@ -242,54 +211,44 @@ int ICP10100::reset()
 
 void ICP10100::RunImpl()
 {
-    PX4_INFO("Skipping ICP10100::RunImpl");
+	int ret = PX4_ERROR;
 
-	// int ret = PX4_ERROR;
-    //
-	// /* collection phase? */
-	// if (_collect_phase) {
-    //
-	// 	/* perform collection */
-	// 	ret = collect();
-    //
-	// 	if (ret == -EIO) {
-	// 		/* issue a reset command to the sensor */
-	// 		reset();
-    //
-	// 		/* reset the collection state machine and try again - we need
-	// 		 * to wait 2.8 ms after issuing the sensor reset command
-	// 		 * according to the ICP10100 datasheet
-	// 		 */
-	// 		_collect_phase = false;
-	// 		ScheduleDelayed(2800);
-	// 		return;
-	// 	}
-    //
-	// 	if (ret == -EAGAIN) {
-	// 		/* Ready read it on next cycle */
-	// 		ScheduleDelayed(ICP10100_CONVERSION_INTERVAL);
-    //
-	// 		return;
-	// 	}
-    //
-	// 	/* next phase is measurement */
-	// 	_collect_phase = false;
-	// }
-    //
-	// /* Look for a ready condition */
-	// ret = measure();
-    //
-	// if (ret == -EIO) {
-	// 	/* issue a reset command to the sensor */
-	// 	reset();
-    //
-	// 	/* reset the collection state machine and try again */
-	// 	start();
-	// 	return;
-	// }
-    //
-	// /* next phase is measurement */
-	// _collect_phase = true;
+	/* collection phase? */
+	if (_collect_phase) {
+
+		/* perform collection */
+		ret = collect();
+
+		if (ret == PX4_ERROR) {
+			/* issue a reset command to the sensor */
+			reset();
+
+			/* reset the collection state machine and try again - we need
+			 * to wait a few ms after issuing the sensor reset command.
+			 */
+			_collect_phase = false;
+			ScheduleDelayed(5000);
+			return;
+		}
+
+		/* next phase is measurement */
+		_collect_phase = false;
+	}
+
+	/* Look for a ready condition */
+	ret = measure();
+
+	if (ret == PX4_ERROR) {
+		/* issue a reset command to the sensor */
+		reset();
+
+		/* reset the collection state machine and try again */
+		start();
+		return;
+	}
+
+	/* next phase is measurement */
+	_collect_phase = true;
 
 	/* schedule a fresh cycle call when the measurement is done */
 	ScheduleDelayed(40000);
@@ -297,86 +256,101 @@ void ICP10100::RunImpl()
 
 int ICP10100::measure()
 {
-	// perf_begin(_measure_perf);
-    //
-	// // Send the command to read the ADC for P and T.
-	// unsigned addr = (ICP10100_CTRL_REG1 << 8) | ICP10100_CTRL_TRIGGER;
-    //
-	// /*
-	//  * Disable retries on this command; we can't know whether failure
-	//  * means the device did or did not see the command.
-	//  */
-	// _retries = 0;
-	// int ret = RegisterWrite((addr >> 8) & 0xff, addr & 0xff);
-    //
-	// if (ret == -EIO) {
-	// 	perf_count(_comms_errors);
-	// }
-    //
-	// perf_end(_measure_perf);
+    int ret = PX4_OK;
+
+	perf_begin(_measure_perf);
+
+    if (SendCommand(ICP10100_START_LN_CMD) == PX4_OK) {
+        // PX4_INFO("%s Send start command succeeded", __FUNCTION__);
+    } else {
+        PX4_ERR("%s Send start command failed", __FUNCTION__);
+		perf_count(_comms_errors);
+        ret = PX4_ERROR;
+    }
+
+	perf_end(_measure_perf);
 
 	return PX4_OK;
 }
 
+void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) {
+    double t;
+    double s1, s2, s3;
+    double in[3];
+    double out[3];
+    double A,B,C;
+
+    t = (double)(raw_temperature - 32768);
+
+    s1 = sensor_params.LUT_lower + (double)(sensor_params.sensor_constants[0] * t * t) * sensor_params.quadr_factor;
+    s2 = sensor_params.offst_factor * sensor_params.sensor_constants[3] + (double) (sensor_params.sensor_constants[1] * t * t) * sensor_params.quadr_factor;
+    s3 = sensor_params.LUT_upper + (double)(sensor_params.sensor_constants[2] * t * t) * sensor_params.quadr_factor;
+
+    in[0] = s1;
+    in[1] = s2;
+    in[2] = s3;
+
+    calculate_conversion_constants(sensor_params.p_Pa_calib, in, out);
+
+    A = out[0];
+    B = out[1];
+    C = out[2];
+
+    pressure = A + B / (C + (double) raw_pressure);
+    temperature = -45.0 + 175.0/65536.0 * (double) raw_temperature;
+}
+
+// p_Pa -- List of 3 values corresponding to applied pressure in Pa
+// p_LUT -- List of 3 values corresponding to the measured p_LUT values at the applied pressures.
+void ICP10100::calculate_conversion_constants(double *p_Pa, double *p_LUT, double *out) {
+    double A,B,C;
+    C = (p_LUT[0] * p_LUT[1] * (p_Pa[0] - p_Pa[1]) +
+    p_LUT[1] * p_LUT[2] * (p_Pa[1] - p_Pa[2]) +
+    p_LUT[2] * p_LUT[0] * (p_Pa[2] - p_Pa[0])) /
+    (p_LUT[2] * (p_Pa[0] - p_Pa[1]) +
+    p_LUT[0] * (p_Pa[1] - p_Pa[2]) +
+    p_LUT[1] * (p_Pa[2] - p_Pa[0]));
+
+    A = (p_Pa[0] * p_LUT[0] - p_Pa[1] * p_LUT[1] - (p_Pa[1] - p_Pa[0]) * C) / (p_LUT[0] - p_LUT[1]);
+    B = (p_Pa[0] - A) * (p_LUT[0] + C);
+
+    out[0] = A;
+    out[1] = B;
+    out[2] = C;
+
+}
+
 int ICP10100::collect()
 {
-// 	perf_begin(_sample_perf);
-//
-// 	uint8_t ctrl{};
-// 	int ret = RegisterRead(ICP10100_CTRL_REG1, (void *)&ctrl, 1);
-//
-// 	if (ret == -EIO) {
-// 		perf_end(_sample_perf);
-// 		return ret;
-// 	}
-//
-// 	if (ctrl & CTRL_REG1_OST) {
-// 		perf_end(_sample_perf);
-// 		return -EAGAIN;
-// 	}
-//
-//
-// 	/* read the most recent measurement
-// 	 * 3 Pressure and 2 temprtture
-// 	 */
-// 	uint8_t	b[3 + 2] {};
-// 	uint8_t reg = OUT_P_MSB;
-// 	const hrt_abstime timestamp_sample = hrt_absolute_time();
-// 	ret = transfer(&reg, 1, &b[0], sizeof(b));
-//
-// 	if (ret == -EIO) {
-// 		perf_count(_comms_errors);
-// 		perf_end(_sample_perf);
-// 		return ret;
-// 	}
-//
-// #pragma pack(push, 1)
-// 	struct ICP10100_data_t {
-// 		union {
-// 			uint32_t q;
-// 			uint16_t w[sizeof(q) / sizeof(uint16_t)];
-// 			uint8_t  b[sizeof(q) / sizeof(uint8_t)];
-// 		} pressure;
-//
-// 		union {
-// 			uint16_t w;
-// 			uint8_t  b[sizeof(w)];
-// 		} temperature;
-// 	} reading;
-// #pragma pack(pop)
-//
-// 	reading.pressure.q = ((uint32_t)b[0]) << 18 | ((uint32_t) b[1]) << 10 | (((uint32_t)b[2]) & 0xc0) << 2 | ((
-// 				     b[2] & 0x30) >> 4);
-// 	reading.temperature.w = ((uint16_t) b[3]) << 8 | (b[4] >> 4);
-//
-// 	float T = (float) reading.temperature.b[1] + ((float)(reading.temperature.b[0]) / 16.0f);
-// 	float P = (float)(reading.pressure.q >> 8) + ((float)(reading.pressure.b[0]) / 4.0f);
-//
-// 	_px4_barometer.set_error_count(perf_event_count(_comms_errors));
-// 	_px4_barometer.set_temperature(T);
-// 	_px4_barometer.update(timestamp_sample, P / 100.0f);
-//
-// 	perf_end(_sample_perf);
+	perf_begin(_sample_perf);
+
+    uint8_t data_read[9] = {0};
+
+    if (ReadData(data_read, 9) != PX4_OK) {
+        PX4_ERR("%s ReadData failed", __FUNCTION__);
+
+        perf_end(_sample_perf);
+
+        return PX4_ERROR;
+    }
+
+    // TODO: Check CRC values
+
+    int32_t temp_val = (int32_t)(data_read[6] << 8 | data_read[7]);
+    temperature = ((175.0 / 65536.0) * (double) temp_val) - 45.0;
+    PX4_INFO("Barometer temperature %.2f C", temperature);
+
+    int32_t pressure_val = (int32_t)(data_read[0] << 16 | data_read[1] << 8 | data_read[3]);
+    CalculatePressure(pressure_val, temp_val);
+    // pressure /= 100.0;
+    PX4_INFO("Raw pressure value %d", pressure_val);
+    PX4_INFO("Calculated pressure value %f", pressure);
+
+    _px4_barometer.set_error_count(perf_event_count(_comms_errors));
+    _px4_barometer.set_temperature(temperature);
+    // _px4_barometer.update(timestamp_sample, P / 100.0f);
+
+	perf_end(_sample_perf);
 
 	return PX4_OK;
 }
