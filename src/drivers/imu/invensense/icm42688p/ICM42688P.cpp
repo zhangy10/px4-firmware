@@ -278,7 +278,11 @@ void ICM42688P::RunImpl()
 void ICM42688P::ConfigureSampleRate(int sample_rate)
 {
 	if (sample_rate == 0) {
+#ifdef __PX4_QURT
+		sample_rate = 500; // default to 500 Hz
+#else
 		sample_rate = 800; // default to 800 Hz
+#endif
 	}
 
 	// round down to nearest FIFO sample dt

@@ -220,6 +220,9 @@ void ICP10100::RunImpl()
 		ret = collect();
 
 		if (ret == PX4_ERROR) {
+
+            PX4_ERR("ICP10100 collect failed");
+
 			/* issue a reset command to the sensor */
 			reset();
 
@@ -239,6 +242,9 @@ void ICP10100::RunImpl()
 	ret = measure();
 
 	if (ret == PX4_ERROR) {
+
+        PX4_ERR("ICP10100 measure failed");
+
 		/* issue a reset command to the sensor */
 		reset();
 
@@ -251,6 +257,7 @@ void ICP10100::RunImpl()
 	_collect_phase = true;
 
 	/* schedule a fresh cycle call when the measurement is done */
+    // PX4_INFO("ICP10100 sleeping for 40ms");
 	ScheduleDelayed(40000);
 }
 
@@ -296,7 +303,7 @@ void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) 
     B = out[1];
     C = out[2];
 
-    pressure = A + B / (C + (double) raw_pressure);
+    pressure = (A + B / (C + (double) raw_pressure)) / 100.0;
     temperature = -45.0 + 175.0/65536.0 * (double) raw_temperature;
 }
 
@@ -338,17 +345,15 @@ int ICP10100::collect()
 
     int32_t temp_val = (int32_t)(data_read[6] << 8 | data_read[7]);
     temperature = ((175.0 / 65536.0) * (double) temp_val) - 45.0;
-    PX4_INFO("Barometer temperature %.2f C", temperature);
 
     int32_t pressure_val = (int32_t)(data_read[0] << 16 | data_read[1] << 8 | data_read[3]);
     CalculatePressure(pressure_val, temp_val);
-    // pressure /= 100.0;
-    PX4_INFO("Raw pressure value %d", pressure_val);
-    PX4_INFO("Calculated pressure value %f", pressure);
 
     _px4_barometer.set_error_count(perf_event_count(_comms_errors));
     _px4_barometer.set_temperature(temperature);
-    // _px4_barometer.update(timestamp_sample, P / 100.0f);
+    _px4_barometer.update(hrt_absolute_time(), pressure);
+
+    // PX4_INFO("Barometer temperature %.2f C, pressure %.2f", temperature, pressure);
 
 	perf_end(_sample_perf);
 

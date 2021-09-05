@@ -65,6 +65,10 @@ static constexpr wq_config_t I2C2{"wq_I2C2", 2336, -10};
 static constexpr wq_config_t I2C3{"wq_I2C3", 2336, -11};
 static constexpr wq_config_t I2C4{"wq_I2C4", 2336, -12};
 
+#ifdef __PX4_QURT
+static constexpr wq_config_t I2C5{"wq_I2C5", 2336, -12};
+#endif
+
 // PX4 att/pos controllers, highest priority after sensors.
 static constexpr wq_config_t nav_and_controllers{"wq_nav_and_controllers", 1760, -13};
 
