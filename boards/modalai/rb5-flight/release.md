@@ -19,9 +19,13 @@
 
 # Releases
 
+## 1.1.2alpha
+
+- Moved from TDK icp10100 barometer driver to new px4 icp10100 barometer driver.
+
 ## 1.1.1alpha
 
-- Changed IMU from using raw sensor data to using calibrated / filtered sensor data
+- Changed IMU server from using raw sensor data to using calibrated / filtered sensor data
 
 ## 1.1.0alpha
 
