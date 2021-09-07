@@ -5,8 +5,6 @@
 ### ORB
 * qshell_retval sequence number mismatch and subsequent timeout
   - Is there an advertise loop if the topic is local and remote?
-* Implement topic listener on Qurt - Maybe not really needed since apps side will subscribe to the message.
-   * You can listen to slpi uorb topics from apps side. Need to use “-n 1”.
 * Improve “uorb top” on Qurt
 * Remove topic_unadvertised from the IChannel interface
 
@@ -49,17 +47,11 @@
 * Why is it not running reliably every ~10ms???
    * pthread_kill doesn’t work on SLPI
    * Changed loop rate in hrt_thread to 1ms for QURT
-* Activate temperature compensation in hmc5883 / ist8310 driver?
+* Activate temperature compensation in ist8310 driver?
 
 ### IMU
 * Add configuration for the IMU rotation
-* Buffer incoming samples before publishing and add mutex
 * Move to 1KHz sampling
-* Debug why the accel lookup is failing (Not important if we move to PX4 driver)
-* Once there is SPI support in flight controller sensor, move to PX4 driver.
-
-### Barometer
-* Move from Invensense driver to PX4 driver
 
 ### UART (SLPI)
 * Add queue in SLPI for incoming messages so none are lost?
@@ -68,10 +60,10 @@
 * Normally, write, then read is a “cycle”. If read data comes in after read timeout then we should drop it because we don’t want it to be picked up by next read in the write / read cycle. Otherwise it will be stale data!
 
 ### Fake RC
-* When moved to SLPI caused uorb issue and qshell timeouts
-* Remove from codebase?
+* Remove from codebase
 
 ### ModalAI UART ESC
+* Remove modalai/uart_esc. Use uart_esc instead.
 * Enable feedback
 * Enable test motor command from QGC (Need newer QGC)
 * Allow leds to be set with led command
@@ -109,6 +101,7 @@
 
 ### slpi_proc
 * Clean up flight controller code
+* Completely remove TDK IMU and barometer drivers?
 * Add proper copyright notices
 * Make flight controller stuff a submodule?
 
@@ -116,6 +109,7 @@
 * Investigate chipcode release 10.2
 * Try to keep flight controller code out of system image build
 * Need tcpdump on target
+* “groups” error when launching bash shell
 
 ### PX4
 
@@ -141,11 +135,9 @@
 * ERROR [mavlink] vehicle_command lost, generation 0 -> 2
 * Problems with wifi connection? Also happens with Ethernet!
    * Root cause: This is due to a heartbeat timestamp sync issue. Not a networking problem at all.
-* “groups” error when launching bash shell
 * Strange wlan ip address configuration:
    * wlan0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
    *         inet 169.254.86.150  netmask 255.255.0.0  broadcast 169.254.255.255
-   * Only happens on my home network?
 * Error message on SLPI: “LED: open /dev/led0 failed (22)  0302  commander_helper.cpp”
 * Calling shutdown from shell causes crash (It only stops apps side, not slpi)
 * Can only run once. Then needs a power cycle. Can it be made to run multiple times?
@@ -174,7 +166,6 @@
 * Tie fake function calls (stubs) (e.g. HAP_power_request) back into SLPI process
 * Does adb reboot cause slpi reboot or not?
 * SLPI message needed?: “Min: 1, max: 2  0273  VehicleAcceleration.cpp”
-* Automatic file sync doesn't happen very frequently. Make it happen more often.
 * Time doesn't start in 1970 anymore. Now it starts at last power down time?
 
 ### Preflight arm fails
