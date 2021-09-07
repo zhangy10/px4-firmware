@@ -51,13 +51,7 @@ M0053 / M0054 RC / GPS on DSP using UART 6 and 7
 
 Implement CPU utilization monitor for apps as a second instance of load_mon
 
-Move to PX4 barometer driver. Need to create one for ICP101xx
-
-Move to PX4 IMU driver. Need to create SPI driver, interrupt driver
-
 SLPI: Timeout waiting for parameter_client_set_value_response
-
-Add queueing to make sure there are no lost IMU / Barometer samples in the thin clients
 
 Investigate switch to altitude mode when manual mode specified
 - Something to do with the RC switches
