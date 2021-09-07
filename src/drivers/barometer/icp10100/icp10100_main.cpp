@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,8 +51,6 @@ I2CSPIDriverBase *ICP10100::instantiate(const BusCLIArguments &cli, const BusIns
 {
 	ICP10100 *dev = new ICP10100(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency);
 
-    PX4_INFO("In ICP10100::instantiate. %p", dev);
-
 	if (dev == nullptr) {
 		return nullptr;
 	}
@@ -80,11 +78,7 @@ extern "C" int icp10100_main(int argc, char *argv[])
 
 	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_BARO_DEVTYPE_ICP10100);
 
-    PX4_INFO("In %s", __FUNCTION__);
-
 	if (!strcmp(verb, "start")) {
-        PX4_INFO("Starting");
-
 		return ThisDriver::module_start(cli, iterator);
 	}
 

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -101,8 +101,6 @@ int ICP10100::read_otp_from_i2c() {
 
 int ICP10100::init()
 {
-    PX4_INFO("In %s", __FUNCTION__);
-
 	if (I2C::init() != PX4_OK) {
 		PX4_ERR("I2C init failed");
 		return PX4_ERROR;
@@ -112,8 +110,8 @@ int ICP10100::init()
         sensor_params.p_Pa_calib[0] = 45000.0;
         sensor_params.p_Pa_calib[1] = 80000.0;
         sensor_params.p_Pa_calib[2] = 105000.0;
-        sensor_params.LUT_lower = 3.5 * (1<<20);
-        sensor_params.LUT_upper = 11.5 * (1<<20);
+        sensor_params.LUT_lower = 3.5 * (1 << 20);
+        sensor_params.LUT_upper = 11.5 * (1 << 20);
         sensor_params.quadr_factor = 1 / 16777216.0;
         sensor_params.offst_factor = 2048.0;
     } else {
@@ -132,8 +130,6 @@ int ICP10100::probe()
 
     uint8_t buf[4];
 
-    _retries = 10;
-
     if (SendCommand(ICP10100_READ_ID_CMD) == PX4_OK) {
         if (ReadData(buf, 4) == PX4_OK) {
             if ((buf[1] & ICP10100_ID_MASK) == ICP10100_ID_VAL) {
@@ -150,7 +146,6 @@ int ICP10100::probe()
     }
 
 	return PX4_ERROR;
-	return PX4_OK;
 }
 
 int ICP10100::SendCommand(uint16_t cmd)
@@ -170,19 +165,7 @@ int ICP10100::ReadData(uint8_t *data, uint8_t len)
 {
 	int ret = transfer(NULL, 0, data, len);
 
-    if (ret == PX4_OK) {
-        // if (len == 3) {
-        //     PX4_INFO("0x%x 0x%x 0x%x",
-        //               data[0], data[1], data[2]);
-        // } else if (len == 4) {
-        //     PX4_INFO("0x%x 0x%x 0x%x 0x%x",
-        //               data[0], data[1], data[2], data[3]);
-        // } else if (len == 9) {
-        //     PX4_INFO("0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
-        //               data[0], data[1], data[2], data[3], data[4],
-        //               data[5], data[6], data[7], data[8]);
-        // }
-    } else {
+    if (ret != PX4_OK) {
         PX4_ERR("%s transfer failed", __FUNCTION__);
     }
 
@@ -191,8 +174,6 @@ int ICP10100::ReadData(uint8_t *data, uint8_t len)
 
 void ICP10100::start()
 {
-    PX4_INFO("In %s", __FUNCTION__);
-
 	/* reset the report ring and state machine */
 	_collect_phase = false;
 
@@ -202,10 +183,7 @@ void ICP10100::start()
 
 int ICP10100::reset()
 {
-    PX4_INFO("In %s", __FUNCTION__);
-
     SendCommand(ICP10100_SOFT_RESET_CMD);
-
 	return PX4_OK;
 }
 
@@ -257,7 +235,7 @@ void ICP10100::RunImpl()
 	_collect_phase = true;
 
 	/* schedule a fresh cycle call when the measurement is done */
-    // PX4_INFO("ICP10100 sleeping for 40ms");
+    /* Run at 25Hz (every 40ms) */
 	ScheduleDelayed(40000);
 }
 
@@ -267,9 +245,7 @@ int ICP10100::measure()
 
 	perf_begin(_measure_perf);
 
-    if (SendCommand(ICP10100_START_LN_CMD) == PX4_OK) {
-        // PX4_INFO("%s Send start command succeeded", __FUNCTION__);
-    } else {
+    if (SendCommand(ICP10100_START_LN_CMD) != PX4_OK) {
         PX4_ERR("%s Send start command failed", __FUNCTION__);
 		perf_count(_comms_errors);
         ret = PX4_ERROR;
@@ -280,12 +256,13 @@ int ICP10100::measure()
 	return PX4_OK;
 }
 
+// Calculation code comes from the icp10100 data sheet
 void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) {
     double t;
     double s1, s2, s3;
     double in[3];
     double out[3];
-    double A,B,C;
+    double A, B, C;
 
     t = (double)(raw_temperature - 32768);
 
@@ -304,19 +281,19 @@ void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) 
     C = out[2];
 
     pressure = (A + B / (C + (double) raw_pressure)) / 100.0;
-    temperature = -45.0 + 175.0/65536.0 * (double) raw_temperature;
+    temperature = -45.0 + 175.0 / 65536.0 * (double) raw_temperature;
 }
 
 // p_Pa -- List of 3 values corresponding to applied pressure in Pa
 // p_LUT -- List of 3 values corresponding to the measured p_LUT values at the applied pressures.
 void ICP10100::calculate_conversion_constants(double *p_Pa, double *p_LUT, double *out) {
-    double A,B,C;
+    double A, B, C;
     C = (p_LUT[0] * p_LUT[1] * (p_Pa[0] - p_Pa[1]) +
-    p_LUT[1] * p_LUT[2] * (p_Pa[1] - p_Pa[2]) +
-    p_LUT[2] * p_LUT[0] * (p_Pa[2] - p_Pa[0])) /
-    (p_LUT[2] * (p_Pa[0] - p_Pa[1]) +
-    p_LUT[0] * (p_Pa[1] - p_Pa[2]) +
-    p_LUT[1] * (p_Pa[2] - p_Pa[0]));
+         p_LUT[1] * p_LUT[2] * (p_Pa[1] - p_Pa[2]) +
+         p_LUT[2] * p_LUT[0] * (p_Pa[2] - p_Pa[0])) /
+         (p_LUT[2] * (p_Pa[0] - p_Pa[1]) +
+         p_LUT[0] * (p_Pa[1] - p_Pa[2]) +
+         p_LUT[1] * (p_Pa[2] - p_Pa[0]));
 
     A = (p_Pa[0] * p_LUT[0] - p_Pa[1] * p_LUT[1] - (p_Pa[1] - p_Pa[0]) * C) / (p_LUT[0] - p_LUT[1]);
     B = (p_Pa[0] - A) * (p_LUT[0] + C);
@@ -324,7 +301,6 @@ void ICP10100::calculate_conversion_constants(double *p_Pa, double *p_LUT, doubl
     out[0] = A;
     out[1] = B;
     out[2] = C;
-
 }
 
 int ICP10100::collect()
@@ -335,9 +311,7 @@ int ICP10100::collect()
 
     if (ReadData(data_read, 9) != PX4_OK) {
         PX4_ERR("%s ReadData failed", __FUNCTION__);
-
         perf_end(_sample_perf);
-
         return PX4_ERROR;
     }
 
