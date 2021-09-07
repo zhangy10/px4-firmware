@@ -54,7 +54,6 @@ px4_add_board(
 	LABEL qurt
 	DRIVERS
         barometer/icp10100
-        modalai/baro_thin_client
 		qshell/qurt
         magnetometer/hmc5883
         magnetometer/isentek/ist8310
