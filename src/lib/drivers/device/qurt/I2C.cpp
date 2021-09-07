@@ -43,6 +43,7 @@
 #include "I2C.hpp"
 
 #include <dev_fs_lib_i2c.h>
+#include <px4_platform_common/time.h>
 
 namespace device
 {
@@ -142,6 +143,8 @@ I2C::transfer(const uint8_t *send, const unsigned send_len, uint8_t *recv, const
             pthread_mutex_unlock(&_mutex);
 
             if (ret != PX4_ERROR) break;
+
+            px4_usleep(1000);
 
     	} while (retry_count++ < _retries);
     }

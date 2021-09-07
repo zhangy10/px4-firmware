@@ -53,7 +53,7 @@ px4_add_board(
 	MODEL excelsior
 	LABEL qurt
 	DRIVERS
-        modalai/baro_thin_client
+        barometer/icp10100
 		qshell/qurt
         magnetometer/hmc5883
         magnetometer/isentek/ist8310

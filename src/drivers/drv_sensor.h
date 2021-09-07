@@ -175,6 +175,8 @@
 #define DRV_DIST_DEVTYPE_SIM 0x9a
 #define DRV_DIST_DEVTYPE_SRF05 0x9b
 
+#define DRV_BARO_DEVTYPE_ICP10100 0x9c
+
 #define DRV_DEVTYPE_UNUSED		0xff
 
 #endif /* _DRV_SENSOR_H */
