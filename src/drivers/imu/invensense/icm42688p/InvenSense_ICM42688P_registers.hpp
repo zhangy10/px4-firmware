@@ -106,12 +106,17 @@ enum class BANK_0 : uint8_t {
 
 enum class BANK_1 : uint8_t {
 	GYRO_CONFIG_STATIC2 = 0x0B,
+	GYRO_CONFIG_STATIC3 = 0x0C,
+	GYRO_CONFIG_STATIC4 = 0x0D,
+	GYRO_CONFIG_STATIC5 = 0x0E,
 
 	INTF_CONFIG5        = 0x7B,
 };
 
 enum class BANK_2 : uint8_t {
 	ACCEL_CONFIG_STATIC2 = 0x03,
+	ACCEL_CONFIG_STATIC3 = 0x04,
+	ACCEL_CONFIG_STATIC4 = 0x05,
 };
 
 };

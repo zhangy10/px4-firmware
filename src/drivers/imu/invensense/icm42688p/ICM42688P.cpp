@@ -279,7 +279,7 @@ void ICM42688P::ConfigureSampleRate(int sample_rate)
 {
 	if (sample_rate == 0) {
 #ifdef __PX4_QURT
-		sample_rate = 500; // default to 500 Hz
+		sample_rate = 200;
 #else
 		sample_rate = 800; // default to 800 Hz
 #endif
@@ -331,15 +331,18 @@ bool ICM42688P::Configure()
 {
 	// first set and clear all configured register bits
 	for (const auto &reg_cfg : _register_bank0_cfg) {
-		RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		// RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		RegisterWrite(reg_cfg.reg, reg_cfg.set_bits);
 	}
 
 	for (const auto &reg_cfg : _register_bank1_cfg) {
-		RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		// RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		RegisterWrite(reg_cfg.reg, reg_cfg.set_bits);
 	}
 
 	for (const auto &reg_cfg : _register_bank2_cfg) {
-		RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		// RegisterSetAndClearBits(reg_cfg.reg, reg_cfg.set_bits, reg_cfg.clear_bits);
+		RegisterWrite(reg_cfg.reg, reg_cfg.set_bits);
 	}
 
 	// now check that all are configured
@@ -480,87 +483,96 @@ uint16_t ICM42688P::FIFOReadCount()
 bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 {
 	FIFOTransferBuffer buffer{};
-	const size_t transfer_size = math::min(samples * sizeof(FIFO::DATA) + 4, FIFO::SIZE);
+	// const size_t transfer_size = math::min(samples * sizeof(FIFO::DATA) + 4, FIFO::SIZE);
 	SelectRegisterBank(REG_BANK_SEL_BIT::USER_BANK_0);
 
-	if (transfer((uint8_t *)&buffer, (uint8_t *)&buffer, transfer_size) != PX4_OK) {
-		perf_count(_bad_transfer_perf);
-		return false;
-	}
+    uint64_t time_offset = (samples - 1) * 1000;
 
-	if (buffer.INT_STATUS & INT_STATUS_BIT::FIFO_FULL_INT) {
-		perf_count(_fifo_overflow_perf);
-		FIFOReset();
-		return false;
-	}
+    for (int j = 0; j < samples; j++) {
+    	if (transfer((uint8_t *)&buffer, (uint8_t *)&buffer, sizeof(FIFO::DATA) + 4) != PX4_OK) {
+    		perf_count(_bad_transfer_perf);
+    		return false;
+    	}
 
-	const uint16_t fifo_count_bytes = combine(buffer.FIFO_COUNTH, buffer.FIFO_COUNTL);
+    	if (buffer.INT_STATUS & INT_STATUS_BIT::FIFO_FULL_INT) {
+    		perf_count(_fifo_overflow_perf);
+    		FIFOReset();
+    		return false;
+    	}
 
-	if (fifo_count_bytes >= FIFO::SIZE) {
-		perf_count(_fifo_overflow_perf);
-		FIFOReset();
-		return false;
-	}
+    	const uint16_t fifo_count_bytes = combine(buffer.FIFO_COUNTH, buffer.FIFO_COUNTL);
 
-	const uint8_t fifo_count_samples = fifo_count_bytes / sizeof(FIFO::DATA);
+    	if (fifo_count_bytes >= FIFO::SIZE) {
+    		perf_count(_fifo_overflow_perf);
+    		FIFOReset();
+    		return false;
+    	}
 
-	if (fifo_count_samples == 0) {
-		perf_count(_fifo_empty_perf);
-		return false;
-	}
+    	const uint8_t fifo_count_samples = fifo_count_bytes / sizeof(FIFO::DATA);
 
-	// check FIFO header in every sample
-	uint8_t valid_samples = 0;
+    	if (fifo_count_samples == 0) {
+    		perf_count(_fifo_empty_perf);
+    		return false;
+    	}
 
-	for (int i = 0; i < math::min(samples, fifo_count_samples); i++) {
-		bool valid = true;
+    	// check FIFO header in every sample
+    	uint8_t valid_samples = 0;
 
-		// With FIFO_ACCEL_EN and FIFO_GYRO_EN header should be 8’b_0110_10xx
-		const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
+    	for (int i = 0; i < math::min(samples, fifo_count_samples); i++) {
+    		bool valid = true;
 
-		if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_MSG) {
-			// FIFO sample empty if HEADER_MSG set
-			valid = false;
+    		// With FIFO_ACCEL_EN and FIFO_GYRO_EN header should be 8’b_0110_10xx
+    		const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
 
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ACCEL)) {
-			// accel bit not set
-			valid = false;
+    		if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_MSG) {
+    			// FIFO sample empty if HEADER_MSG set
+    			valid = false;
 
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_GYRO)) {
-			// gyro bit not set
-			valid = false;
+    		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ACCEL)) {
+    			// accel bit not set
+    			valid = false;
 
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_20)) {
-			// Packet does not contain a new and valid extended 20-bit data
-			valid = false;
+    		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_GYRO)) {
+    			// gyro bit not set
+    			valid = false;
 
-		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_ACCEL) {
-			// accel ODR changed
-			valid = false;
+    		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_20)) {
+    			// Packet does not contain a new and valid extended 20-bit data
+    			valid = false;
 
-		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_GYRO) {
-			// gyro ODR changed
-			valid = false;
-		}
+    		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_ACCEL) {
+    			// accel ODR changed
+    			valid = false;
 
-		if (valid) {
-			valid_samples++;
+    		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_GYRO) {
+    			// gyro ODR changed
+    			valid = false;
+    		}
 
-		} else {
-			perf_count(_bad_transfer_perf);
-			break;
-		}
-	}
+    		if (valid) {
+    			valid_samples++;
 
-	if (valid_samples > 0) {
-		if (ProcessTemperature(buffer.f, valid_samples)) {
-			ProcessGyro(timestamp_sample, buffer.f, valid_samples);
-			ProcessAccel(timestamp_sample, buffer.f, valid_samples);
-			return true;
-		}
-	}
+    		} else {
+    			perf_count(_bad_transfer_perf);
+    			break;
+    		}
+    	}
 
-	return false;
+    	if (valid_samples > 0) {
+    		// if (ProcessTemperature(buffer.f, valid_samples)) {
+    			ProcessGyro(timestamp_sample - time_offset, buffer.f, valid_samples);
+    			ProcessAccel(timestamp_sample - time_offset, buffer.f, valid_samples);
+    			// return true;
+    		// }
+    	}
+
+        time_offset -= 1000;
+    }
+
+	ProcessTemperature(buffer.f, 1);
+
+	// return false;
+	return true;
 }
 
 void ICM42688P::FIFOReset()
@@ -662,20 +674,27 @@ void ICM42688P::ProcessAccel(const hrt_abstime &timestamp_sample, const FIFO::DA
 	}
 
 	// correct frame for publication
-	for (int i = 0; i < accel.samples; i++) {
+	// for (int i = 0; i < accel.samples; i++) {
+	for (int i = 0, j = accel.samples - 1; i < accel.samples; i++, j--) {
 		// sensor's frame is +x forward, +y left, +z up
 		//  flip y & z to publish right handed with z down (x forward, y right, z down)
 		accel.x[i] = accel.x[i];
 		accel.y[i] = (accel.y[i] == INT16_MIN) ? INT16_MAX : -accel.y[i];
 		accel.z[i] = (accel.z[i] == INT16_MIN) ? INT16_MAX : -accel.z[i];
+#ifdef __PX4_QURT
+		_px4_accel.update(timestamp_sample - (j * (int) FIFO_SAMPLE_DT),
+                          accel.x[i], accel.y[i], accel.z[i]);
+#endif
 	}
 
 	_px4_accel.set_error_count(perf_event_count(_bad_register_perf) + perf_event_count(_bad_transfer_perf) +
 				   perf_event_count(_fifo_empty_perf) + perf_event_count(_fifo_overflow_perf));
 
+#ifndef __PX4_QURT
 	if (accel.samples > 0) {
 		_px4_accel.updateFIFO(accel);
 	}
+#endif
 }
 
 void ICM42688P::ProcessGyro(const hrt_abstime &timestamp_sample, const FIFO::DATA fifo[], const uint8_t samples)
@@ -734,20 +753,27 @@ void ICM42688P::ProcessGyro(const hrt_abstime &timestamp_sample, const FIFO::DAT
 	}
 
 	// correct frame for publication
-	for (int i = 0; i < gyro.samples; i++) {
+	//for (int i = 0; i < gyro.samples; i++) {
+	for (int i = 0, j = gyro.samples - 1; i < gyro.samples; i++, j--) {
 		// sensor's frame is +x forward, +y left, +z up
 		//  flip y & z to publish right handed with z down (x forward, y right, z down)
 		gyro.x[i] = gyro.x[i];
 		gyro.y[i] = (gyro.y[i] == INT16_MIN) ? INT16_MAX : -gyro.y[i];
 		gyro.z[i] = (gyro.z[i] == INT16_MIN) ? INT16_MAX : -gyro.z[i];
+#ifdef __PX4_QURT
+		_px4_gyro.update(timestamp_sample - (j * (int) FIFO_SAMPLE_DT),
+                          gyro.x[i], gyro.y[i], gyro.z[i]);
+#endif
 	}
 
 	_px4_gyro.set_error_count(perf_event_count(_bad_register_perf) + perf_event_count(_bad_transfer_perf) +
 				  perf_event_count(_fifo_empty_perf) + perf_event_count(_fifo_overflow_perf));
 
+#ifndef __PX4_QURT
 	if (gyro.samples > 0) {
 		_px4_gyro.updateFIFO(gyro);
 	}
+#endif
 }
 
 bool ICM42688P::ProcessTemperature(const FIFO::DATA fifo[], const uint8_t samples)

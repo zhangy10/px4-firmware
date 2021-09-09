@@ -73,8 +73,9 @@ private:
 	void exit_and_cleanup() override;
 
 	// Sensor Configuration
+    static constexpr float IMU_ODR{1000.f};
 	// static constexpr float FIFO_SAMPLE_DT{1e6f / 16000.f};     // 16000 Hz accel & gyro ODR configured
-	static constexpr float FIFO_SAMPLE_DT{1e6f / 8000.f};     // 8000 Hz accel & gyro ODR configured
+	static constexpr float FIFO_SAMPLE_DT{1e6f / IMU_ODR};
 	static constexpr float GYRO_RATE{1e6f / FIFO_SAMPLE_DT};
 	static constexpr float ACCEL_RATE{1e6f / FIFO_SAMPLE_DT};
 
@@ -179,14 +180,14 @@ private:
 	static constexpr uint8_t size_register_bank0_cfg{13};
 	register_bank0_config_t _register_bank0_cfg[size_register_bank0_cfg] {
 		// Register                              | Set bits, Clear bits
-		{ Register::BANK_0::INT_CONFIG,           INT_CONFIG_BIT::INT1_MODE | INT_CONFIG_BIT::INT1_DRIVE_CIRCUIT, INT_CONFIG_BIT::INT1_POLARITY },
+		{ Register::BANK_0::INT_CONFIG,           INT_CONFIG_BIT::INT1_MODE | INT_CONFIG_BIT::INT1_DRIVE_CIRCUIT, 0 },
 		{ Register::BANK_0::FIFO_CONFIG,          FIFO_CONFIG_BIT::FIFO_MODE_STOP_ON_FULL, 0 },
 		{ Register::BANK_0::PWR_MGMT0,            PWR_MGMT0_BIT::GYRO_MODE_LOW_NOISE | PWR_MGMT0_BIT::ACCEL_MODE_LOW_NOISE, 0 },
-		{ Register::BANK_0::GYRO_CONFIG0,         GYRO_CONFIG0_BIT::GYRO_ODR_8kHz, Bit3 | Bit2 },
-		{ Register::BANK_0::ACCEL_CONFIG0,        ACCEL_CONFIG0_BIT::ACCEL_ODR_8kHz, Bit3 | Bit2 },
-		{ Register::BANK_0::GYRO_CONFIG1,         0, GYRO_CONFIG1_BIT::GYRO_UI_FILT_ORD },
-		{ Register::BANK_0::GYRO_ACCEL_CONFIG0,   0, GYRO_ACCEL_CONFIG0_BIT::ACCEL_UI_FILT_BW | GYRO_ACCEL_CONFIG0_BIT::GYRO_UI_FILT_BW },
-		{ Register::BANK_0::ACCEL_CONFIG1,        0, ACCEL_CONFIG1_BIT::ACCEL_UI_FILT_ORD },
+		{ Register::BANK_0::GYRO_CONFIG0,         GYRO_CONFIG0_BIT::GYRO_ODR_1kHz, 0},
+		{ Register::BANK_0::ACCEL_CONFIG0,        ACCEL_CONFIG0_BIT::ACCEL_ODR_1kHz, 0 },
+		{ Register::BANK_0::GYRO_CONFIG1,         (6 << 5) | (2 << 2) | (2 << 0), 0},
+		{ Register::BANK_0::GYRO_ACCEL_CONFIG0,   (4 << 4) | (4 << 0), 0 },
+		{ Register::BANK_0::ACCEL_CONFIG1,        (2 << 3) | (2 << 1), 0 },
 		{ Register::BANK_0::FIFO_CONFIG1,         FIFO_CONFIG1_BIT::FIFO_WM_GT_TH | FIFO_CONFIG1_BIT::FIFO_HIRES_EN | FIFO_CONFIG1_BIT::FIFO_TEMP_EN | FIFO_CONFIG1_BIT::FIFO_GYRO_EN | FIFO_CONFIG1_BIT::FIFO_ACCEL_EN, 0 },
 		{ Register::BANK_0::FIFO_CONFIG2,         0, 0 }, // FIFO_WM[7:0] set at runtime
 		{ Register::BANK_0::FIFO_CONFIG3,         0, 0 }, // FIFO_WM[11:8] set at runtime
@@ -195,16 +196,21 @@ private:
 	};
 
 	uint8_t _checked_register_bank1{0};
-	static constexpr uint8_t size_register_bank1_cfg{1};
+	static constexpr uint8_t size_register_bank1_cfg{4};
 	register_bank1_config_t _register_bank1_cfg[size_register_bank1_cfg] {
 		// Register                              | Set bits, Clear bits
-		{ Register::BANK_1::GYRO_CONFIG_STATIC2,  GYRO_CONFIG_STATIC2_BIT::GYRO_AAF_DIS | GYRO_CONFIG_STATIC2_BIT::GYRO_NF_DIS, 0 },
+		{ Register::BANK_1::GYRO_CONFIG_STATIC2, GYRO_CONFIG_STATIC2_BIT::GYRO_NF_DIS, 0 },
+		{ Register::BANK_1::GYRO_CONFIG_STATIC3, 5, 0 },
+		{ Register::BANK_1::GYRO_CONFIG_STATIC4, 25, 0 },
+		{ Register::BANK_1::GYRO_CONFIG_STATIC5, (10 << 4), 0 },
 	};
 
 	uint8_t _checked_register_bank2{0};
-	static constexpr uint8_t size_register_bank2_cfg{1};
+	static constexpr uint8_t size_register_bank2_cfg{3};
 	register_bank2_config_t _register_bank2_cfg[size_register_bank2_cfg] {
 		// Register                              | Set bits, Clear bits
-		{ Register::BANK_2::ACCEL_CONFIG_STATIC2, ACCEL_CONFIG_STATIC2_BIT::ACCEL_AAF_DIS, 0 },
+		{ Register::BANK_2::ACCEL_CONFIG_STATIC2, (5 << 1), 0 },
+		{ Register::BANK_2::ACCEL_CONFIG_STATIC3, 25, 0 },
+		{ Register::BANK_2::ACCEL_CONFIG_STATIC4, (10 << 4), 0 },
 	};
 };

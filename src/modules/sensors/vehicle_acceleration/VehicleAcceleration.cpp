@@ -228,7 +228,6 @@ void VehicleAcceleration::Run()
 		//  - estimated in run bias (if available)
 		//  - biquad low-pass filter
 		const Vector3f accel_corrected = _calibration.Correct(Vector3f{sensor_data.x, sensor_data.y, sensor_data.z}) - _bias;
-		const Vector3f accel_filtered = _lp_filter.apply(accel_corrected);
 
 		_acceleration_prev = accel_corrected;
 
@@ -304,15 +303,24 @@ void VehicleAcceleration::Run()
 	// report._padding0[4] = 0x2f;
 
 		// publish once all new samples are processed
-		if (!_sensor_sub.updated()) {
+		// if (!_sensor_sub.updated()) {
 			// Publish vehicle_acceleration
 			vehicle_acceleration_s v_acceleration;
 			v_acceleration.timestamp_sample = sensor_data.timestamp_sample;
+#ifdef __PX4_QURT
+			accel_corrected.copyTo(v_acceleration.xyz);
+#else
+			const Vector3f accel_filtered = _lp_filter.apply(accel_corrected);
 			accel_filtered.copyTo(v_acceleration.xyz);
+#endif
 			v_acceleration.timestamp = hrt_absolute_time();
 			_vehicle_acceleration_pub.publish(v_acceleration);
-			return;
-		}
+            // PX4_INFO("vehicle_acceleration %llu %llu", v_acceleration.timestamp, v_acceleration.timestamp_sample);
+        // PX4_INFO("%llu %llu %u %f %f %f %f", hrt_absolute_time(), sensor_data.timestamp_sample,
+        //          sensor_data.device_id, (double) sensor_data.x, (double) sensor_data.y, (double) sensor_data.z,
+        //          (double) sensor_data.temperature);
+			// return;
+		// }
 	}
 }
 

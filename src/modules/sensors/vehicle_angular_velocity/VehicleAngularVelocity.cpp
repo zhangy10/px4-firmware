@@ -204,7 +204,11 @@ void VehicleAngularVelocity::ParametersUpdate(bool force)
 void VehicleAngularVelocity::Run()
 {
 	// backup schedule
+#ifdef __PX4_QURT
+	ScheduleDelayed(1_ms);
+#else
 	ScheduleDelayed(10_ms);
+#endif
 
 	// update corrections first to set _selected_sensor
 	bool selection_updated = SensorSelectionUpdate();
@@ -243,19 +247,19 @@ void VehicleAngularVelocity::Run()
 		const Vector3f angular_acceleration{_lp_filter_acceleration.apply(angular_acceleration_raw)};
 
 
-		// publish once all new samples are processed
-		if (!_sensor_sub.updated()) {
-			bool publish = true;
-
-			if (_param_imu_gyro_rate_max.get() > 0) {
-				const uint64_t interval = 1e6f / _param_imu_gyro_rate_max.get();
-
-				if (hrt_elapsed_time(&_last_publish) < interval) {
-					publish = false;
-				}
-			}
-
-			if (publish) {
+		// // publish once all new samples are processed
+		// if (!_sensor_sub.updated()) {
+		// 	bool publish = true;
+        //
+		// 	if (_param_imu_gyro_rate_max.get() > 0) {
+		// 		const uint64_t interval = 1e6f / _param_imu_gyro_rate_max.get();
+        //
+		// 		if (hrt_elapsed_time(&_last_publish) < interval) {
+		// 			publish = false;
+		// 		}
+		// 	}
+            //
+			// if (publish) {
 				// Publish vehicle_angular_acceleration
 				vehicle_angular_acceleration_s v_angular_acceleration;
 				v_angular_acceleration.timestamp_sample = sensor_data.timestamp_sample;
@@ -266,14 +270,15 @@ void VehicleAngularVelocity::Run()
 				// Publish vehicle_angular_velocity
 				vehicle_angular_velocity_s v_angular_velocity;
 				v_angular_velocity.timestamp_sample = sensor_data.timestamp_sample;
-				angular_velocity.copyTo(v_angular_velocity.xyz);
+				angular_velocity_raw.copyTo(v_angular_velocity.xyz);
 				v_angular_velocity.timestamp = hrt_absolute_time();
 				_vehicle_angular_velocity_pub.publish(v_angular_velocity);
+                // PX4_INFO("angular_velocity %llu %llu", v_angular_velocity.timestamp, v_angular_velocity.timestamp_sample);
 
 				_last_publish = v_angular_velocity.timestamp_sample;
-				return;
-			}
-		}
+		// 		return;
+		// 	}
+		// }
 	}
 }
 
