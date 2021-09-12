@@ -106,12 +106,17 @@ enum class BANK_0 : uint8_t {
 
 enum class BANK_1 : uint8_t {
 	GYRO_CONFIG_STATIC2 = 0x0B,
+	GYRO_CONFIG_STATIC3 = 0x0C,
+	GYRO_CONFIG_STATIC4 = 0x0D,
+	GYRO_CONFIG_STATIC5 = 0x0E,
 
 	INTF_CONFIG5        = 0x7B,
 };
 
 enum class BANK_2 : uint8_t {
 	ACCEL_CONFIG_STATIC2 = 0x03,
+	ACCEL_CONFIG_STATIC3 = 0x04,
+	ACCEL_CONFIG_STATIC4 = 0x05,
 };
 
 };
@@ -186,21 +191,24 @@ enum ACCEL_CONFIG0_BIT : uint8_t {
 
 // GYRO_CONFIG1
 enum GYRO_CONFIG1_BIT : uint8_t {
-	GYRO_UI_FILT_ORD = Bit3 | Bit2, // 00: 1st Order
+	TEMP_FILT_BW     = Bit7 | Bit6, // 110: DLPF BW = 5Hz; DLPF Latency = 32ms
+	GYRO_UI_FILT_ORD = Bit3,        // 10: 3rd Order
+	GYRO_DEC2_M2_ORD = Bit1,        // 10: 3rd Order
 };
 
 // GYRO_ACCEL_CONFIG0
 enum GYRO_ACCEL_CONFIG0_BIT : uint8_t {
 	// 7:4 ACCEL_UI_FILT_BW
-	ACCEL_UI_FILT_BW = Bit7 | Bit6 | Bit5 | Bit4, // 0: BW=ODR/2
+	ACCEL_UI_FILT_BW = Bit6, // 4: BW=max(400Hz, ODR)/10
 
 	// 3:0 GYRO_UI_FILT_BW
-	GYRO_UI_FILT_BW  = Bit3 | Bit2 | Bit1 | Bit0, // 0: BW=ODR/2
+	GYRO_UI_FILT_BW  = Bit2, // 4: BW=max(400Hz, ODR)/10
 };
 
 // ACCEL_CONFIG1
 enum ACCEL_CONFIG1_BIT : uint8_t {
-	ACCEL_UI_FILT_ORD = Bit4 | Bit3, // 00: 1st Order
+	ACCEL_UI_FILT_ORD = Bit4, // 00: 3rd Order
+	ACCEL_DEC2_M2_ORD = Bit2, // 00: 3rd Order
 };
 
 // FIFO_CONFIG1
@@ -247,13 +255,42 @@ enum GYRO_CONFIG_STATIC2_BIT : uint8_t {
 	GYRO_NF_DIS  = Bit0,
 };
 
+// GYRO_CONFIG_STATIC3
+enum GYRO_CONFIG_STATIC3_BIT : uint8_t {
+	GYRO_AAF_DELT = Bit2 | Bit0,
+};
+
+// GYRO_CONFIG_STATIC4
+enum GYRO_CONFIG_STATIC4_BIT : uint8_t {
+	GYRO_AAF_DELTSQR_LOW = Bit4 | Bit3 | Bit0,
+};
+
+// GYRO_CONFIG_STATIC5
+enum GYRO_CONFIG_STATIC5_BIT : uint8_t {
+	GYRO_AAF_BITSHIFT     = Bit7 | Bit5,
+	GYRO_AAF_DELTSQR_HIGH = 0,
+};
+
 
 //---------------- BANK2 Register bits
 
 // ACCEL_CONFIG_STATIC2
 enum ACCEL_CONFIG_STATIC2_BIT : uint8_t {
-	ACCEL_AAF_DIS = Bit0,
+	ACCEL_AAF_DIS  = Bit0,
+    ACCEL_AAF_DELT = Bit3 | Bit1,
 };
+
+// ACCEL_CONFIG_STATIC3
+enum ACCEL_CONFIG_STATIC3_BIT : uint8_t {
+	ACCEL_AAF_DELTSQR_LOW = Bit4 | Bit3 | Bit0,
+};
+
+// ACCEL_CONFIG_STATIC4
+enum ACCEL_CONFIG_STATIC4_BIT : uint8_t {
+	ACCEL_AAF_BITSHIFT     = Bit7 | Bit5,
+    ACCEL_AAF_DELTSQR_HIGH = 0,
+};
+
 
 namespace FIFO
 {

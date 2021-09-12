@@ -1,8 +1,12 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/posix.h>
-#include <uORB/topics/vehicle_acceleration.h>
-#include <uORB/topics/vehicle_angular_velocity.h>
+#include <uORB/topics/imu_server.h>
+#include <uORB/topics/sensor_accel.h>
+#include <uORB/topics/sensor_gyro.h>
+#include <lib/sensor_calibration/Gyroscope.hpp>
+#include <lib/sensor_calibration/Accelerometer.hpp>
+#include <lib/matrix/matrix/math.hpp>
 
 #include "imu_server.hpp"
 
@@ -10,6 +14,8 @@ static px4_task_t  _thread_tid;
 static const char *_thread_name = "imu_server_thread";
 
 static IMU_Server  _server;
+
+using namespace matrix;
 
 // Copied from another file. Needs to stay the same.
 typedef struct icm4x6xx_imu_data_t {
@@ -56,46 +62,39 @@ static int _imu_server_thread(int argc, char *argv[]) {
         PX4_INFO("Opened pipe %s for writing", imu_fifo);
     }
 
-    int vehicle_acceleration_fd = orb_subscribe(ORB_ID(vehicle_acceleration));
-    int vehicle_angular_velocity_fd = orb_subscribe(ORB_ID(vehicle_angular_velocity));
+    int imu_server_fd = orb_subscribe(ORB_ID(imu_server));
 
-    struct vehicle_acceleration_s accel_data;
-    struct vehicle_angular_velocity_s gyro_data;
+    imu_server_s          received_data;
     icm4x6xx_imu_data_t   imu_data;
-    uint64_t              previous_timestamp = 0;
 
     memset(&imu_data, 0, sizeof(imu_data));
 
-    // We send out the data when the accel timestamp is the same as the
-    // gyro timestamp. That means they are a matched set and can be combined
-    // into the imu data packet. Start with them unequal.
-    accel_data.timestamp_sample = 0;
-    gyro_data.timestamp_sample = 1;
+	uORB::SubscriptionData<sensor_accel_s> sensor_accel_sub{ORB_ID(sensor_accel)};
+	const uint32_t accel_device_id = sensor_accel_sub.get().device_id;
+	calibration::Accelerometer _accel_calibration(accel_device_id);
+    PX4_INFO("IMU Server found accel device id %u", accel_device_id);
 
-    px4_pollfd_struct_t fds[2] = { { .fd = vehicle_acceleration_fd,  .events = POLLIN },
-                                   { .fd = vehicle_angular_velocity_fd, .events = POLLIN } };
+	uORB::SubscriptionData<sensor_gyro_s> sensor_gyro_sub{ORB_ID(sensor_gyro)};
+	const uint32_t gyro_device_id = sensor_gyro_sub.get().device_id;
+	calibration::Gyroscope _gyro_calibration(gyro_device_id);
+    PX4_INFO("IMU Server found gyro device id %u", gyro_device_id);
+
+    px4_pollfd_struct_t fds[1] = { { .fd = imu_server_fd,  .events = POLLIN } };
     while (true) {
-    	px4_poll(fds, 2, 1000);
+    	px4_poll(fds, 1, 1000);
     	if (fds[0].revents & POLLIN) {
-            orb_copy(ORB_ID(vehicle_acceleration), vehicle_acceleration_fd, &accel_data);
-            imu_data.accl_ms2[0] = accel_data.xyz[0];
-            imu_data.accl_ms2[1] = accel_data.xyz[1];
-            imu_data.accl_ms2[2] = accel_data.xyz[2];
-            // PX4_INFO("Got accel data %lu", accel_data.timestamp_sample);
-    	} else if (fds[1].revents & POLLIN) {
-            orb_copy(ORB_ID(vehicle_angular_velocity), vehicle_angular_velocity_fd, &gyro_data);
-            imu_data.gyro_rad[0] = gyro_data.xyz[0];
-            imu_data.gyro_rad[1] = gyro_data.xyz[1];
-            imu_data.gyro_rad[2] = gyro_data.xyz[2];
-            // PX4_INFO("Got gyro data  %lu", gyro_data.timestamp_sample);
-        }
+            orb_copy(ORB_ID(imu_server), imu_server_fd, &received_data);
+            PX4_INFO("Got imu data %lu", received_data.timestamp);
+            for (int i = 0; i < 10; i++) {
+		        const Vector3f accel_corrected = _accel_calibration.Correct(Vector3f{received_data.accel_x[i], received_data.accel_y[i], received_data.accel_z[i]});
+		        const Vector3f gyro_corrected  = _gyro_calibration.Correct(Vector3f{received_data.gyro_x[i], received_data.gyro_y[i], received_data.gyro_z[i]});
 
-        if (accel_data.timestamp_sample == gyro_data.timestamp_sample) {
+                imu_data.timestamp_monotonic_ns = received_data.ts[i];
+                for (int j = 0; j < 3; j++) {
+                    imu_data.accl_ms2[j] = accel_corrected(j);
+                    imu_data.gyro_rad[j] = gyro_corrected(j);
+                }
 
-            imu_data.temp_c = 0;
-            imu_data.timestamp_monotonic_ns = gyro_data.timestamp_sample * 1000;
-
-            if (previous_timestamp < imu_data.timestamp_monotonic_ns) {
                 // Write the data to the fifo
                 size_t data_len = sizeof(icm4x6xx_imu_data_t);
                 ssize_t bytes_written = write(fifo_fd, &imu_data, data_len);
@@ -107,17 +106,17 @@ static int _imu_server_thread(int argc, char *argv[]) {
                     PX4_ERR("       write returned %ld", bytes_written);
                     break;
                 }
-            } else {
-                PX4_WARN("*** Dropping stale IMU data. Previous %lu, current %lu ***", previous_timestamp, imu_data.timestamp_monotonic_ns);
-            }
-            previous_timestamp = imu_data.timestamp_monotonic_ns;
 
-            // PX4_INFO("**** %.2f %.2f %.2f %.2f %.2f %.2f %.2f %lu ****",
-            //          (double) imu_data.accl_ms2[0], (double) imu_data.accl_ms2[1],
-            //          (double) imu_data.accl_ms2[2], (double) imu_data.gyro_rad[0],
-            //          (double) imu_data.gyro_rad[1], (double) imu_data.gyro_rad[2],
-            //          (double) imu_data.temp_c, gyro_data.timestamp_sample);
-        }
+                // PX4_INFO("%d %lu %.2f %.2f %.2f %.2f %.2f %.2f",
+                //          i, received_data.ts[i],
+                //          (double) received_data.accel_x[i], (double) received_data.accel_y[i], (double) received_data.accel_z[i],
+                //          (double) received_data.gyro_x[i], (double) received_data.gyro_y[i], (double) received_data.gyro_z[i]);
+                // PX4_INFO("%d %lu %.2f %.2f %.2f %.2f %.2f %.2f",
+                //          i, received_data.ts[i],
+                //          (double) imu_data.accl_ms2[0], (double) imu_data.accl_ms2[1], (double) imu_data.accl_ms2[2],
+                //          (double) imu_data.gyro_rad[0], (double) imu_data.gyro_rad[1], (double) imu_data.gyro_rad[2]);
+            }
+    	}
     }
 
     close(fifo_fd);
