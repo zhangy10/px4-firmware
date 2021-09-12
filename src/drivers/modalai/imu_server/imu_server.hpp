@@ -43,6 +43,6 @@ public:
     bool is_running() { return _started; }
 
 private:
-    bool             _started;
+    bool                       _started;
 
 };

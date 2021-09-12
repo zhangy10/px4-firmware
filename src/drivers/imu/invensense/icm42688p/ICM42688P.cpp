@@ -53,6 +53,8 @@ ICM42688P::ICM42688P(I2CSPIBusOption bus_option, int bus, uint32_t device, enum 
 	}
 
 	ConfigureSampleRate(_px4_gyro.get_max_rate_hz());
+
+    _imu_server_pub.advertise();
 }
 
 ICM42688P::~ICM42688P()
@@ -63,6 +65,8 @@ ICM42688P::~ICM42688P()
 	perf_free(_fifo_overflow_perf);
 	perf_free(_fifo_reset_perf);
 	perf_free(_drdy_missed_perf);
+
+    _imu_server_pub.unadvertise();
 }
 
 int ICM42688P::init()
@@ -278,11 +282,7 @@ void ICM42688P::RunImpl()
 void ICM42688P::ConfigureSampleRate(int sample_rate)
 {
 	if (sample_rate == 0) {
-#ifdef __PX4_QURT
 		sample_rate = 500; // default to 500 Hz
-#else
-		sample_rate = 800; // default to 800 Hz
-#endif
 	}
 
 	// round down to nearest FIFO sample dt
@@ -502,7 +502,7 @@ bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 		return false;
 	}
 
-	const uint8_t fifo_count_samples = fifo_count_bytes / sizeof(FIFO::DATA);
+	uint8_t fifo_count_samples = fifo_count_bytes / sizeof(FIFO::DATA);
 
 	if (fifo_count_samples == 0) {
 		perf_count(_fifo_empty_perf);
@@ -512,40 +512,21 @@ bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 	// check FIFO header in every sample
 	uint8_t valid_samples = 0;
 
-	for (int i = 0; i < math::min(samples, fifo_count_samples); i++) {
-		bool valid = true;
-
-		// With FIFO_ACCEL_EN and FIFO_GYRO_EN header should be 8’b_0110_10xx
+    int loop_count = math::min(samples, fifo_count_samples);
+	for (int i = 0; i < loop_count; i++) {
 		const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
+		const uint8_t VALID_FIFO_HEADER = FIFO::FIFO_HEADER_BIT::HEADER_ACCEL |
+                                          FIFO::FIFO_HEADER_BIT::HEADER_GYRO |
+                                          FIFO::FIFO_HEADER_BIT::HEADER_20;
 
-		if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_MSG) {
-			// FIFO sample empty if HEADER_MSG set
-			valid = false;
-
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ACCEL)) {
-			// accel bit not set
-			valid = false;
-
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_GYRO)) {
-			// gyro bit not set
-			valid = false;
-
-		} else if (!(FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_20)) {
-			// Packet does not contain a new and valid extended 20-bit data
-			valid = false;
-
-		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_ACCEL) {
-			// accel ODR changed
-			valid = false;
-
-		} else if (FIFO_HEADER & FIFO::FIFO_HEADER_BIT::HEADER_ODR_GYRO) {
-			// gyro ODR changed
-			valid = false;
-		}
-
-		if (valid) {
+		if ((FIFO_HEADER & 0xF3) == VALID_FIFO_HEADER) {
 			valid_samples++;
 
+            // Put valid sample into queue with appropriate timestamp.
+            hrt_abstime reported_timestamp = timestamp_sample - ((uint32_t) fifo_count_samples * (uint32_t) FIFO_SAMPLE_DT);
+            ProcessIMU(reported_timestamp, buffer.f[i]);
+            fifo_count_samples--;
+            // PX4_INFO("To IMU server: %d %u %llu %llu %u", i, fifo_count_samples, timestamp_sample, reported_timestamp, (uint32_t) FIFO_SAMPLE_DT);
 		} else {
 			perf_count(_bad_transfer_perf);
 			break;
@@ -572,6 +553,8 @@ void ICM42688P::FIFOReset()
 
 	// reset while FIFO is disabled
 	_drdy_fifo_read_samples.store(0);
+
+    _imu_server_samples = 0;
 }
 
 static constexpr int32_t reassemble_20bit(const uint32_t a, const uint32_t b, const uint32_t c)
@@ -589,6 +572,85 @@ static constexpr int32_t reassemble_20bit(const uint32_t a, const uint32_t b, co
 	}
 
 	return static_cast<int32_t>(x);
+}
+
+void ICM42688P::ProcessIMU(const hrt_abstime &timestamp_sample, const FIFO::DATA &fifo) {
+
+    // TODO: There is a bunch of copied code in here. Refactor into common functions.
+
+    float accel_x = 0.0, accel_y = 0.0, accel_z = 0.0;
+    float gyro_x = 0.0,  gyro_y = 0.0,  gyro_z = 0.0;
+
+	// 20 bit hires mode
+
+	// Sign extension + Accel [19:12] + Accel [11:4] + Accel [3:2] (20 bit extension byte)
+	// Accel data is 18 bit
+	int32_t temp_accel_x = reassemble_20bit(fifo.ACCEL_DATA_X1, fifo.ACCEL_DATA_X0,
+					   fifo.Ext_Accel_X_Gyro_X & 0xF0 >> 4);
+	int32_t temp_accel_y = reassemble_20bit(fifo.ACCEL_DATA_Y1, fifo.ACCEL_DATA_Y0,
+					   fifo.Ext_Accel_Y_Gyro_Y & 0xF0 >> 4);
+	int32_t temp_accel_z = reassemble_20bit(fifo.ACCEL_DATA_Z1, fifo.ACCEL_DATA_Z0,
+					   fifo.Ext_Accel_Z_Gyro_Z & 0xF0 >> 4);
+
+	// Gyro [19:12] + Gyro [11:4] + Gyro [3:0] (bottom 4 bits of 20 bit extension byte)
+	int32_t temp_gyro_x = reassemble_20bit(fifo.GYRO_DATA_X1, fifo.GYRO_DATA_X0,
+                       fifo.Ext_Accel_X_Gyro_X & 0x0F);
+	int32_t temp_gyro_y = reassemble_20bit(fifo.GYRO_DATA_Y1, fifo.GYRO_DATA_Y0,
+                       fifo.Ext_Accel_Y_Gyro_Y & 0x0F);
+	int32_t temp_gyro_z = reassemble_20bit(fifo.GYRO_DATA_Z1, fifo.GYRO_DATA_Z0,
+                       fifo.Ext_Accel_Z_Gyro_Z & 0x0F);
+
+	// accel samples invalid if -524288
+	if (temp_accel_x != -524288 && temp_accel_y != -524288 && temp_accel_z != -524288) {
+
+		// shift accel by 2 (2 least significant bits are always 0)
+		accel_x = (float) temp_accel_x / 4.f;
+		accel_y = (float) temp_accel_y / 4.f;
+		accel_z = (float) temp_accel_z / 4.f;
+
+		// shift gyro by 1 (least significant bit is always 0)
+		gyro_x = (float) temp_gyro_x / 2.f;
+		gyro_y = (float) temp_gyro_y / 2.f;
+		gyro_z = (float) temp_gyro_z / 2.f;
+
+    	// correct frame for publication
+    	// sensor's frame is +x forward, +y left, +z up
+    	// flip y & z to publish right handed with z down (x forward, y right, z down)
+		accel_y = -accel_y;
+		accel_z = -accel_z;
+		gyro_y  = -gyro_y;
+		gyro_z  = -gyro_z;
+
+        // Scale everything appropriately
+        float accel_scale_factor = (CONSTANTS_ONE_G / 8192.f);
+        accel_x *= accel_scale_factor;
+        accel_y *= accel_scale_factor;
+        accel_z *= accel_scale_factor;
+
+    	float gyro_scale_factor = math::radians(1.f / 131.f);
+        gyro_x *= gyro_scale_factor;
+        gyro_y *= gyro_scale_factor;
+        gyro_z *= gyro_scale_factor;
+
+        // Store the data in our array
+        _imu_server_data.accel_x[_imu_server_samples] = accel_x;
+        _imu_server_data.accel_y[_imu_server_samples] = accel_y;
+        _imu_server_data.accel_z[_imu_server_samples] = accel_z;
+        _imu_server_data.gyro_x[_imu_server_samples]  = gyro_x;
+        _imu_server_data.gyro_y[_imu_server_samples]  = gyro_y;
+        _imu_server_data.gyro_z[_imu_server_samples]  = gyro_z;
+        _imu_server_data.ts[_imu_server_samples]      = timestamp_sample;
+
+        _imu_server_samples++;
+
+        // If array is full, publish the data
+        if (_imu_server_samples == 10) {
+            _imu_server_samples = 0;
+            _imu_server_data.timestamp = hrt_absolute_time();
+            _imu_server_data.temperature = 0; // Not used right now
+            _imu_server_pub.publish(_imu_server_data);
+        }
+    }
 }
 
 void ICM42688P::ProcessAccel(const hrt_abstime &timestamp_sample, const FIFO::DATA fifo[], const uint8_t samples)
