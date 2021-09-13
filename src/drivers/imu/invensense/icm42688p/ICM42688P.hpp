@@ -215,6 +215,8 @@ private:
 		{ Register::BANK_2::ACCEL_CONFIG_STATIC4, ACCEL_CONFIG_STATIC4_BIT::ACCEL_AAF_BITSHIFT | ACCEL_CONFIG_STATIC4_BIT::ACCEL_AAF_DELTSQR_HIGH, Bit6 | Bit4 | Bit3 | Bit2 | Bit1 | Bit0 },
 	};
 
+    uint32_t _temperature_samples{0};
+
     // Support for the IMU server
     uint32_t _imu_server_samples{0};
     imu_server_s _imu_server_data;

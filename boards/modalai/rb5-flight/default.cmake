@@ -61,7 +61,7 @@ px4_add_board(
 		qshell/posix
 		#rc_input
         modalai/imu_server
-        modalai/rc_controller
+        #modalai/rc_controller
         #modalai/uart_esc_driver
 		#telemetry # all available telemetry drivers
         spektrum_rc
@@ -71,27 +71,27 @@ px4_add_board(
 		#camera_feedback
 		commander
 		dataman
-		ekf2
+		#ekf2
 		#events
         flight_mode_manager
 		#fw_att_control
 		#fw_pos_control_l1
-		land_detector
+		#land_detector
 		#landing_target_estimator
 		#load_mon
 		#local_position_estimator
 		logger
 		mavlink
-		mc_att_control
-		mc_pos_control
-		mc_rate_control
+		#mc_att_control
+		#mc_pos_control
+		#mc_rate_control
 		#micrortps_bridge
 		muorb/apps
 		#muorb/test
 		navigator
 		rc_update
 		#rover_pos_control
-		sensors
+		#sensors
 		#sih
 		simulator
 		#vmount

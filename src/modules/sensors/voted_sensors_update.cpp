@@ -54,13 +54,15 @@ VotedSensorsUpdate::VotedSensorsUpdate(bool hil_enabled,
 	_vehicle_imu_sub(vehicle_imu_sub),
 	_hil_enabled(hil_enabled)
 {
-	// if (_hil_enabled) { // HIL has less accurate timing so increase the timeouts a bit
-	// 	_gyro.voter.set_timeout(500000);
-	// 	_accel.voter.set_timeout(500000);
-	// }
+	if (_hil_enabled) { // HIL has less accurate timing so increase the timeouts a bit
+		_gyro.voter.set_timeout(500000);
+		_accel.voter.set_timeout(500000);
+	}
 
-	_gyro.voter.set_timeout(50000);
-	_accel.voter.set_timeout(50000);
+#ifdef __PX4_QURT
+	_gyro.voter.set_timeout(500000);
+	_accel.voter.set_timeout(500000);
+#endif
 }
 
 int VotedSensorsUpdate::init(sensor_combined_s &raw)
@@ -351,6 +353,8 @@ void VotedSensorsUpdate::printStatus()
 
 void VotedSensorsUpdate::sensorsPoll(sensor_combined_s &raw)
 {
+    // PX4_INFO("sensorsPoll at %llu", hrt_absolute_time());
+
 	imuPoll(raw);
 
 	// publish sensor selection if changed
