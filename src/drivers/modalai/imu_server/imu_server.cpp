@@ -84,12 +84,12 @@ static int _imu_server_thread(int argc, char *argv[]) {
     	px4_poll(fds, 1, 1000);
     	if (fds[0].revents & POLLIN) {
             orb_copy(ORB_ID(imu_server), imu_server_fd, &received_data);
-            PX4_INFO("Got imu data %lu", received_data.timestamp);
+            // PX4_INFO("Got imu data %lu", received_data.timestamp);
             for (int i = 0; i < 10; i++) {
 		        const Vector3f accel_corrected = _accel_calibration.Correct(Vector3f{received_data.accel_x[i], received_data.accel_y[i], received_data.accel_z[i]});
 		        const Vector3f gyro_corrected  = _gyro_calibration.Correct(Vector3f{received_data.gyro_x[i], received_data.gyro_y[i], received_data.gyro_z[i]});
 
-                imu_data.timestamp_monotonic_ns = received_data.ts[i];
+                imu_data.timestamp_monotonic_ns = received_data.ts[i] * 1000;
                 for (int j = 0; j < 3; j++) {
                     imu_data.accl_ms2[j] = accel_corrected(j);
                     imu_data.gyro_rad[j] = gyro_corrected(j);

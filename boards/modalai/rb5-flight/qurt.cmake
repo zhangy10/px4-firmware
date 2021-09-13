@@ -55,7 +55,7 @@ px4_add_board(
 	DRIVERS
         barometer/icp10100
 		qshell/qurt
-        magnetometer/hmc5883
+        #magnetometer/hmc5883
         magnetometer/isentek/ist8310
         uart_esc/modalai_esc
         power_monitor/voxlpm
@@ -65,18 +65,18 @@ px4_add_board(
 		attitude_estimator_q
 		# commander
 		ekf2
-		fw_att_control
-		fw_pos_control_l1
+		#fw_att_control
+		#fw_pos_control_l1
 		land_detector
-		landing_target_estimator
-		local_position_estimator
+		#landing_target_estimator
+		#local_position_estimator
 		mc_att_control
 		mc_pos_control
 		mc_rate_control
 		mc_hover_thrust_estimator
 		muorb/slpi
-		rc_update
-		rover_pos_control
+		#rc_update
+		#rover_pos_control
 		sensors
 		# temperature_compensation
 		# vmount

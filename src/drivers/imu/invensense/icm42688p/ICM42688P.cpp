@@ -366,7 +366,10 @@ bool ICM42688P::Configure()
 	// 20-bits data format used
 	//  the only FSR settings that are operational are ±2000dps for gyroscope and ±16g for accelerometer
 	_px4_accel.set_range(16.f * CONSTANTS_ONE_G);
+	_px4_accel.set_scale(CONSTANTS_ONE_G / 8192.f);
+
 	_px4_gyro.set_range(math::radians(2000.f));
+	_px4_gyro.set_scale(math::radians(1.f / 131.f));
 
 	return success;
 }
@@ -488,60 +491,52 @@ bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 		return false;
 	}
 
-	if (buffer.INT_STATUS & INT_STATUS_BIT::FIFO_FULL_INT) {
-		perf_count(_fifo_overflow_perf);
-		FIFOReset();
-		return false;
-	}
-
-	const uint16_t fifo_count_bytes = combine(buffer.FIFO_COUNTH, buffer.FIFO_COUNTL);
-
-	if (fifo_count_bytes >= FIFO::SIZE) {
-		perf_count(_fifo_overflow_perf);
-		FIFOReset();
-		return false;
-	}
-
-	uint8_t fifo_count_samples = fifo_count_bytes / sizeof(FIFO::DATA);
-
-	if (fifo_count_samples == 0) {
-		perf_count(_fifo_empty_perf);
-		return false;
-	}
+	// if (buffer.INT_STATUS & INT_STATUS_BIT::FIFO_FULL_INT) {
+	// 	perf_count(_fifo_overflow_perf);
+	// 	FIFOReset();
+	// 	return false;
+	// }
+    //
+	// const uint16_t fifo_count_bytes = combine(buffer.FIFO_COUNTH, buffer.FIFO_COUNTL);
+    //
+	// if (fifo_count_bytes >= FIFO::SIZE) {
+	// 	perf_count(_fifo_overflow_perf);
+	// 	FIFOReset();
+	// 	return false;
+	// }
+    //
+	// uint8_t fifo_count_samples = samples;
+    //
+	// if (fifo_count_samples == 0) {
+	// 	perf_count(_fifo_empty_perf);
+	// 	return false;
+	// }
 
 	// check FIFO header in every sample
-	uint8_t valid_samples = 0;
+	// uint8_t valid_samples = 0;
 
-    int loop_count = math::min(samples, fifo_count_samples);
-	for (int i = 0; i < loop_count; i++) {
-		const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
-		const uint8_t VALID_FIFO_HEADER = FIFO::FIFO_HEADER_BIT::HEADER_ACCEL |
-                                          FIFO::FIFO_HEADER_BIT::HEADER_GYRO |
-                                          FIFO::FIFO_HEADER_BIT::HEADER_20;
-
-		if ((FIFO_HEADER & 0xF3) == VALID_FIFO_HEADER) {
-			valid_samples++;
+    // int loop_count = math::min(samples, fifo_count_samples);
+	for (int i = 0, j = (samples - 1); i < samples; i++, j--) {
+		// const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
+		// const uint8_t VALID_FIFO_HEADER = FIFO::FIFO_HEADER_BIT::HEADER_ACCEL |
+        //                                   FIFO::FIFO_HEADER_BIT::HEADER_GYRO |
+        //                                   FIFO::FIFO_HEADER_BIT::HEADER_20;
+        //
+		// if ((FIFO_HEADER & 0xF3) == VALID_FIFO_HEADER) {
+		// 	valid_samples++;
 
             // Put valid sample into queue with appropriate timestamp.
-            hrt_abstime reported_timestamp = timestamp_sample - ((uint32_t) fifo_count_samples * (uint32_t) FIFO_SAMPLE_DT);
+            hrt_abstime reported_timestamp = timestamp_sample - ((uint32_t) j * (uint32_t) FIFO_SAMPLE_DT);
             ProcessIMU(reported_timestamp, buffer.f[i]);
-            fifo_count_samples--;
-            // PX4_INFO("To IMU server: %d %u %llu %llu %u", i, fifo_count_samples, timestamp_sample, reported_timestamp, (uint32_t) FIFO_SAMPLE_DT);
-		} else {
-			perf_count(_bad_transfer_perf);
-			break;
-		}
+            // fifo_count_samples--;
+            // PX4_INFO("To IMU server: %d %d %llu %llu %u", i, j, timestamp_sample, reported_timestamp, (uint32_t) FIFO_SAMPLE_DT);
+		// } else {
+		// 	perf_count(_bad_transfer_perf);
+		// 	break;
+		// }
 	}
 
-	if (valid_samples > 0) {
-		if (ProcessTemperature(buffer.f, valid_samples)) {
-			ProcessGyro(timestamp_sample, buffer.f, valid_samples);
-			ProcessAccel(timestamp_sample, buffer.f, valid_samples);
-			return true;
-		}
-	}
-
-	return false;
+	return true;
 }
 
 void ICM42688P::FIFOReset()
@@ -621,6 +616,12 @@ void ICM42688P::ProcessIMU(const hrt_abstime &timestamp_sample, const FIFO::DATA
 		gyro_y  = -gyro_y;
 		gyro_z  = -gyro_z;
 
+        // Publish samples for flight control at 500Hz
+        if (_imu_server_samples % 2) {
+		    _px4_accel.update(timestamp_sample, accel_x, accel_y, accel_z);
+		    _px4_gyro.update(timestamp_sample, gyro_x, gyro_y, gyro_z);
+        }
+
         // Scale everything appropriately
         float accel_scale_factor = (CONSTANTS_ONE_G / 8192.f);
         accel_x *= accel_scale_factor;
@@ -649,6 +650,25 @@ void ICM42688P::ProcessIMU(const hrt_abstime &timestamp_sample, const FIFO::DATA
             _imu_server_data.timestamp = hrt_absolute_time();
             _imu_server_data.temperature = 0; // Not used right now
             _imu_server_pub.publish(_imu_server_data);
+        }
+
+        _temperature_samples++;
+
+        if (_temperature_samples == 40) {
+            _temperature_samples = 0;
+
+            // Only update the temperature at 25Hz rate
+    		const int16_t t = combine(fifo.TEMP_DATA1, fifo.TEMP_DATA0);
+
+    		// Temperature sample invalid if -32768
+    		if (t != -32768) {
+    		    const float TEMP_degC = ((float) t / TEMPERATURE_SENSITIVITY) + TEMPERATURE_OFFSET;
+
+        		if (PX4_ISFINITE(TEMP_degC)) {
+        			_px4_accel.set_temperature(TEMP_degC);
+        			_px4_gyro.set_temperature(TEMP_degC);
+                }
+    		}
         }
     }
 }
