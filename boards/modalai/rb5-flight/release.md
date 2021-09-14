@@ -19,6 +19,12 @@
 
 # Releases
 
+## 1.1.3alpha
+
+- Modified icm42688p driver such that flight control gets 500Hz IMU samples and
+  VIO (via imu_server) gets 1kHz samples in a batch of 10 every 100ms.
+- icm42688p driver is now configured for anti-alias and UI filtering
+
 ## 1.1.2alpha
 
 - Moved from TDK icp10100 barometer driver to new px4 icp10100 barometer driver.

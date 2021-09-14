@@ -52,14 +52,7 @@
 * Activate temperature compensation in hmc5883 / ist8310 driver?
 
 ### IMU
-* Add configuration for the IMU rotation
-* Buffer incoming samples before publishing and add mutex
-* Move to 1KHz sampling
-* Debug why the accel lookup is failing (Not important if we move to PX4 driver)
-* Once there is SPI support in flight controller sensor, move to PX4 driver.
-
-### Barometer
-* Move from Invensense driver to PX4 driver
+* Clean up and mainline ICM42688p driver
 
 ### UART (SLPI)
 * Add queue in SLPI for incoming messages so none are lost?
