@@ -4,10 +4,9 @@
 ## For RB5-Flight MVP
 
 Accel timeout seen at QGC
-    - Could be heat related?
     - From sensors module voted_sensors_update.cpp
-    - Set with _accel.voter.set_timeout(50000); in constructor (50ms!!!)
-    - Move to PX4 IMU driver!!!
+    - Set with _accel.voter.set_timeout(50000); in constructor (50ms!!!) (now 500ms)
+    - Seems to be okay at driver level. Samples still flowing at 500Hz.
 
 Fix occasional log file corruption.
 
