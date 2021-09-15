@@ -181,7 +181,7 @@ void param_client_set(param_t param, const void *val) {
             usleep(TIMEOUT_WAIT);
         }
         if ( ! count) {
-            PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
+            PX4_ERR("Timeout waiting for parameter_server_set_value_response for %s", req.parameter_name);
         }
     }
 }
@@ -228,6 +228,6 @@ param_client_set_used(param_t param) {
         usleep(TIMEOUT_WAIT);
     }
     if ( ! count) {
-        PX4_ERR("Timeout waiting for parameter_client_set_value_response for %s", req.parameter_name);
+        PX4_ERR("Timeout waiting for parameter_server_set_used_response for %s", req.parameter_name);
     }
 }
