@@ -58,11 +58,15 @@ I2C::I2C(uint8_t device_type, const char *name, const int bus, const uint16_t ad
 	CDev(name, nullptr),
 	_frequency(frequency / 1000)
 {
+    _device_id.devid = 0;
+
 	// fill in _device_id fields for a I2C device
 	_device_id.devid_s.devtype = device_type;
 	_device_id.devid_s.bus_type = DeviceBusType_I2C;
 	_device_id.devid_s.bus = bus;
 	_device_id.devid_s.address = address;
+
+    PX4_INFO("*** I2C Device ID 0x%x %d", _device_id.devid, _device_id.devid);
 }
 
 I2C::~I2C()
