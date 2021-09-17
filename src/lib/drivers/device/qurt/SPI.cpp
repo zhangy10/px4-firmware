@@ -74,11 +74,15 @@ SPI::SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum s
 	// _mode(mode),
 	// _frequency(frequency)
 {
+    _device_id.devid = 0;
+
 	_device_id.devid_s.devtype = device_type;
 	// fill in _device_id fields for a SPI device
 	_device_id.devid_s.bus_type = DeviceBusType_SPI;
 	_device_id.devid_s.bus = bus;
 	_device_id.devid_s.address = (uint8_t)device;
+
+    PX4_INFO("*** Device ID 0x%x %d", _device_id.devid, _device_id.devid);
 }
 
 SPI::~SPI()
