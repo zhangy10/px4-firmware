@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.1.4alpha
+
+- Added default battery parameter settings to m0052-set-default-parameters.config
+- Clean up I2C and SPI device id creation to zero out unused bits
+
 ## 1.1.3alpha
 
 - Modified icm42688p driver such that flight control gets 500Hz IMU samples and
