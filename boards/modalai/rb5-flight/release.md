@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.2.0alpha
+
+- Reverted back to TDK barometer driver
+- Fixed BAT default parameter setting to use BAT instead of BAT1
+
 ## 1.1.4alpha
 
 - Added default battery parameter settings to m0052-set-default-parameters.config
