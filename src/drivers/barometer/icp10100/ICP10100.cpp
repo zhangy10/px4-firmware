@@ -80,7 +80,8 @@ int ICP10100::read_otp_from_i2c() {
         for (int i = 0; i < NUM_OTP_VALUES; i++) {
             if (SendCommand(ICP10100_READ_OTP_CMD) == PX4_OK) {
                 if (ReadData(data_read, 3) == PX4_OK) {
-                    sensor_params.sensor_constants[i] = data_read[0] << 8 | data_read[1];
+                    int16_t int_tmp = (int16_t)(data_read[0] << 8 | data_read[1]);
+                    sensor_params.sensor_constants[i] = int_tmp;
                     // TODO: Check CRC value in third byte
                 } else {
                     PX4_ERR("%s ReadData failed", __FUNCTION__);
@@ -317,7 +318,7 @@ int ICP10100::collect()
 
     // TODO: Check CRC values
 
-    int32_t temp_val = (int32_t)(data_read[6] << 8 | data_read[7]);
+    int16_t temp_val = (int16_t)(data_read[6] << 8 | data_read[7]);
     temperature = ((175.0 / 65536.0) * (double) temp_val) - 45.0;
 
     int32_t pressure_val = (int32_t)(data_read[0] << 16 | data_read[1] << 8 | data_read[3]);
