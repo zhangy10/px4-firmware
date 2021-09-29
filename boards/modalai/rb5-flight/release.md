@@ -19,6 +19,12 @@
 
 # Releases
 
+## 1.1.5alpha
+
+- Fixed casting error for icp10100 barometer otp data
+- Create log file names without the time in the name unless we have GPS time
+- Fixed BAT default parameter setting to use BAT instead of BAT1
+
 ## 1.1.4alpha
 
 - Added default battery parameter settings to m0052-set-default-parameters.config
