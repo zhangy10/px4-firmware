@@ -33,7 +33,7 @@ add_compile_options(
 )
 
 add_definitions(
-	-D__PX4_POSIX_EXCELSIOR
+	-D__PX4_POSIX_RB5
 	-D__PX4_LINUX
     -DCONFIG_BOARDCTL_RESET
 )
