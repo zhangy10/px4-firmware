@@ -90,6 +90,17 @@ bool get_log_time(struct tm *tt, int utc_offset_sec, bool boot_time)
 	}
 
 	if (use_clock_time) {
+
+#ifdef __PX4_POSIX_RB5
+        // There is no RTC with RB5 Flight so if we don't have GPS time then
+        // we really don't know if our current time is valid. In some cases
+        // the time will seem valid but it could be the same as a previous start
+        // and that will cause PX4 to try to use a log file name that already
+        // exists. So, just return false and have the log file name get created
+        // by other means.
+        return false;
+#endif
+
 		/* take clock time if there's no fix (yet) */
 		struct timespec ts = {};
 		px4_clock_gettime(CLOCK_REALTIME, &ts);
