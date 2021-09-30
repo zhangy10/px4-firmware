@@ -118,13 +118,14 @@ int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t len
         has_subscribers = _AppsSubscriberCache[temp];
         pthread_mutex_unlock(&_rx_mutex);
 
-        if (has_subscribers) {
+        if ((has_subscribers) || (strcmp(messageName, "slpi_debug") == 0)) {
             if (_debug) PX4_INFO("Sending message for topic %s", messageName);
             pthread_mutex_lock(&_tx_mutex);
             int16_t rc = muorb_func_ptrs.topic_data_func_ptr(messageName, data, length);
             pthread_mutex_unlock(&_tx_mutex);
             return rc;
         }
+
         // If there are no remote subscribers then we do not need to send the
         // message over. That is still a success.
         if (_debug) PX4_INFO("Skipping message for topic %s", messageName);
@@ -209,6 +210,13 @@ int px4muorb_orb_initialize(fc_func_ptrs *func_ptrs, int32_t clock_offset_us)
 
         px4muorb_orb_initialized = true;
     }
+
+    // Proof of concept to send debug messages to Apps side.
+    // char hello_world_message[] = "Hello, World!";
+	// uORBCommunicator::IChannel *ch = uORB::Manager::get_instance()->get_uorb_communicator();
+	// if (ch != nullptr) {
+	// 	ch->send_message("slpi_debug", strlen(hello_world_message) + 1, (uint8_t *) hello_world_message);
+	// }
 
 	return 0;
 }
