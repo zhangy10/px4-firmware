@@ -59,9 +59,9 @@ void uORB::AppsProtobufChannel::ReceiveCallback(const char *topic,
 
     if (strcmp(topic, "slpi_debug") == 0) {
         PX4_INFO("SLPI: %s", (const char *) data);
-    }
-
-    if (_RxHandler) {
+    } else if (strcmp(topic, "slpi_error") == 0) {
+        PX4_ERR("SLPI: %s", (const char *) data);
+    } else if (_RxHandler) {
         _RxHandler->process_received_message(topic,
                                              length_in_bytes,
                                              const_cast<uint8_t*>(data));

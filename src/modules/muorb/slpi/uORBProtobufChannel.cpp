@@ -110,16 +110,22 @@ int16_t uORB::ProtobufChannel::register_handler(uORBCommunicator::IChannelRxHand
 
 int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t length, uint8_t *data)
 {
+    // This function can be called from the PX4 log function so we have to make
+    // sure that we do not call PX4_INFO, PX4_ERR, etc. That would cause an
+    // infinite loop!
+    bool is_not_slpi_log = true;
+    if ((strcmp(messageName, "slpi_debug") == 0) || (strcmp(messageName, "slpi_error") == 0)) is_not_slpi_log = false;
+
     if (muorb_func_ptrs.topic_data_func_ptr) {
-        if (_debug) PX4_INFO("Got message for topic %s", messageName);
+        if ((_debug) && (is_not_slpi_log)) PX4_INFO("Got message for topic %s", messageName);
         std::string temp(messageName);
         int has_subscribers = 0;
         pthread_mutex_lock(&_rx_mutex);
         has_subscribers = _AppsSubscriberCache[temp];
         pthread_mutex_unlock(&_rx_mutex);
 
-        if ((has_subscribers) || (strcmp(messageName, "slpi_debug") == 0)) {
-            if (_debug) PX4_INFO("Sending message for topic %s", messageName);
+        if ((has_subscribers) || (is_not_slpi_log == false)) {
+            if ((_debug) && (is_not_slpi_log)) PX4_INFO("Sending message for topic %s", messageName);
             pthread_mutex_lock(&_tx_mutex);
             int16_t rc = muorb_func_ptrs.topic_data_func_ptr(messageName, data, length);
             pthread_mutex_unlock(&_tx_mutex);
@@ -128,11 +134,11 @@ int16_t uORB::ProtobufChannel::send_message(const char *messageName, int32_t len
 
         // If there are no remote subscribers then we do not need to send the
         // message over. That is still a success.
-        if (_debug) PX4_INFO("Skipping message for topic %s", messageName);
+        if ((_debug) && (is_not_slpi_log)) PX4_INFO("Skipping message for topic %s", messageName);
         return 0;
     }
 
-    PX4_ERR("topic_data_func_ptr is null in %s", __FUNCTION__);
+    if (is_not_slpi_log) PX4_ERR("topic_data_func_ptr is null in %s", __FUNCTION__);
     return -1;
 }
 
