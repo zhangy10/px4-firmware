@@ -96,7 +96,7 @@ __EXPORT void stm32_boardinitialize(void)
 	stm32_configgpio(GPIO_LED1);
 	stm32_configgpio(GPIO_LED2);
 	stm32_configgpio(GPIO_LED3);
-	stm32_configgpio(GPIO_LED4);
+	//stm32_configgpio(GPIO_LED4);
 
 	/*  PixHawk 1:
 	 *      PC14 Floating
@@ -107,11 +107,11 @@ __EXPORT void stm32_boardinitialize(void)
 	 *      PC15 GND
 	 */
 
-	uint8_t sense = stm32_gpioread(GPIO_SENSE_PC15_UP) << 1  | stm32_gpioread(GPIO_SENSE_PC14_DN);
+	//uint8_t sense = stm32_gpioread(GPIO_SENSE_PC15_UP) << 1  | stm32_gpioread(GPIO_SENSE_PC14_DN);
 
-	if (sense == SENSE_PH2) {
-		stm32_configgpio(GPIO_HEATER_OFF);
-	}
+	//if (sense == SENSE_PH2) {
+	//	stm32_configgpio(GPIO_HEATER_OFF);
+	//}
 
 	stm32_configgpio(GPIO_PC14);
 	stm32_configgpio(GPIO_PC15);
@@ -122,23 +122,23 @@ __EXPORT void stm32_boardinitialize(void)
 	/* spektrum power enable is active high - enable it by default */
 	stm32_configgpio(GPIO_SPEKTRUM_PWR_EN);
 
-	stm32_configgpio(GPIO_SERVO_FAULT_DETECT);
+	//stm32_configgpio(GPIO_SERVO_FAULT_DETECT);
 
 	/* RSSI inputs */
-	stm32_configgpio(GPIO_TIM_RSSI); /* xxx alternate function */
-	stm32_configgpio(GPIO_ADC_RSSI);
+	//stm32_configgpio(GPIO_TIM_RSSI); /* xxx alternate function */
+	//stm32_configgpio(GPIO_ADC_RSSI);
 
 	/* servo rail voltage */
-	stm32_configgpio(GPIO_ADC_VSERVO);
+	//stm32_configgpio(GPIO_ADC_VSERVO);
 
 	stm32_configgpio(GPIO_SBUS_INPUT); /* xxx alternate function */
 	stm32_configgpio(GPIO_SBUS_OUTPUT);
 
 	/* sbus output enable is active low - disable it by default */
-	stm32_gpiowrite(GPIO_SBUS_OENABLE, true);
-	stm32_configgpio(GPIO_SBUS_OENABLE);
+	//stm32_gpiowrite(GPIO_SBUS_OENABLE, true);
+	//stm32_configgpio(GPIO_SBUS_OENABLE);
 
-	stm32_configgpio(GPIO_PPM); /* xxx alternate function */
+	//stm32_configgpio(GPIO_PPM); /* xxx alternate function */
 
 	stm32_gpiowrite(GPIO_PWM1, true);
 	stm32_configgpio(GPIO_PWM1);
