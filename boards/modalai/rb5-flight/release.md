@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.1.7alpha
+
+- Completed the mechanism to allow sending debug messages from SLPI to Apps for logging
+
 ## 1.1.6alpha
 
 - Added a mechanism to allow sending debug messages from SLPI to Apps for logging
