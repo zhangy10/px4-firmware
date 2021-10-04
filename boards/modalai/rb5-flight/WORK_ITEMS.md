@@ -20,18 +20,17 @@
     - SubscriptionBlocking causes crash due to some pthread call
 
 ### Logging
-* Make unique log file name in case of collision
+* Add option to use system time when there is no GPS time. This would be used in cases where there is Internet access and we can use NTP.
 * sysctl parameters vm.dirty_writeback_centisecs and vm.dirty_expire_centisecs are set in qrb5165-px4-support
   - Should be modified in system image
-* Logging SLPI mini-dm messages
 * Logging to SD card option
 * Log file management (Deleting old logs)
   - Move to a separate partition to prevent data overrun
 * Tune log buffer size, topic frequency, etc.
 
 ### Mavlink
-* Run with MAV_BROADCAST 0 and implement mavlink proxy
-   * So we can direct the drone to a specific GCS
+* Run with MAV_BROADCAST 0 and configure Mavlink to connect to a specific GCS
+  * May need to be added to configuration script
 
 ## Drivers
 
@@ -41,6 +40,7 @@
 ### RC
 * Implement on slpi side on M0053
 * Move from spektrum_rc driver to input_rc driver
+* Figure out how to implement binding
 
 ### GPS
 * Implement on slpi side on M0053
@@ -59,10 +59,6 @@
 * Add support for multiple UART in SLPI
 * Wait for feedback to come in. It can be messed up per Alex due to shared UART. Also, check update rate of ESC. If there is too long a wait then we may miss motor updates?
 * Normally, write, then read is a “cycle”. If read data comes in after read timeout then we should drop it because we don’t want it to be picked up by next read in the write / read cycle. Otherwise it will be stale data!
-
-### Fake RC
-* When moved to SLPI caused uorb issue and qshell timeouts
-* Remove from codebase?
 
 ### ModalAI UART ESC
 * Enable feedback
@@ -84,6 +80,7 @@
 * Make it a git submodule for apps muorb
 * Figure out a way to build stub library with aarch64 compiler in px4 tree
    * Try -zlazyload -lsomelib to get rid of the stub library
+* Note: libfc_sensor.so is also required for px4-build-docker
 
 ### libfc_sensor
 * Add test code
@@ -148,12 +145,8 @@
 ### Hardware
 * Sometimes TC SOM not going into fastboot mode with command (Needs switch)
 * Always a different MAC ID on WiFi so always get different IP
-* ADB flaky on M0051 with old APM. Get a root cause.
 * Sometimes the debug board USB hub doesn’t show up (Both M0062 and M0067)
   - Do they need rework? And / or special BSP support?
-* One TC SOM seems flaky
-  - Tom had trouble with QFIL
-  - Showed up without serial number on adb
 
 ## Miscellaneous
 * Sometimes QFIL generates a read only filesystem
