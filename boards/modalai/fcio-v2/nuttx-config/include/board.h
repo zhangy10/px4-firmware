@@ -56,7 +56,7 @@
 
 /* On-board crystal frequency is 24MHz (HSE) */
 
-#define STM32_BOARD_XTAL        24000000ul
+#define STM32_BOARD_XTAL        16000000ul
 
 /* Use the HSE output as the system clock */
 
