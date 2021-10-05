@@ -1,0 +1,18 @@
+#!/bin/bash
+
+DAEMON=" "
+
+while getopts d flag
+do
+    case "${flag}" in
+        d) DAEMON="-d";;
+    esac
+done
+
+if [ ! -f /home/linaro/eeprom/parameters ]; then
+   echo "Setting default parameters for PX4 on M0052"
+   px4 $DAEMON -s /etc/modalai/m0052-set-default-parameters.config
+   sync
+fi
+
+px4 $DAEMON -s /etc/modalai/full-m0052.config

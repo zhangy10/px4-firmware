@@ -87,6 +87,7 @@ set(msg_files
 	heater_status.msg
 	home_position.msg
 	hover_thrust_estimate.msg
+	imu_server.msg
 	internal_combustion_engine_status.msg
 	input_rc.msg
 	iridiumsbd_status.msg
@@ -112,6 +113,14 @@ set(msg_files
 	onboard_computer_status.msg
 	optical_flow.msg
 	orbit_status.msg
+	parameter_client_reset_request.msg
+	parameter_client_reset_response.msg
+	parameter_client_set_value_request.msg
+	parameter_client_set_value_response.msg
+	parameter_server_set_used_request.msg
+	parameter_server_set_used_response.msg
+	parameter_server_set_value_request.msg
+	parameter_server_set_value_response.msg
 	parameter_update.msg
 	ping.msg
 	position_controller_landing_status.msg
@@ -122,6 +131,8 @@ set(msg_files
 	power_monitor.msg
 	pwm_input.msg
 	px4io_status.msg
+	qshell_req.msg
+	qshell_retval.msg
 	radio_status.msg
 	rate_ctrl_status.msg
 	rc_channels.msg

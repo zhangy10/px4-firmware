@@ -1,0 +1,4 @@
+debian/etc
+debian/usr
+debian/home
+pkg/
