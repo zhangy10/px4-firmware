@@ -7,6 +7,7 @@ px4_add_board(
 	TOOLCHAIN arm-none-eabi
 	ARCHITECTURE cortex-m7
 	ROMFSROOT px4fmu_common
+	IO modalai_fcio-v2_default
 	TESTING
 	UAVCAN_INTERFACES 1
 	SERIAL_PORTS
@@ -42,7 +43,8 @@ px4_add_board(
 		#pwm_input
 		pwm_out_sim
 		pwm_out
-		rc_input
+		px4io
+		#rc_input
 		roboclaw
 		safety_button
 		tap_esc

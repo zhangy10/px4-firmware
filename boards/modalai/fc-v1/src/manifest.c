@@ -75,18 +75,18 @@ static const px4_hw_mft_item_t device_unsupported = {0, 0, 0};
 // M0018 - Flight Core Standalone
 static const px4_hw_mft_item_t hw_mft_list_fc0006[] = {
 	{
-		.present     = 0,
+		.present     = 1,
 		.mandatory   = 0,
-		.connection  = px4_hw_con_unknown,
+		.connection  = px4_hw_con_connector,
 	},
 };
 
 // M0019 - VOXL Flight (FlightCore + VOXL)
 static const px4_hw_mft_item_t hw_mft_list_fc0100[] = {
 	{
-		.present     = 0,
+		.present     = 1,
 		.mandatory   = 0,
-		.connection  = px4_hw_con_unknown,
+		.connection  = px4_hw_con_connector,
 	},
 };
 
