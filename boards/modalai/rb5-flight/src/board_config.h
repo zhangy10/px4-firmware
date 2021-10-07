@@ -39,6 +39,8 @@
 
 #pragma once
 
+#define PX4IO_SERIAL_BASE
+
 #define BOARD_OVERRIDE_UUID "EAGLEID000000000" // must be of length 16
 #define PX4_SOC_ARCH_ID     PX4_SOC_ARCH_ID_EAGLE
 

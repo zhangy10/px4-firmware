@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2019 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,56 +31,6 @@
 #
 ############################################################################
 
-if(${PX4_PLATFORM} STREQUAL "posix")
-	set(UPLOADER_SRC)
-else()
-	set(UPLOADER_SRC px4io_uploader.cpp)
-endif()
-
-px4_add_module(
-	MODULE drivers__px4io
-	MAIN px4io
-	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
-	SRCS
-		px4io.cpp
-		px4io_serial.cpp
-		${UPLOADER_SRC}
-	DEPENDS
-		arch_px4io_serial
-		circuit_breaker
-		mixer
-	)
-
-# include the px4io binary in ROMFS
-message(STATUS "Building and including ${config_io_board}")
-
-if(NOT ${PX4_PLATFORM} STREQUAL "posix")
-	include(ExternalProject)
-	ExternalProject_Add(px4io_firmware
-		SOURCE_DIR ${CMAKE_SOURCE_DIR}
-		DOWNLOAD_COMMAND ""
-		UPDATE_COMMAND ""
-		CMAKE_ARGS -DCONFIG=${config_io_board}
-		INSTALL_COMMAND ""
-		USES_TERMINAL_BUILD true
-		DEPENDS git_nuttx git_nuttx_apps
-		BUILD_ALWAYS 1
-	)
-
-	ExternalProject_Get_Property(px4io_firmware BINARY_DIR)
-
-	set(fw_io_exe "${BINARY_DIR}/${config_io_board}.elf")
-	set(fw_io_bin "${PX4_BINARY_DIR}/romfs_extras/${config_io_board}.bin" CACHE FILEPATH "px4io binary path")
-
-	file(RELATIVE_PATH fw_io_exe_relative ${CMAKE_CURRENT_BINARY_DIR} ${fw_io_exe})
-	file(RELATIVE_PATH fw_io_bin_relative ${CMAKE_CURRENT_BINARY_DIR} ${fw_io_bin})
-
-	add_custom_command(OUTPUT ${fw_io_bin}
-		COMMAND ${CMAKE_COMMAND} -E make_directory ${PX4_BINARY_DIR}/romfs_extras
-		COMMAND ${CMAKE_OBJCOPY} -O binary ${fw_io_exe_relative} ${fw_io_bin_relative}
-		DEPENDS px4io_firmware
-		COMMENT "Copying ${config_io_board} to ROMFS extras"
-		)
-	add_custom_target(copy_px4io_bin DEPENDS ${fw_io_bin})
-endif()
+px4_add_library(arch_px4io_serial
+	px4io_serial.cpp
+)

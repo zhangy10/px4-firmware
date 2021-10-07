@@ -38,7 +38,7 @@ add_definitions(
     -DCONFIG_BOARDCTL_RESET
 )
 
-link_directories(${PX4_SOURCE_DIR}/boards/modalai/rb5-flight/lib)
+link_directories(/home ${PX4_SOURCE_DIR}/boards/modalai/rb5-flight/lib)
 
 px4_add_board(
 	PLATFORM posix
@@ -58,6 +58,7 @@ px4_add_board(
 		#lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		#pwm_out_sim
+		px4io
 		qshell/posix
 		#rc_input
         modalai/imu_server

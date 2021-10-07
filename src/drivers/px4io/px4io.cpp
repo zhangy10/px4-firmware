@@ -46,7 +46,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <debug.h>
+// #include <debug.h>
 #include <time.h>
 #include <queue.h>
 #include <errno.h>
@@ -58,7 +58,7 @@
 #include <math.h>
 #include <crc32.h>
 
-
+#include <poll.h>
 
 #include <drivers/device/device.h>
 #include <drivers/drv_rc_input.h>
@@ -96,7 +96,7 @@
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/test_motor.h>
 
-#include <debug.h>
+// #include <debug.h>
 
 #include <modules/px4iofirmware/protocol.h>
 
@@ -106,10 +106,15 @@
 
 #include "px4io_driver.h"
 
-#define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
-#define PX4IO_INAIR_RESTART_ENABLE	_IOC(0xff00, 1)
-#define PX4IO_REBOOT_BOOTLOADER		_IOC(0xff00, 2)
-#define PX4IO_CHECK_CRC			_IOC(0xff00, 3)
+// #define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
+// #define PX4IO_INAIR_RESTART_ENABLE	_IOC(0xff00, 1)
+// #define PX4IO_REBOOT_BOOTLOADER		_IOC(0xff00, 2)
+// #define PX4IO_CHECK_CRC			_IOC(0xff00, 3)
+
+#define PX4IO_SET_DEBUG			(0xff00)
+#define PX4IO_INAIR_RESTART_ENABLE	(0xff01)
+#define PX4IO_REBOOT_BOOTLOADER		(0xff02)
+#define PX4IO_CHECK_CRC			(0xff03)
 
 #define ORB_CHECK_INTERVAL		200000		// 200 ms -> 5 Hz
 #define IO_POLL_INTERVAL		20000		// 20 ms -> 50 Hz
@@ -171,7 +176,8 @@ public:
 	 * @param[in] cmd the IOCTL command
 	 * @param[in] the IOCTL command parameter (optional)
 	 */
-	virtual int		ioctl(file *filp, int cmd, unsigned long arg);
+	// virtual int		ioctl(file *filp, int cmd, unsigned long arg);
+	virtual int		ioctl(void *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Disable RC input handling
@@ -494,10 +500,10 @@ PX4IO::~PX4IO()
 		px4_usleep(100000);
 	}
 
-	/* well, kill it anyway, though this will probably crash */
-	if (_task != -1) {
-		task_delete(_task);
-	}
+	// /* well, kill it anyway, though this will probably crash */
+	// if (_task != -1) {
+	// 	task_delete(_task);
+	// }
 
 	if (_interface != nullptr) {
 		delete _interface;
@@ -600,6 +606,8 @@ PX4IO::init()
 		return -1;
 	}
 
+	PX4_INFO("Checking configuration");
+
 	_hardware      = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_HARDWARE_VERSION);
 	_max_actuators = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_ACTUATOR_COUNT);
 	_max_controls  = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_CONTROL_COUNT);
@@ -652,6 +660,8 @@ PX4IO::init()
 	if (ret != OK) {
 		return ret;
 	}
+
+	PX4_INFO("Checking for restart condition");
 
 	/*
 	 * in-air restart is only tried if the IO board reports it is
@@ -846,6 +856,8 @@ PX4IO::init()
 		PX4_INFO("default PWM output device");
 		_primary_pwm_device = true;
 	}
+
+	PX4_INFO("Starting task");
 
 	/* start the IO interface task */
 	_task = px4_task_spawn_cmd("px4io",
@@ -1412,9 +1424,11 @@ PX4IO::io_set_control_state(unsigned group)
 		controls.control[3] = 1.0f;
 	}
 
-	uint16_t regs[sizeof(controls.control) / sizeof(controls.control[0])] = {};
+	unsigned num_controls = sizeof(controls.control) / sizeof(controls.control[0]);
 
-	for (unsigned i = 0; (i < _max_controls) && (i < sizeof(controls.control) / sizeof(controls.control[0])); i++) {
+	uint16_t regs[] = {(uint16_t) num_controls};
+
+	for (unsigned i = 0; (i < _max_controls) && (i < num_controls); i++) {
 		/* ensure FLOAT_TO_REG does not produce an integer overflow */
 		const float ctrl = math::constrain(controls.control[i], -1.0f, 1.0f);
 
@@ -1429,8 +1443,7 @@ PX4IO::io_set_control_state(unsigned group)
 
 	if (!_test_fmu_fail && !_motor_test.in_test_mode) {
 		/* copy values to registers in IO */
-		return io_reg_set(PX4IO_PAGE_CONTROLS, group * PX4IO_PROTOCOL_MAX_CONTROL_COUNT, regs, math::min(_max_controls,
-				  sizeof(controls.control) / sizeof(controls.control[0])));
+		return io_reg_set(PX4IO_PAGE_CONTROLS, group * PX4IO_PROTOCOL_MAX_CONTROL_COUNT, regs, math::min(_max_controls, num_controls));
 
 	} else {
 		return OK;
@@ -2031,6 +2044,8 @@ PX4IO::io_get_raw_rc_input(input_rc_s &input_rc)
 	 */
 	channel_count = regs[PX4IO_P_RAW_RC_COUNT];
 
+	PX4_INFO("RC channel count: %u", channel_count);
+
 	/* limit the channel count */
 	if (channel_count > input_rc_s::RC_INPUT_MAX_CHANNELS) {
 		channel_count = input_rc_s::RC_INPUT_MAX_CHANNELS;
@@ -2596,7 +2611,7 @@ PX4IO::print_status(bool extended_status)
 }
 
 int
-PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
+PX4IO::ioctl(void *filep, int cmd, unsigned long arg)
 {
 	SmartLock lock_guard(_lock);
 	int ret = OK;
@@ -3048,7 +3063,7 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 
 	default:
 		/* see if the parent class can make any use of it */
-		ret = CDev::ioctl(filep, cmd, arg);
+		ret = CDev::ioctl((cdev::file_t*) filep, cmd, arg);
 		break;
 	}
 
@@ -3125,7 +3140,9 @@ start(int argc, char *argv[])
 		errx(1, "driver init failed");
 	}
 
-	exit(0);
+	PX4_INFO("PX4IO start succeeded");
+
+	// // exit(0);
 }
 
 void
@@ -3152,10 +3169,10 @@ detect(int argc, char *argv[])
 
 	if (ret) {
 		/* nonzero, error */
-		exit(1);
+		// // exit(1);
 
 	} else {
-		exit(0);
+		// // exit(0);
 	}
 }
 
@@ -3185,14 +3202,14 @@ checkcrc(int argc, char *argv[])
 	 */
 	if (argc < 2) {
 		warnx("usage: px4io checkcrc filename");
-		exit(1);
+		// // exit(1);
 	}
 
 	int fd = open(argv[1], O_RDONLY);
 
 	if (fd == -1) {
 		warnx("open of %s failed: %d", argv[1], errno);
-		exit(1);
+		// // exit(1);
 	}
 
 	const uint32_t app_size_max = 0xf000;
@@ -3226,16 +3243,16 @@ checkcrc(int argc, char *argv[])
 
 	if (ret != OK) {
 		warn("check CRC failed: %d", ret);
-		exit(1);
+		// // exit(1);
 	}
 
-	exit(0);
+	// // exit(0);
 }
 
 void
 bind(int argc, char *argv[])
 {
-	int pulses;
+	int pulses = 0;
 
 	if (g_dev == nullptr) {
 		errx(1, "px4io must be started first");
@@ -3265,7 +3282,7 @@ bind(int argc, char *argv[])
 
 	g_dev->ioctl(nullptr, DSM_BIND_START, pulses);
 
-	exit(0);
+	// // exit(0);
 
 }
 
@@ -3294,7 +3311,7 @@ monitor(void)
 
 			if (cancels-- == 0) {
 				printf("\033[2J\033[H"); /* move cursor home and clear screen */
-				exit(0);
+				// // exit(0);
 			}
 		}
 
@@ -3339,7 +3356,7 @@ lockdown(int argc, char *argv[])
 					if (read(0, &c, 1) > 0) {
 
 						if (c != 'y') {
-							exit(0);
+							// // exit(0);
 
 						} else if (c == 'y') {
 							break;
@@ -3367,7 +3384,7 @@ lockdown(int argc, char *argv[])
 		errx(1, "driver not loaded, exiting");
 	}
 
-	exit(0);
+	// // exit(0);
 }
 
 } /* namespace */
@@ -3375,14 +3392,16 @@ lockdown(int argc, char *argv[])
 int
 px4io_main(int argc, char *argv[])
 {
+	PX4_INFO("%s called", __FUNCTION__);
+
 	/* check for sufficient number of arguments */
 	if (argc < 2) {
 		goto out;
 	}
 
-	if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
-		errx(1, "PX4IO Not Supported");
-	}
+	// if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
+	// 	errx(1, "PX4IO Not Supported");
+	// }
 
 	if (!strcmp(argv[1], "start")) {
 		start(argc - 1, argv + 1);
@@ -3390,107 +3409,108 @@ px4io_main(int argc, char *argv[])
 
 	if (!strcmp(argv[1], "detect")) {
 		detect(argc - 1, argv + 1);
+		return 0;
 	}
 
 	if (!strcmp(argv[1], "checkcrc")) {
 		checkcrc(argc - 1, argv + 1);
 	}
 
-	if (!strcmp(argv[1], "update")) {
-
-		if (g_dev != nullptr) {
-			warnx("loaded, detaching first");
-			/* stop the driver */
-			delete g_dev;
-			g_dev = nullptr;
-		}
-
-		PX4IO_Uploader *up;
-
-		/* Assume we are using default paths */
-
-		const char *fn[4] = PX4IO_FW_SEARCH_PATHS;
-
-		/* Override defaults if a path is passed on command line */
-		if (argc > 2) {
-			fn[0] = argv[2];
-			fn[1] = nullptr;
-		}
-
-		up = new PX4IO_Uploader;
-		int ret = up->upload(&fn[0]);
-		delete up;
-
-		switch (ret) {
-		case OK:
-			break;
-
-		case -ENOENT:
-			errx(1, "PX4IO firmware file not found");
-
-		case -EEXIST:
-		case -EIO:
-			errx(1, "error updating PX4IO - check that bootloader mode is enabled");
-
-		case -EINVAL:
-			errx(1, "verify failed - retry the update");
-
-		case -ETIMEDOUT:
-			errx(1, "timed out waiting for bootloader - power-cycle and try again");
-
-		default:
-			errx(1, "unexpected error %d", ret);
-		}
-
-		return ret;
-	}
-
-	if (!strcmp(argv[1], "forceupdate")) {
-		/*
-		  force update of the IO firmware without requiring
-		  the user to hold the safety switch down
-		 */
-		if (argc <= 3) {
-			warnx("usage: px4io forceupdate MAGIC filename");
-			exit(1);
-		}
-
-		if (g_dev == nullptr) {
-			warnx("px4io is not started, still attempting upgrade");
-
-			/* allocate the interface */
-			device::Device *interface = get_interface();
-
-			/* create the driver - it will set g_dev */
-			(void)new PX4IO(interface);
-
-			if (g_dev == nullptr) {
-				delete interface;
-				errx(1, "driver allocation failed");
-			}
-		}
-
-		uint16_t arg = atol(argv[2]);
-		int ret = g_dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, arg);
-
-		if (ret != OK) {
-			warnx("reboot failed - %d", ret);
-			exit(1);
-		}
-
-		// tear down the px4io instance
-		delete g_dev;
-		g_dev = nullptr;
-
-		// upload the specified firmware
-		const char *fn[2];
-		fn[0] = argv[3];
-		fn[1] = nullptr;
-		PX4IO_Uploader *up = new PX4IO_Uploader;
-		up->upload(&fn[0]);
-		delete up;
-		exit(0);
-	}
+	// if (!strcmp(argv[1], "update")) {
+	//
+	// 	if (g_dev != nullptr) {
+	// 		warnx("loaded, detaching first");
+	// 		/* stop the driver */
+	// 		delete g_dev;
+	// 		g_dev = nullptr;
+	// 	}
+	//
+	// 	PX4IO_Uploader *up;
+	//
+	// 	/* Assume we are using default paths */
+	//
+	// 	const char *fn[4] = PX4IO_FW_SEARCH_PATHS;
+	//
+	// 	/* Override defaults if a path is passed on command line */
+	// 	if (argc > 2) {
+	// 		fn[0] = argv[2];
+	// 		fn[1] = nullptr;
+	// 	}
+	//
+	// 	up = new PX4IO_Uploader;
+	// 	int ret = up->upload(&fn[0]);
+	// 	delete up;
+	//
+	// 	switch (ret) {
+	// 	case OK:
+	// 		break;
+	//
+	// 	case -ENOENT:
+	// 		errx(1, "PX4IO firmware file not found");
+	//
+	// 	case -EEXIST:
+	// 	case -EIO:
+	// 		errx(1, "error updating PX4IO - check that bootloader mode is enabled");
+	//
+	// 	case -EINVAL:
+	// 		errx(1, "verify failed - retry the update");
+	//
+	// 	case -ETIMEDOUT:
+	// 		errx(1, "timed out waiting for bootloader - power-cycle and try again");
+	//
+	// 	default:
+	// 		errx(1, "unexpected error %d", ret);
+	// 	}
+	//
+	// 	return ret;
+	// }
+	//
+	// if (!strcmp(argv[1], "forceupdate")) {
+	// 	/*
+	// 	  force update of the IO firmware without requiring
+	// 	  the user to hold the safety switch down
+	// 	 */
+	// 	if (argc <= 3) {
+	// 		warnx("usage: px4io forceupdate MAGIC filename");
+	// 		// exit(1);
+	// 	}
+	//
+	// 	if (g_dev == nullptr) {
+	// 		warnx("px4io is not started, still attempting upgrade");
+	//
+	// 		/* allocate the interface */
+	// 		device::Device *interface = get_interface();
+	//
+	// 		/* create the driver - it will set g_dev */
+	// 		(void)new PX4IO(interface);
+	//
+	// 		if (g_dev == nullptr) {
+	// 			delete interface;
+	// 			errx(1, "driver allocation failed");
+	// 		}
+	// 	}
+	//
+	// 	uint16_t arg = atol(argv[2]);
+	// 	int ret = g_dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, arg);
+	//
+	// 	if (ret != OK) {
+	// 		warnx("reboot failed - %d", ret);
+	// 		// exit(1);
+	// 	}
+	//
+	// 	// tear down the px4io instance
+	// 	delete g_dev;
+	// 	g_dev = nullptr;
+	//
+	// 	// upload the specified firmware
+	// 	const char *fn[2];
+	// 	fn[0] = argv[3];
+	// 	fn[1] = nullptr;
+	// 	PX4IO_Uploader *up = new PX4IO_Uploader;
+	// 	up->upload(&fn[0]);
+	// 	delete up;
+	// 	// exit(0);
+	// }
 
 	/* commands below here require a started driver */
 
@@ -3503,10 +3523,10 @@ px4io_main(int argc, char *argv[])
 
 		if (ret != OK) {
 			warnx("failed to disable safety");
-			exit(1);
+			// exit(1);
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "safety_on")) {
@@ -3514,10 +3534,10 @@ px4io_main(int argc, char *argv[])
 
 		if (ret != OK) {
 			warnx("failed to enable safety");
-			exit(1);
+			// exit(1);
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "recovery")) {
@@ -3528,7 +3548,7 @@ px4io_main(int argc, char *argv[])
 		 * doesn't reference filp in ioctl()
 		 */
 		g_dev->ioctl(NULL, PX4IO_INAIR_RESTART_ENABLE, 1);
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "stop")) {
@@ -3536,7 +3556,7 @@ px4io_main(int argc, char *argv[])
 		/* stop the driver */
 		delete g_dev;
 		g_dev = nullptr;
-		exit(0);
+		// exit(0);
 	}
 
 
@@ -3545,18 +3565,18 @@ px4io_main(int argc, char *argv[])
 		warnx("loaded");
 		g_dev->print_status(true);
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "debug")) {
 		if (argc <= 2) {
 			warnx("usage: px4io debug LEVEL");
-			exit(1);
+			// exit(1);
 		}
 
 		if (g_dev == nullptr) {
 			warnx("not started");
-			exit(1);
+			// exit(1);
 		}
 
 		uint8_t level = atoi(argv[2]);
@@ -3567,11 +3587,11 @@ px4io_main(int argc, char *argv[])
 
 		if (ret != 0) {
 			warnx("SET_DEBUG failed: %d", ret);
-			exit(1);
+			// exit(1);
 		}
 
 		warnx("SET_DEBUG %hhu OK", level);
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "rx_dsm") ||
@@ -3604,7 +3624,7 @@ px4io_main(int argc, char *argv[])
 			errx(ret, "S.BUS v1 failed");
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "sbus2_out")) {
@@ -3617,7 +3637,7 @@ px4io_main(int argc, char *argv[])
 			errx(ret, "S.BUS v2 failed");
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "rssi_analog")) {
@@ -3630,7 +3650,7 @@ px4io_main(int argc, char *argv[])
 			errx(ret, "RSSI analog failed");
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "rssi_pwm")) {
@@ -3643,13 +3663,13 @@ px4io_main(int argc, char *argv[])
 			errx(ret, "RSSI PWM failed");
 		}
 
-		exit(0);
+		// exit(0);
 	}
 
 	if (!strcmp(argv[1], "test_fmu_fail")) {
 		if (g_dev != nullptr) {
 			g_dev->test_fmu_fail(true);
-			exit(0);
+			// exit(0);
 
 		} else {
 
@@ -3660,7 +3680,7 @@ px4io_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "test_fmu_ok")) {
 		if (g_dev != nullptr) {
 			g_dev->test_fmu_fail(false);
-			exit(0);
+			// exit(0);
 
 		} else {
 
@@ -3669,8 +3689,10 @@ px4io_main(int argc, char *argv[])
 	}
 
 out:
-	errx(1, "need a command, try 'start', 'stop', 'status', 'monitor', 'debug <level>',\n"
-	     "'recovery', 'bind', 'checkcrc', 'safety_on', 'safety_off',\n"
-	     "'forceupdate', 'update', 'sbus1_out', 'sbus2_out', 'rssi_analog' or 'rssi_pwm',\n"
-	     "'test_fmu_fail', 'test_fmu_ok'");
+	// errx(1, "need a command, try 'start', 'stop', 'status', 'monitor', 'debug <level>',\n"
+	//      "'recovery', 'bind', 'checkcrc', 'safety_on', 'safety_off',\n"
+	//      "'forceupdate', 'update', 'sbus1_out', 'sbus2_out', 'rssi_analog' or 'rssi_pwm',\n"
+	//      "'test_fmu_fail', 'test_fmu_ok'");
+
+	return 0;
 }
