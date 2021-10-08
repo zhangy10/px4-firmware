@@ -46,7 +46,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-// #include <debug.h>
+
+#ifdef __NUTTX__
+#include <debug.h>
+#endif
+
 #include <time.h>
 #include <queue.h>
 #include <errno.h>
@@ -58,7 +62,9 @@
 #include <math.h>
 #include <crc32.h>
 
+#ifdef __PX4_POSIX
 #include <poll.h>
+#endif
 
 #include <drivers/device/device.h>
 #include <drivers/drv_rc_input.h>
@@ -96,8 +102,6 @@
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/test_motor.h>
 
-// #include <debug.h>
-
 #include <modules/px4iofirmware/protocol.h>
 
 #include "uploader.h"
@@ -106,15 +110,17 @@
 
 #include "px4io_driver.h"
 
-// #define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
-// #define PX4IO_INAIR_RESTART_ENABLE	_IOC(0xff00, 1)
-// #define PX4IO_REBOOT_BOOTLOADER		_IOC(0xff00, 2)
-// #define PX4IO_CHECK_CRC			_IOC(0xff00, 3)
-
-#define PX4IO_SET_DEBUG			(0xff00)
-#define PX4IO_INAIR_RESTART_ENABLE	(0xff01)
-#define PX4IO_REBOOT_BOOTLOADER		(0xff02)
-#define PX4IO_CHECK_CRC			(0xff03)
+#ifdef __PX4_POSIX
+#define PX4IO_SET_DEBUG			       (0xff00)
+#define PX4IO_INAIR_RESTART_ENABLE (0xff01)
+#define PX4IO_REBOOT_BOOTLOADER		 (0xff02)
+#define PX4IO_CHECK_CRC			       (0xff03)
+#else
+#define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
+#define PX4IO_INAIR_RESTART_ENABLE	_IOC(0xff00, 1)
+#define PX4IO_REBOOT_BOOTLOADER		_IOC(0xff00, 2)
+#define PX4IO_CHECK_CRC			_IOC(0xff00, 3)
+#endif
 
 #define ORB_CHECK_INTERVAL		200000		// 200 ms -> 5 Hz
 #define IO_POLL_INTERVAL		20000		// 20 ms -> 50 Hz
@@ -176,8 +182,11 @@ public:
 	 * @param[in] cmd the IOCTL command
 	 * @param[in] the IOCTL command parameter (optional)
 	 */
-	// virtual int		ioctl(file *filp, int cmd, unsigned long arg);
+#ifdef __PX4_POSIX
 	virtual int		ioctl(void *filp, int cmd, unsigned long arg);
+#else
+	virtual int		ioctl(file *filp, int cmd, unsigned long arg);
+#endif
 
 	/**
 	 * Disable RC input handling
@@ -500,10 +509,10 @@ PX4IO::~PX4IO()
 		px4_usleep(100000);
 	}
 
-	// /* well, kill it anyway, though this will probably crash */
-	// if (_task != -1) {
-	// 	task_delete(_task);
-	// }
+	/* well, kill it anyway, though this will probably crash */
+	if (_task != -1) {
+		px4_task_delete(_task);
+	}
 
 	if (_interface != nullptr) {
 		delete _interface;
