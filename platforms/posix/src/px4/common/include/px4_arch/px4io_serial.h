@@ -48,7 +48,8 @@
 #include <drivers/device/device.h>
 #include <modules/px4iofirmware/protocol.h>
 
-#define SEM_INITIALIZER(x) 
+// Empty definition to keep Nuttx stuff in common code happy
+#define SEM_INITIALIZER(x)
 
 class PX4IO_serial : public device::Device
 {
@@ -73,33 +74,23 @@ protected:
 	 */
 	virtual int	_bus_exchange(IOPacket *_packet) = 0;
 
-	/**
-	 * Performance counters.
-	 */
-	perf_counter_t		_pc_txns;
-	perf_counter_t		_pc_retries;
-	perf_counter_t		_pc_timeouts;
-	perf_counter_t		_pc_crcerrs;
-	perf_counter_t		_pc_protoerrs;
-	perf_counter_t		_pc_uerrs;
-	perf_counter_t		_pc_idle;
-	perf_counter_t		_pc_badidle;
-private:
-	/*
-	 * XXX tune this value
-	 *
-	 * At 1.5Mbps each register takes 13.3µs, and we always transfer a full packet.
-	 * Packet overhead is 26µs for the four-byte header.
-	 *
-	 * 32 registers = 451µs
-	 *
-	 * Maybe we can just send smaller packets (e.g. 8 regs) and loop for larger (less common)
-	 * transfers? Could cause issues with any regs expecting to be written atomically...
-	 */
-	IOPacket		*_io_buffer_ptr;
+  /**
+    * Performance counters.
+    */
+  perf_counter_t          _pc_txns;
+	perf_counter_t          _pc_retries;
+	perf_counter_t          _pc_timeouts;
+	perf_counter_t          _pc_crcerrs;
+	perf_counter_t          _pc_protoerrs;
+	perf_counter_t          _pc_uerrs;
+	perf_counter_t          _pc_idle;
+	perf_counter_t          _pc_badidle;
 
+private:
 	/** bus-ownership lock */
-	px4_sem_t			_bus_semaphore;
+	px4_sem_t                       _bus_semaphore;
+
+	IOPacket		*_io_buffer_ptr;
 
 	/* do not allow top copying this class */
 	PX4IO_serial(PX4IO_serial &);
@@ -130,40 +121,8 @@ private:
 
 	int uart_fd;
 
-	/** saved DMA status */
-	static const unsigned	_dma_status_inactive = 0x80000000;	// low bits overlap DMA_STATUS_* values
-	static const unsigned	_dma_status_waiting  = 0x00000000;
-	volatile unsigned	_rx_dma_status;
-
-	/** client-waiting lock/signal */
-	px4_sem_t			_completion_semaphore;
-
-	/**
-	 * DMA completion handler.
-	 */
-	// static void		_dma_callback(DMA_HANDLE handle, uint8_t status, void *arg);
-	// void			_do_rx_dma_callback(unsigned status);
-
-	/**
-	 * Serial interrupt handler.
-	 */
-	// static int		_interrupt(int vector, void *context, void *arg);
-	// void			_do_interrupt();
-
-	/**
-	 * Cancel any DMA in progress with an error.
-	 */
-	// void			_abort_dma();
-
-	/**
-	 * Performance counters.
-	 */
-	perf_counter_t		_pc_dmasetup;
-	perf_counter_t		_pc_dmaerrs;
-
 	/**
 	 * IO Buffer storage
 	 */
-	// static uint8_t _io_buffer_storage[] __attribute__((aligned(PX4_ARCH_DCACHE_LINESIZE)));
 	static uint8_t _io_buffer_storage[] __attribute__((aligned(64)));
 };

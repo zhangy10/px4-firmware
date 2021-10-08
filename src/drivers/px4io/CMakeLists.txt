@@ -52,10 +52,10 @@ px4_add_module(
 		mixer
 	)
 
-# include the px4io binary in ROMFS
-message(STATUS "Building and including ${config_io_board}")
-
 if(NOT ${PX4_PLATFORM} STREQUAL "posix")
+	# include the px4io binary in ROMFS
+	message(STATUS "Building and including ${config_io_board}")
+
 	include(ExternalProject)
 	ExternalProject_Add(px4io_firmware
 		SOURCE_DIR ${CMAKE_SOURCE_DIR}

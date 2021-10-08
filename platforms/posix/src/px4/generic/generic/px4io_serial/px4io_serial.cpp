@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 /**
  * @file px4io_serial.cpp
  *
- * Serial interface for PX4IO on STM32F4
+ * Serial interface for PX4IO on Posix platform
  */
 
 #include <px4_arch/px4io_serial.h>
@@ -44,19 +44,12 @@
 uint8_t ArchPX4IOSerial::_io_buffer_storage[sizeof(IOPacket)];
 
 ArchPX4IOSerial::ArchPX4IOSerial() :
-	_current_packet(nullptr),
-	_rx_dma_status(_dma_status_inactive)
+	_current_packet(nullptr)
 {
 	uart_fd = -1;
 }
 
-ArchPX4IOSerial::~ArchPX4IOSerial()
-{
-	px4_sem_destroy(&_completion_semaphore);
-
-	perf_free(_pc_dmasetup);
-	perf_free(_pc_dmaerrs);
-}
+ArchPX4IOSerial::~ArchPX4IOSerial(){}
 
 int
 ArchPX4IOSerial::init()
@@ -155,34 +148,9 @@ ArchPX4IOSerial::ioctl(unsigned operation, unsigned &arg)
 			PX4_INFO("test 0\n");
 			return 0;
 
-		case 1: {
-				unsigned fails = 0;
-
-				for (unsigned count = 0;; count++) {
-					uint16_t value = count & 0xffff;
-
-					if (write((PX4IO_PAGE_TEST << 8) | PX4IO_P_TEST_LED, &value, 1) != 0) {
-						fails++;
-					}
-
-					if (count >= 5000) {
-						PX4_INFO("==== test 1 : %u failures ====\n", fails);
-						perf_print_counter(_pc_txns);
-						perf_print_counter(_pc_dmasetup);
-						perf_print_counter(_pc_retries);
-						perf_print_counter(_pc_timeouts);
-						perf_print_counter(_pc_crcerrs);
-						perf_print_counter(_pc_dmaerrs);
-						perf_print_counter(_pc_protoerrs);
-						perf_print_counter(_pc_uerrs);
-						perf_print_counter(_pc_idle);
-						perf_print_counter(_pc_badidle);
-						count = 0;
-					}
-				}
-
-				return 0;
-			}
+		case 1:
+			PX4_INFO("test 1\n");
+			return 0;
 
 		case 2:
 			PX4_INFO("test 2\n");
@@ -223,10 +191,10 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 		// PX4_INFO("Read %d bytes", ret);
 	}
 
-	if (ret <= 0) PX4_ERR("Read failed");
-
-	/* update counters */
-	perf_end(_pc_txns);
+	if (ret <= 0) {
+		// PX4_ERR("Read failed");
+		return -1;
+	}
 
 	return 0;
 }
