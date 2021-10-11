@@ -169,32 +169,41 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 {
 	_current_packet = _packet;
 
-	int ret = 0;
+	perf_begin(_pc_txns);
 
-	ret = ::write(uart_fd, _packet, sizeof(IOPacket));
+	int ret = ::write(uart_fd, _packet, sizeof(IOPacket));
 
-	// PX4_INFO("Write %d bytes", ret);
+	if (ret > 0) {
+			// PX4_INFO("Write %d bytes", ret);
 
-	px4_usleep(100);
+			px4_usleep(2000);
 
-	ret = ::read(uart_fd, _packet, sizeof(IOPacket));
+			ret = ::read(uart_fd, _packet, sizeof(IOPacket));
 
-	// PX4_INFO("Read %d bytes", ret);
+			if (ret > 0){
+				// PX4_INFO("Read %d bytes", ret);
 
-	uint32_t retries = 3;
+				/* Check CRC */
+				uint8_t crc = _packet->crc;
+				_packet->crc = 0;
 
-	while ((ret <= 0) && (--retries)){
-		px4_usleep(1000);
-
-		ret = ::read(uart_fd, _packet, sizeof(IOPacket));
-
-		// PX4_INFO("Read %d bytes", ret);
+				if ((crc != crc_packet(_packet)) || (PKT_CODE(*_packet) == PKT_CODE_CORRUPT)){
+					perf_count(_pc_crcerrs);
+					perf_end(_pc_txns);
+					// PX4_ERR("Packet CRC error");
+					return -EIO;
+				}
+			}
 	}
 
 	if (ret <= 0) {
-		// PX4_ERR("Read failed");
-		return -1;
+		// Not really a DMA failure, but we don't use DMA so we'll reuse the
+		// counter to mean read / write failures.
+		// perf_count(_pc_dmaerrs);
+		perf_cancel(_pc_txns);		/* don't count this as a transaction */
+		return -EIO;
 	}
 
+	perf_end(_pc_txns);
 	return 0;
 }
