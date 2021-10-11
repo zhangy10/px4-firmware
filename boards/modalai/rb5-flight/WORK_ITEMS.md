@@ -73,6 +73,11 @@
 ### Safety switch
 * How would we wire this in? Need GPIO
 
+### PX4IO (aka M0065)
+* Implement all performance counters and a way to view them
+* Implement firmware upload mechanism
+* Verify sbus, pwm, etc.
+
 ## External components
 
 ### libfc_sensor_api
