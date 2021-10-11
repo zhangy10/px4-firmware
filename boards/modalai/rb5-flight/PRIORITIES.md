@@ -35,8 +35,6 @@ Generate test signature before shipping. Preserve it across updates.
     - Better yet, find a way to not need signatures. (Filed a QC case...)
     - We need to also store these in case customer loses it
 
-Customers cannot build our PX4. Can send out binary first.
-
 ## Other
 
 M0053 / M0054 RC / GPS on DSP using UART 6 and 7
