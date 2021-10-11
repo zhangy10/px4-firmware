@@ -72,9 +72,17 @@ typedef uint16_t		rc_input_t;
 #define _RC_INPUT_BASE		0x2b00
 
 /** Enable RSSI input via ADC */
+#ifdef __PX4_POSIX
+#define RC_INPUT_ENABLE_RSSI_ANALOG	(_RC_INPUT_BASE | 1)
+#else
 #define RC_INPUT_ENABLE_RSSI_ANALOG	_IOC(_RC_INPUT_BASE, 1)
+#endif
 
 /** Enable RSSI input via PWM signal */
+#ifdef __PX4_POSIX
+#define RC_INPUT_ENABLE_RSSI_PWM	(_RC_INPUT_BASE | 2)
+#else
 #define RC_INPUT_ENABLE_RSSI_PWM	_IOC(_RC_INPUT_BASE, 2)
+#endif
 
 #endif /* _DRV_RC_INPUT_H */

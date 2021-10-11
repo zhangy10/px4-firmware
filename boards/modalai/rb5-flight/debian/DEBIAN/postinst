@@ -57,6 +57,7 @@ ln -f -s px4 px4-pga460
 ln -f -s px4 px4-position_estimator_inav
 ln -f -s px4 px4-pwm
 ln -f -s px4 px4-pwm_out_sim
+ln -f -s px4 px4-px4io
 ln -f -s px4 px4-px4_mavlink_debug
 ln -f -s px4 px4-px4_simple_app
 ln -f -s px4 px4-qshell
