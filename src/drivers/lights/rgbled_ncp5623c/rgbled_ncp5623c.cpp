@@ -87,8 +87,6 @@ private:
 	uint8_t			_g{0};
 	uint8_t			_b{0};
 	volatile bool		_running{false};
-	volatile bool		_should_run{true};
-	bool			_leds_enabled{true};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 

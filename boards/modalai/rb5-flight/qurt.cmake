@@ -60,6 +60,7 @@ px4_add_board(
         uart_esc/modalai_esc
         power_monitor/voxlpm
         imu/invensense/icm42688p
+				lights/rgbled_ncp5623c
 		pwm_out_sim
 	MODULES
 		attitude_estimator_q
