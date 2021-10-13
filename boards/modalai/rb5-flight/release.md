@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.2.1alpha
+
+- Removed hard-coded baud rate configuration of the gps. It will now auto-detect the rate.
+
 ## 1.2.0alpha
 
 - Reverted back to TDK barometer driver
