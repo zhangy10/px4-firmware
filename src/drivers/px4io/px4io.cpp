@@ -3160,9 +3160,18 @@ start(int argc, char *argv[])
 #ifndef __PX4_POSIX
 void
 detect(int argc, char *argv[])
+#else
+int
+detect(int argc, char *argv[])
+#endif
 {
 	if (g_dev != nullptr) {
+#ifndef __PX4_POSIX
 		errx(0, "already loaded");
+#else
+		PX4_ERR("px4io already loaded");
+		return 0;
+#endif
 	}
 
 	/* allocate the interface */
@@ -3172,7 +3181,12 @@ detect(int argc, char *argv[])
 	(void)new PX4IO(interface);
 
 	if (g_dev == nullptr) {
+#ifndef __PX4_POSIX
 		errx(1, "driver allocation failed");
+#else
+		PX4_ERR("driver allocation failed");
+		return 1;
+#endif
 	}
 
 	int ret = g_dev->detect();
@@ -3180,6 +3194,9 @@ detect(int argc, char *argv[])
 	delete g_dev;
 	g_dev = nullptr;
 
+#ifdef __PX4_POSIX
+	return ret;
+#else
 	if (ret) {
 		/* nonzero, error */
 		px4io_exit(1);
@@ -3187,8 +3204,10 @@ detect(int argc, char *argv[])
 	} else {
 		px4io_exit(0);
 	}
+#endif
 }
 
+#ifndef __PX4_POSIX
 void
 checkcrc(int argc, char *argv[])
 {
@@ -3419,15 +3438,23 @@ px4io_main(int argc, char *argv[])
 
 	if (!strcmp(argv[1], "start")) {
 		start(argc - 1, argv + 1);
+	#ifndef __PX4_POSIX
+			px4io_exit(0);
+	#else
+			return 0;
+	#endif
+	}
+
+	if (!strcmp(argv[1], "detect")) {
+#ifndef __PX4_POSIX
+		detect(argc - 1, argv + 1);
 		px4io_exit(0);
+#else
+		return detect(argc - 1, argv + 1);
+#endif
 	}
 
 #ifndef __PX4_POSIX
-	if (!strcmp(argv[1], "detect")) {
-		detect(argc - 1, argv + 1);
-		px4io_exit(0);
-	}
-
 	if (!strcmp(argv[1], "checkcrc")) {
 		checkcrc(argc - 1, argv + 1);
 		px4io_exit(0);
