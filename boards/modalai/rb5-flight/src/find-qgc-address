@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+
+import sys
+
+f = 0
+
+# Check to see if a QGC IP address configuration file exists
+try:
+    f = open('/etc/modalai/qgc-ip.cfg', 'r')
+except BaseException:
+    # Don't print anything out, just return an error code
+    sys.exit(-1)
+# File was found and opened successfully
+else:
+    # Check each line
+    for qgc_ip in f:
+        # Strip any leading or trailng whitespace
+        qgc_ip = qgc_ip.strip()
+        # Skip any comment lines
+        if qgc_ip[0] != '#':
+            # Make sure there are enough dots in the dot notation
+            if qgc_ip.count('.') == 3:
+                parts = qgc_ip.split('.')
+                if len(parts) == 4:
+                    for component in parts:
+                        value = int(component)
+                        # Each component of the address has to be in the range 0 to 255
+                        if value < 0 or value > 255:
+                            sys.exit(-1)
+                    # Seems like a good IP address so print it out
+                    print(qgc_ip)
+                    # Don't continue on, just print out first valid IP address
+                    break
+    f.close()
