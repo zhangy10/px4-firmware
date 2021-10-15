@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.2.2alpha
+
+- Added a separate mavlink instance for onboard messages
+
 ## 1.2.1alpha
 
 - Removed hard-coded baud rate configuration of the gps. It will now auto-detect the rate.
