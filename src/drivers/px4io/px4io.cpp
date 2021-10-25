@@ -77,7 +77,13 @@
 #include <uORB/topics/px4io_status.h>
 #include <uORB/topics/parameter_update.h>
 
+#ifdef __NUTTX__
 #include <debug.h>
+#endif
+
+#ifdef __PX4_POSIX
+#include <poll.h>
+#endif
 
 #include <modules/px4iofirmware/protocol.h>
 
@@ -87,9 +93,15 @@
 
 #include "px4io_driver.h"
 
+#ifdef __PX4_POSIX
+#define PX4IO_SET_DEBUG					(0xff00)
+#define PX4IO_REBOOT_BOOTLOADER	(0xff01)
+#define PX4IO_CHECK_CRC					(0xff02)
+#else
 #define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
 #define PX4IO_REBOOT_BOOTLOADER		_IOC(0xff00, 1)
 #define PX4IO_CHECK_CRC			_IOC(0xff00, 2)
+#endif
 
 static constexpr unsigned MIN_TOPIC_UPDATE_INTERVAL = 2500; // 2.5 ms -> 400 Hz
 
@@ -136,7 +148,11 @@ public:
 	 * @param[in] cmd the IOCTL command
 	 * @param[in] the IOCTL command parameter (optional)
 	 */
+#ifdef __PX4_POSIX
+	int		ioctl(void *filp, int cmd, unsigned long arg);
+#else
 	int		ioctl(file *filp, int cmd, unsigned long arg) override;
+#endif
 
 	/**
 	 * Print IO status.
@@ -1493,7 +1509,11 @@ int PX4IO::print_status()
 	return 0;
 }
 
-int PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
+#ifdef __PX4_POSIX
+int		ioctl(void *filp, int cmd, unsigned long arg)
+#else
+int		ioctl(file *filp, int cmd, unsigned long arg)
+#endif
 {
 	SmartLock lock_guard(_lock);
 	int ret = OK;

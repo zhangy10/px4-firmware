@@ -75,9 +75,9 @@ typedef int px4_task_t;
 
 #elif defined(__PX4_QURT)
 
-#define SCHED_PRIORITY_MAX 255
-#define SCHED_PRIORITY_MIN 0
-#define SCHED_PRIORITY_DEFAULT 20
+#define SCHED_PRIORITY_MAX (255 - 16)
+#define SCHED_PRIORITY_MIN 10
+#define SCHED_PRIORITY_DEFAULT 120
 
 #else
 #error "No target OS defined"
@@ -146,6 +146,10 @@ typedef struct {
 //      SCHED_PRIORITY_IDLE
 
 typedef int (*px4_main_t)(int argc, char *argv[]);
+
+#ifdef __PX4_QURT
+typedef void* (*px4_qurt_task_func_t)(void *arg);
+#endif
 
 __BEGIN_DECLS
 

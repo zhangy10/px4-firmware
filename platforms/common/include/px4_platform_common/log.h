@@ -65,6 +65,9 @@ __END_DECLS
  ****************************************************************************/
 #define __px4_log_omit(level, FMT, ...)   do_nothing(level, ##__VA_ARGS__)
 
+#define __px4__log_level_fmt		"%-5s "
+#define __px4__log_modulename_pfmt	"[%s] "
+
 #if defined(__PX4_QURT)
 #include "qurt_log.h"
 /****************************************************************************
@@ -155,12 +158,10 @@ __END_DECLS
 
 #define __px4__log_timestamp_fmt	"%-10" PRIu64 " "
 #define __px4__log_timestamp_arg 	,hrt_absolute_time()
-#define __px4__log_level_fmt		"%-5s "
 #define __px4__log_level_arg(level)	,__px4_log_level_str[level]
 #define __px4__log_thread_fmt		"%#X "
 #define __px4__log_thread_arg		,(unsigned int)pthread_self()
 #define __px4__log_modulename_fmt	"%-10s "
-#define __px4__log_modulename_pfmt	"[%s] "
 #define __px4__log_modulename_arg	,"[" MODULE_NAME "]"
 
 #define __px4__log_file_and_line_fmt 	" (file %s line %u)"

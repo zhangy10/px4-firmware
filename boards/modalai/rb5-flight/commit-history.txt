@@ -1,0 +1,197 @@
+
+Original commit for rb5-flight branch
+
+0c74028976ef13697522bacbc6ac13effc898db3
+
+File diffs:
+
+.gitmodules
+Makefile
+boards/modalai/cmake_hexagon/README.md
+boards/modalai/cmake_hexagon/bundle.cmake
+boards/modalai/cmake_hexagon/fastrpc.cmake
+boards/modalai/cmake_hexagon/hexagon_sdk.cmake
+boards/modalai/cmake_hexagon/linux_app.cmake
+boards/modalai/cmake_hexagon/qurt_flags.cmake
+boards/modalai/cmake_hexagon/qurt_lib.cmake
+boards/modalai/cmake_hexagon/toolchain/Toolchain-aarch64-linux-gnu.cmake
+boards/modalai/cmake_hexagon/toolchain/Toolchain-qurt.cmake
+boards/modalai/rb5-flight/.gitignore
+boards/modalai/rb5-flight/PRIORITIES.md
+boards/modalai/rb5-flight/README.md
+boards/modalai/rb5-flight/WORK_ITEMS.md
+boards/modalai/rb5-flight/build-pkg.sh
+boards/modalai/rb5-flight/debian/DEBIAN/control
+boards/modalai/rb5-flight/debian/DEBIAN/postinst
+boards/modalai/rb5-flight/default.cmake
+boards/modalai/rb5-flight/fake-calibration.config
+boards/modalai/rb5-flight/full-m0052.config
+boards/modalai/rb5-flight/install-rb5-qurt.sh
+boards/modalai/rb5-flight/install-rb5.sh
+boards/modalai/rb5-flight/lib/.gitignore
+boards/modalai/rb5-flight/log_parse/parse.c
+boards/modalai/rb5-flight/log_parse/test.sh
+boards/modalai/rb5-flight/logs/.gitignore
+boards/modalai/rb5-flight/m0052-px4
+boards/modalai/rb5-flight/m0052-set-default-parameters.config
+boards/modalai/rb5-flight/min-m0052.config
+boards/modalai/rb5-flight/qgc-ip.cfg
+boards/modalai/rb5-flight/qurt.cmake
+boards/modalai/rb5-flight/release.md
+boards/modalai/rb5-flight/setup-alias.sh
+boards/modalai/rb5-flight/src/CMakeLists.txt
+boards/modalai/rb5-flight/src/board_config.h
+boards/modalai/rb5-flight/src/find-qgc-address
+boards/modalai/rb5-flight/src/i2c.cpp
+boards/modalai/rb5-flight/src/init.c
+boards/modalai/rb5-flight/src/spi.cpp
+boards/modalai/rb5-flight/test-cmd.txt
+boards/modalai/rb5-flight/test/.gitignore
+boards/modalai/rb5-flight/test/auto-test.py
+boards/modalai/rb5-flight/test/rc-test.c
+boards/modalai/rb5-flight/test/rc-test.py
+boards/modalai/rb5-flight/thread-priorities.txt
+cmake/px4_add_common_flags.cmake
+* msg/CMakeLists.txt
+* msg/imu_server.msg
+* msg/parameter_client_reset_request.msg
+* msg/parameter_client_reset_response.msg
+* msg/parameter_client_set_value_request.msg
+* msg/parameter_client_set_value_response.msg
+* msg/parameter_server_set_used_request.msg
+* msg/parameter_server_set_used_response.msg
+* msg/parameter_server_set_value_request.msg
+* msg/parameter_server_set_value_response.msg
+* platforms/common/include/px4_platform_common/defines.h
+platforms/common/include/px4_platform_common/log.h
+platforms/common/include/px4_platform_common/px4_work_queue/WorkQueueManager.hpp
+platforms/common/include/px4_platform_common/tasks.h
+platforms/common/px4_work_queue/WorkQueueManager.cpp
+platforms/common/shutdown.cpp
+platforms/common/spi.cpp
+platforms/common/work_queue/hrt_thread.c
+platforms/posix/CMakeLists.txt
+platforms/posix/include/system_config.h
+* platforms/posix/src/px4/common/CMakeLists.txt
+* platforms/posix/src/px4/common/include/px4_arch/px4io_serial.h
+platforms/posix/src/px4/common/shmem_posix.cpp
+* platforms/posix/src/px4/generic/generic/CMakeLists.txt
+* platforms/posix/src/px4/generic/generic/px4io_serial/CMakeLists.txt
+* platforms/posix/src/px4/generic/generic/px4io_serial/px4io_serial.cpp
+platforms/qurt/CMakeLists.txt
+platforms/qurt/dspal
+platforms/qurt/include/qurt_log.h
+platforms/qurt/src/px4/common/CMakeLists.txt
+platforms/qurt/src/px4/common/drv_hrt.cpp
+platforms/qurt/src/px4/common/dspal_impl.c
+platforms/qurt/src/px4/common/px4_qurt_impl.cpp
+platforms/qurt/src/px4/common/qurt_log.cpp
+platforms/qurt/src/px4/common/shmem_qurt.cpp
+platforms/qurt/src/px4/common/tasks.cpp
+platforms/qurt/src/px4/generic/generic/include/px4_arch/spi_hw_description.h
+/// Is there anything TDK proprietary in the ICP10100 driver???
+* src/drivers/barometer/icp10100/CMakeLists.txt
+* src/drivers/barometer/icp10100/ICP10100.cpp
+* src/drivers/barometer/icp10100/ICP10100.hpp
+* src/drivers/barometer/icp10100/icp10100_main.cpp
+* src/drivers/drv_rc_input.h
+* src/drivers/drv_sbus.h
+* src/drivers/drv_sensor.h
+src/drivers/imu/invensense/icm42688p/ICM42688P.cpp
+src/drivers/imu/invensense/icm42688p/ICM42688P.hpp
+src/drivers/imu/invensense/icm42688p/InvenSense_ICM42688P_registers.hpp
+src/drivers/lights/rgbled_ncp5623c/rgbled_ncp5623c.cpp
+* src/drivers/modalai/imu_server/CMakeLists.txt
+* src/drivers/modalai/imu_server/imu_server.cpp
+* src/drivers/modalai/imu_server/imu_server.hpp
+* src/drivers/modalai/rc_controller/CMakeLists.txt
+* src/drivers/modalai/rc_controller/rc_controller.cpp
+* src/drivers/modalai/rc_controller/rc_controller.hpp
+* src/drivers/modalai/uart_esc_driver/CMakeLists.txt
+* src/drivers/modalai/uart_esc_driver/uart_esc_driver.cpp
+* src/drivers/modalai/uart_esc_driver/uart_esc_driver.hpp
+src/drivers/power_monitor/voxlpm/voxlpm.cpp
+* src/drivers/px4io/CMakeLists.txt
+src/drivers/px4io/px4io.cpp
+* src/drivers/qshell/posix/qshell.cpp
+* src/drivers/qshell/posix/qshell.h
+* src/drivers/qshell/qurt/CMakeLists.txt
+* src/drivers/qshell/qurt/qshell.cpp
+* src/drivers/spektrum_rc/spektrum_rc.cpp
+* src/drivers/uart_esc/modalai_esc/CMakeLists.txt
+* src/drivers/uart_esc/modalai_esc/crc16.c
+* src/drivers/uart_esc/modalai_esc/crc16.h
+* src/drivers/uart_esc/modalai_esc/modalai_esc.cpp
+* src/drivers/uart_esc/modalai_esc/modalai_esc.hpp
+* src/drivers/uart_esc/modalai_esc/modalai_esc_serial.cpp
+* src/drivers/uart_esc/modalai_esc/modalai_esc_serial.hpp
+* src/drivers/uart_esc/modalai_esc/qc_esc_packet.c
+* src/drivers/uart_esc/modalai_esc/qc_esc_packet.h
+* src/drivers/uart_esc/modalai_esc/qc_esc_packet_types.h
+* src/drivers/uart_esc/modalai_esc/uart_esc_params.c
+* src/examples/gyro_fft/CMSIS_5
+src/lib/drivers/accelerometer/PX4Accelerometer.cpp
+* src/lib/drivers/device/CMakeLists.txt
+src/lib/drivers/device/Device.hpp
+src/lib/drivers/device/qurt/I2C.cpp
+src/lib/drivers/device/qurt/I2C.hpp
+src/lib/drivers/device/qurt/SPI.cpp
+src/lib/drivers/device/qurt/SPI.hpp
+src/lib/drivers/device/qurt/uart.c
+src/lib/drivers/device/qurt/uart.h
+* src/lib/parameters/CMakeLists.txt
+* src/lib/parameters/param.h
+* src/lib/parameters/param_client.cpp
+* src/lib/parameters/param_client.h
+* src/lib/parameters/param_server.cpp
+* src/lib/parameters/param_server.h
+src/lib/parameters/parameters.cpp
+* src/lib/parameters/parameters_shmem.cpp
+src/lib/parameters/px4params/srcparser.py
+src/lib/rc/dsm.cpp
+* src/lib/sensor_calibration/Magnetometer.cpp
+* src/lib/systemlib/mavlink_log.h
+src/lib/version/CMakeLists.txt
+* src/modules/commander/Arming/PreFlightCheck/PreFlightCheck.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/accelerometerCheck.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/baroCheck.cpp
+src/modules/commander/Arming/PreFlightCheck/checks/cpuResourceCheck.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/ekf2Check.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/failureDetectorCheck.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/gyroCheck.cpp
+* src/modules/commander/Arming/PreFlightCheck/checks/magnetometerCheck.cpp
+src/modules/commander/CMakeLists.txt
+src/modules/commander/Commander.cpp
+* src/modules/commander/state_machine_helper.cpp
+src/modules/commander/worker_thread.cpp
+src/modules/ekf2/EKF2.cpp
+* src/modules/logger/log_writer_file.cpp
+* src/modules/logger/util.cpp
+* src/modules/mavlink/mavlink_receiver.h
+* src/modules/muorb/adsp/px4muorb.cpp
+* src/modules/muorb/adsp/px4muorb.hpp
+* src/modules/muorb/adsp/uORBFastRpcChannel.cpp
+* src/modules/muorb/apps/CMakeLists.txt
+* src/modules/muorb/apps/fc_sensor.h
+* src/modules/muorb/apps/muorb_main.cpp
+* src/modules/muorb/apps/uORBAppsProtobufChannel.cpp
+* src/modules/muorb/apps/uORBAppsProtobufChannel.hpp
+* src/modules/muorb/krait/px4muorb_KraitRpcWrapper.cpp
+* src/modules/muorb/krait/uORBKraitFastRpcChannel.cpp
+* src/modules/muorb/slpi/CMakeLists.txt
+* src/modules/muorb/slpi/uORBProtobufChannel.cpp
+* src/modules/muorb/slpi/uORBProtobufChannel.hpp
+* src/modules/muorb/test/muorb_test_example.cpp
+src/modules/sensors/sensors.cpp
+src/modules/sensors/vehicle_acceleration/VehicleAcceleration.cpp
+src/modules/sensors/vehicle_imu/VehicleIMU.cpp
+src/modules/sensors/voted_sensors_update.cpp
+src/modules/uORB/uORBCommunicator.hpp
+src/modules/uORB/uORBDeviceMaster.cpp
+src/modules/uORB/uORBDeviceNode.cpp
+src/modules/uORB/uORBDeviceNode.hpp
+src/modules/uORB/uORBManager.cpp
+src/modules/uORB/uORBManager.hpp
+src/systemcmds/param/param.cpp
+validation/module_schema.yaml
+

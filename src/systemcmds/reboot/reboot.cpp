@@ -58,7 +58,10 @@ static void print_usage()
 extern "C" __EXPORT int reboot_main(int argc, char *argv[])
 {
 	int ch;
+
+#if defined(CONFIG_BOARDCTL_RESET)
 	bool to_bootloader = false;
+#endif
 
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
@@ -66,7 +69,9 @@ extern "C" __EXPORT int reboot_main(int argc, char *argv[])
 	while ((ch = px4_getopt(argc, argv, "b", &myoptind, &myoptarg)) != -1) {
 		switch (ch) {
 		case 'b':
+#if defined(CONFIG_BOARDCTL_RESET)
 			to_bootloader = true;
+#endif
 			break;
 
 		default:
@@ -98,7 +103,11 @@ extern "C" __EXPORT int reboot_main(int argc, char *argv[])
 		return ret;
 	}
 
-	int ret = px4_reboot_request(to_bootloader);
+	int ret = -1;
+
+#if defined(CONFIG_BOARDCTL_RESET)
+	ret = px4_reboot_request(to_bootloader);
+#endif
 
 	if (ret < 0) {
 		PX4_ERR("reboot failed (%i)", ret);

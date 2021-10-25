@@ -129,7 +129,19 @@ add_custom_command(OUTPUT px4_parameters.hpp
 	)
 
 set(SRCS)
+if ("${CONFIG_PARAM_CLIENT}" STREQUAL "1")
+	message(STATUS "parameter client enabled")
+		add_definitions(-DPARAM_CLIENT)
 
+	list(APPEND SRCS param_client.cpp)
+endif()
+
+if ("${CONFIG_PARAM_SERVER}" STREQUAL "1")
+	message(STATUS "parameter server enabled")
+		add_definitions(-DPARAM_SERVER)
+
+	list(APPEND SRCS param_server.cpp)
+endif()
 list(APPEND SRCS parameters.cpp)
 if(BUILD_TESTING)
 	list(APPEND SRCS param_translation_unit_tests.cpp)
@@ -148,7 +160,12 @@ if (NOT "${PX4_BOARD}" MATCHES "px4_io")
 		px4_parameters.hpp
 	)
 
-	target_link_libraries(parameters PRIVATE perf tinybson px4_layer)
+	if ("${CONFIG_PARAM_CLIENT}" STREQUAL "1")
+		target_link_libraries(parameters PRIVATE perf px4_layer)
+	else()
+		target_link_libraries(parameters PRIVATE perf tinybson px4_layer)
+	endif()
+
 	target_compile_definitions(parameters PRIVATE -DMODULE_NAME="parameters")
 	target_compile_options(parameters
 		PRIVATE

@@ -79,9 +79,28 @@ inline static int flash_param_import() { return -1; }
 static const char *param_default_file = PX4_ROOTFSDIR"/eeprom/parameters";
 #endif
 
-static char *param_user_file = nullptr;
+// PARAM_SERVER is defined when PX4 is split between two processors
+// and this file handles the functionality of the server.
+// PARAM_CLIENT is defined when PX4 is split between two processors
+// and this file handles the functionality of the client (remote).
+// Do not define either in a monolithic PX4 implementation.
+#if defined(PARAM_SERVER) && defined(PARAM_CLIENT)
+#error Can only define PARAM_SERVER or PARAM_CLIENT but not both
+#endif
+
+// uORB topics needed to keep parameter server and client in sync
+#if defined(PARAM_SERVER)
+#include "param_server.h"
+#endif
+
+#if defined(PARAM_CLIENT)
+#include "param_client.h"
+#endif
 
 #include <px4_platform_common/workqueue.h>
+
+static char *param_user_file = nullptr;
+
 /* autosaving variables */
 static hrt_abstime last_autosave_timestamp = 0;
 static struct work_s autosave_work {};
@@ -107,8 +126,10 @@ UT_array *param_custom_default_values{nullptr};
 const UT_icd param_icd = {sizeof(param_wbuf_s), nullptr, nullptr, nullptr};
 
 /** parameter update topic handle */
+#if !defined(PARAM_CLIENT)
 static orb_advert_t param_topic = nullptr;
 static unsigned int param_instance = 0;
+#endif
 
 // the following implements an RW-lock using 2 semaphores (used as mutexes). It gives
 // priority to readers, meaning a writer could suffer from starvation, but in our use-case
@@ -191,6 +212,14 @@ param_init()
 	param_find_perf = perf_alloc(PC_COUNT, "param: find");
 	param_get_perf = perf_alloc(PC_COUNT, "param: get");
 	param_set_perf = perf_alloc(PC_ELAPSED, "param: set");
+
+#if defined(PARAM_SERVER)
+	param_server_init();
+#endif
+
+#if defined(PARAM_CLIENT)
+	param_client_init();
+#endif
 }
 
 /**
@@ -247,6 +276,8 @@ param_find_changed(param_t param)
 void
 param_notify_changes()
 {
+// The parameter client does not send out notifications. Only the server.
+#if !defined(PARAM_CLIENT)
 	parameter_update_s pup{};
 	pup.instance = param_instance++;
 	pup.get_count = perf_event_count(param_get_perf);
@@ -264,6 +295,7 @@ param_notify_changes()
 	} else {
 		orb_publish(ORB_ID(parameter_update), param_topic, &pup);
 	}
+#endif
 }
 
 static param_t param_find_internal(const char *name, bool notification)
@@ -1108,6 +1140,10 @@ param_get_default_file()
 
 int param_save_default()
 {
+#if defined(PARAM_CLIENT)
+	PX4_ERR("Cannot save parameters to a file on client side");
+	return PX4_ERROR;
+#else
 	int res = PX4_ERROR;
 
 	const char *filename = param_get_default_file();
@@ -1146,7 +1182,12 @@ int param_save_default()
 		PX4_ERR("failed to write parameters to file: %s", filename);
 	}
 
+#if defined(PARAM_SERVER)
+	syncfs(fd);
+#endif
+
 	return res;
+#endif
 }
 
 /**

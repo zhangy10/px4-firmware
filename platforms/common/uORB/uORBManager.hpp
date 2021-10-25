@@ -387,32 +387,28 @@ private: //class methods
 
 #ifdef ORB_COMMUNICATOR
 	/**
-	 * Interface to process a received topic from remote.
+	 * Interface to process a received topic advertisement from remote.
 	 * @param topic_name
 	 * 	This represents the uORB message Name (topic); This message Name should be
 	 * 	globally unique.
-	 * @param isAdvertisement
-	 * 	Represents if the topic has been advertised or is no longer avialable.
 	 * @return
 	 *  0 = success; This means the messages is successfully handled in the
 	 *  	handler.
 	 *  otherwise = failure.
 	 */
-	virtual int16_t process_remote_topic(const char *topic_name, bool isAdvertisement);
+	virtual int16_t process_remote_topic(const char *topic_name);
 
 	/**
 	   * Interface to process a received AddSubscription from remote.
 	   * @param messageName
 	   *  This represents the uORB message Name; This message Name should be
 	   *  globally unique.
-	   * @param msgRate
-	   *  The max rate at which the subscriber can accept the messages.
 	   * @return
 	   *  0 = success; This means the messages is successfully handled in the
 	   *    handler.
 	   *  otherwise = failure.
 	   */
-	virtual int16_t process_add_subscription(const char *messageName, int32_t msgRateInHz);
+	virtual int16_t process_add_subscription(const char *messageName);
 
 	/**
 	 * Interface to process a received control msg to remove subscription

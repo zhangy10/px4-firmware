@@ -5,8 +5,7 @@ include(px4_git)
 # px4_add_git_submodule(TARGET git_cmake_hexagon PATH "${PX4_SOURCE_DIR}/boards/modalai/cmake_hexagon")
 list(APPEND CMAKE_MODULE_PATH
 	"${PX4_SOURCE_DIR}/boards/modalai/rb5-flight"
-# 	"${PX4_SOURCE_DIR}/boards/modalai/cmake_hexagon/toolchain"
- 	)
+	)
 
 set(QC_SOC_TARGET "QRB5165")
 
@@ -17,7 +16,6 @@ set(QC_SOC_TARGET "QRB5165")
 # ARM and DSP processors.
 set(DISABLE_PARAMS_MODULE_SCOPING TRUE)
 
-set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 # add_definitions(-DDEBUG_BUILD)
 add_definitions(-DRELEASE_BUILD)
@@ -35,10 +33,9 @@ add_compile_options(
 add_definitions(
 	-D__PX4_POSIX_RB5
 	-D__PX4_LINUX
-    -DCONFIG_BOARDCTL_RESET
 )
 
-link_directories(${PX4_SOURCE_DIR}/boards/modalai/rb5-flight/lib)
+link_directories(/home ${PX4_SOURCE_DIR}/boards/modalai/rb5-flight/lib)
 
 px4_add_board(
 	PLATFORM posix
@@ -58,6 +55,7 @@ px4_add_board(
 		#lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		#pwm_out_sim
+		px4io
 		qshell/posix
 		#rc_input
         modalai/imu_server

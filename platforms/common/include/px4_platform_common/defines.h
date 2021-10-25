@@ -39,6 +39,7 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include <px4_platform_common/log.h>
 
 /****************************************************************************
@@ -89,11 +90,26 @@ constexpr bool PX4_ISFINITE(double x) { return __builtin_isfinite(x); }
 #define USEC_PER_TICK (1000000/PX4_TICKS_PER_SEC)
 #define USEC2TICK(x) (((x)+(USEC_PER_TICK/2))/USEC_PER_TICK)
 
-__BEGIN_DECLS
+#ifdef __PX4_QURT
+
+// QURT specific
+#  include "dspal_math.h"
+#  define PX4_ROOTFSDIR "."
+#  define PX4_TICKS_PER_SEC 1000L
+
+#else // __PX4_QURT
+
+// All POSIX except QURT.__BEGIN_DECLS
 extern long PX4_TICKS_PER_SEC;
 __END_DECLS
 
+#if defined(__PX4_POSIX_RB5)
+#define PX4_ROOTFSDIR "/home/linaro"
+#else
 #define PX4_ROOTFSDIR "."
+#endif
+
+#endif // __PX4_QURT
 
 #define PX4_STORAGEDIR PX4_ROOTFSDIR
 

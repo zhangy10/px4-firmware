@@ -10,7 +10,7 @@ set(QC_SOC_TARGET "QRB5165")
 
 include(px4_git)
 # px4_add_git_submodule(TARGET git_cmake_hexagon PATH "${PX4_SOURCE_DIR}/boards/modalai/cmake_hexagon")
-list(APPEND CMAKE_MODULE_PATH "${PX4_SOURCE_DIR}/boards/modalai/cmake_hexagon")
+list(APPEND CMAKE_MODULE_PATH "${PX4_SOURCE_DIR}/boards/modalai/rb5-flight")
 
 if ("$ENV{HEXAGON_SDK_ROOT}" STREQUAL "")
 	message(FATAL_ERROR "Enviroment variable HEXAGON_SDK_ROOT must be set")
@@ -18,7 +18,7 @@ else()
 	set(HEXAGON_SDK_ROOT $ENV{HEXAGON_SDK_ROOT})
 endif()
 
-include(toolchain/Toolchain-qurt)
+include(Toolchain-qurt)
 message(STATUS "in qurt.make before qurt_flags.cmake")
 include(qurt_flags)
 message(STATUS "in qurt.make after qurt_flags.cmake")
@@ -30,7 +30,6 @@ set(HEXAGON_SDK_INCLUDES ${HEXAGON_SDK_INCLUDES}
 
 include_directories(${HEXAGON_SDK_INCLUDES})
 
-set(CONFIG_SHMEM "0")
 add_definitions(-DORB_COMMUNICATOR)
 # add_definitions(-DDEBUG_BUILD)
 add_definitions(-DRELEASE_BUILD)

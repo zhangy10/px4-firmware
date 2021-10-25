@@ -167,7 +167,7 @@ public:
 	 *  otherwise = failure.
 	 */
 
-	virtual int16_t process_remote_topic(const char *topic_name, bool isAdvertisement) = 0;
+	virtual int16_t process_remote_topic(const char *topic_name) = 0;
 
 	/**
 	 * Interface to process a received AddSubscription from remote.
@@ -182,7 +182,7 @@ public:
 	 *  otherwise = failure.
 	 */
 
-	virtual int16_t process_add_subscription(const char *messageName, int32_t msgRateInHz) = 0;
+	virtual int16_t process_add_subscription(const char *messageName) = 0;
 
 
 	/**

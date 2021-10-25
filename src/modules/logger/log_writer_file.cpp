@@ -573,6 +573,10 @@ LogWriterFile::LogFileBuffer::LogFileBuffer(size_t log_buffer_size, perf_counter
 LogWriterFile::LogFileBuffer::~LogFileBuffer()
 {
 	if (_fd >= 0) {
+#ifdef __PX4_POSIX
+		// Always sync when closing the file.
+		fsync();
+#endif
 		close(_fd);
 	}
 
@@ -637,6 +641,10 @@ bool LogWriterFile::LogFileBuffer::start_log(const char *filename)
 
 		if (_buffer == nullptr) {
 			PX4_ERR("Can't create log buffer");
+#ifdef __PX4_POSIX
+			// Always sync when closing the file.
+			fsync();
+#endif
 			::close(_fd);
 			_fd = -1;
 			return false;
@@ -679,6 +687,10 @@ void LogWriterFile::LogFileBuffer::close_file()
 	_count = 0;
 
 	if (_fd >= 0) {
+#ifdef __PX4_POSIX
+		// Always sync when closing the file.
+		fsync();
+#endif
 		int res = close(_fd);
 		_fd = -1;
 

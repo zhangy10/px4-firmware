@@ -51,7 +51,11 @@ public:
 	Integrator() = default;
 	~Integrator() = default;
 
+#ifdef __PX4_QURT
+	static constexpr float DT_MIN{1e-37f};
+#else
 	static constexpr float DT_MIN{FLT_MIN};
+#endif
 	static constexpr float DT_MAX{static_cast<float>(UINT16_MAX) * 1e-6f};
 
 	/**

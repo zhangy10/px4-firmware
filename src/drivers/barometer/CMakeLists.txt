@@ -42,3 +42,6 @@ add_subdirectory(maiertek)
 add_subdirectory(ms5611)
 #add_subdirectory(tcbp001ta) # only for users who really need this
 
+if ("${PX4_BOARD}" MATCHES "modalai_rb5-flight")
+  add_subdirectory(icp10100)
+endif()

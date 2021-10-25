@@ -407,21 +407,21 @@ uORBCommunicator::IChannel *uORB::Manager::get_uorb_communicator()
 	return _comm_channel;
 }
 
-int16_t uORB::Manager::process_remote_topic(const char *topic_name, bool isAdvertisement)
+int16_t uORB::Manager::process_remote_topic(const char *topic_name)
 {
-	int16_t rc = 0;
+	// int16_t rc = 0;
+	//
+	// if (isAdvertisement) {
+	// 	_remote_topics.insert(topic_name);
+	//
+	// } else {
+	// 	_remote_topics.erase(topic_name);
+	// }
 
-	if (isAdvertisement) {
-		_remote_topics.insert(topic_name);
-
-	} else {
-		_remote_topics.erase(topic_name);
-	}
-
-	return rc;
+	return 0;
 }
 
-int16_t uORB::Manager::process_add_subscription(const char *messageName, int32_t msgRateInHz)
+int16_t uORB::Manager::process_add_subscription(const char *messageName)
 {
 	PX4_DEBUG("entering Manager_process_add_subscription: name: %s", messageName);
 
@@ -436,10 +436,10 @@ int16_t uORB::Manager::process_add_subscription(const char *messageName, int32_t
 
 		if (node == nullptr) {
 			PX4_DEBUG("DeviceNode(%s) not created yet", messageName);
-
-		} else {
-			// node is present.
-			node->process_add_subscription(msgRateInHz);
+		// 
+		// } else {
+		// 	// node is present.
+		// 	node->process_add_subscription(msgRateInHz);
 		}
 
 	} else {

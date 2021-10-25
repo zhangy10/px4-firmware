@@ -47,6 +47,11 @@ endif()
 
 target_link_libraries(px4 PRIVATE uORB)
 
+if ("${PX4_BOARD}" MATCHES "modalai_rb5-flight")
+	target_link_libraries(px4 PRIVATE fc_sensor)
+endif()
+
+
 #=============================================================================
 # install
 #
