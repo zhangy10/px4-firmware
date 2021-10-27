@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.1.8alpha
+
+- Added more default parameters. They are set up for indoor flights
+
 ## 1.1.7alpha
 
 - Completed the mechanism to allow sending debug messages from SLPI to Apps for logging
