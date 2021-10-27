@@ -22,6 +22,10 @@
 ## 1.1.8alpha
 
 - Added more default parameters. They are set up for indoor flights
+- Removed hard-coded baud rate configuration of the gps. It will now auto-detect the rate.
+- Enabled the LED on the GPS unit
+- Added a new feature to allow choice of QGC IP address via configuration file
+- Auto detect presence of M0065 (PX4IO). Start px4io if detected, spektrum rc driver otherwise
 
 ## 1.1.7alpha
 
