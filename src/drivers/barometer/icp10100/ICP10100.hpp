@@ -72,14 +72,14 @@ private:
     /* data structure to hold pressure sensor related parameters */
     struct inv_invpres {
         uint32_t min_delay_us;
-        uint8_t pressure_en;
-        uint8_t temperature_en;
-        double sensor_constants[NUM_OTP_VALUES]; // OTP values
-        double p_Pa_calib[3];
-        double LUT_lower;
-        double LUT_upper;
-        double quadr_factor;
-        double offst_factor;
+        uint8_t  pressure_en;
+        uint8_t  temperature_en;
+        int16_t  sensor_constants[NUM_OTP_VALUES]; // OTP values
+        float    p_Pa_calib[3];
+        float    LUT_lower;
+        float    LUT_upper;
+        float    quadr_factor;
+        float    offst_factor;
     } sensor_params;
 
 	void start();
@@ -96,10 +96,10 @@ private:
 
     void CalculatePressure(int32_t raw_pressure, int32_t raw_temperature);
 
-    void calculate_conversion_constants(double *p_Pa, double *p_LUT, double *out);
+    void calculate_conversion_constants(float *p_Pa, float *p_LUT, float *out);
 
-    double pressure;
-    double temperature;
+    float pressure;
+    float temperature;
 
 	PX4Barometer _px4_barometer;
 

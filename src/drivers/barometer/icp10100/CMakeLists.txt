@@ -35,6 +35,7 @@ px4_add_module(
 	MAIN icp10100
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
+		-Wno-double-promotion
 	SRCS
 		ICP10100.hpp
 		ICP10100.cpp

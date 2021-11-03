@@ -80,8 +80,8 @@ int ICP10100::read_otp_from_i2c() {
         for (int i = 0; i < NUM_OTP_VALUES; i++) {
             if (SendCommand(ICP10100_READ_OTP_CMD) == PX4_OK) {
                 if (ReadData(data_read, 3) == PX4_OK) {
-                    int16_t int_tmp = (int16_t)(data_read[0] << 8 | data_read[1]);
-                    sensor_params.sensor_constants[i] = int_tmp;
+                    sensor_params.sensor_constants[i] = (int16_t)(data_read[0] << 8 | data_read[1]);
+										// PX4_INFO("OTP %d: %d", i, sensor_params.sensor_constants[i]);
                     // TODO: Check CRC value in third byte
                 } else {
                     PX4_ERR("%s ReadData failed", __FUNCTION__);
@@ -108,13 +108,13 @@ int ICP10100::init()
 	}
 
     if (read_otp_from_i2c() == PX4_OK) {
-        sensor_params.p_Pa_calib[0] = 45000.0;
-        sensor_params.p_Pa_calib[1] = 80000.0;
-        sensor_params.p_Pa_calib[2] = 105000.0;
-        sensor_params.LUT_lower = 3.5 * (1 << 20);
-        sensor_params.LUT_upper = 11.5 * (1 << 20);
-        sensor_params.quadr_factor = 1 / 16777216.0;
-        sensor_params.offst_factor = 2048.0;
+        sensor_params.p_Pa_calib[0] = 45000.0f;
+        sensor_params.p_Pa_calib[1] = 80000.0f;
+        sensor_params.p_Pa_calib[2] = 105000.0f;
+        sensor_params.LUT_lower = 3.5f * (1 << 20);
+        sensor_params.LUT_upper = 11.5f * (1 << 20);
+        sensor_params.quadr_factor = 1 / 16777216.0f;
+        sensor_params.offst_factor = 2048.0f;
     } else {
 		PX4_ERR("read_otp_from_i2c failed");
 		return PX4_ERROR;
@@ -259,21 +259,27 @@ int ICP10100::measure()
 
 // Calculation code comes from the icp10100 data sheet
 void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) {
-    double t;
-    double s1, s2, s3;
-    double in[3];
-    double out[3];
-    double A, B, C;
+    float t;
+    float s1, s2, s3;
+    float in[3];
+    float out[3];
+    float A, B, C;
 
-    t = (double)(raw_temperature - 32768);
+		// PX4_INFO("Raw pressure: %d raw temperature: %d", raw_pressure, raw_temperature);
 
-    s1 = sensor_params.LUT_lower + (double)(sensor_params.sensor_constants[0] * t * t) * sensor_params.quadr_factor;
-    s2 = sensor_params.offst_factor * sensor_params.sensor_constants[3] + (double) (sensor_params.sensor_constants[1] * t * t) * sensor_params.quadr_factor;
-    s3 = sensor_params.LUT_upper + (double)(sensor_params.sensor_constants[2] * t * t) * sensor_params.quadr_factor;
+    t = raw_temperature - 32768;
+
+		// PX4_INFO("t: %f ", t);
+
+    s1 = sensor_params.LUT_lower + (float)(sensor_params.sensor_constants[0] * t * t) * sensor_params.quadr_factor;
+    s2 = sensor_params.offst_factor * sensor_params.sensor_constants[3] + (float) (sensor_params.sensor_constants[1] * t * t) * sensor_params.quadr_factor;
+    s3 = sensor_params.LUT_upper + (float)(sensor_params.sensor_constants[2] * t * t) * sensor_params.quadr_factor;
 
     in[0] = s1;
     in[1] = s2;
     in[2] = s3;
+
+		// PX4_INFO("In: %f %f %f", in[0], in[1], in[2]);
 
     calculate_conversion_constants(sensor_params.p_Pa_calib, in, out);
 
@@ -281,14 +287,21 @@ void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) 
     B = out[1];
     C = out[2];
 
-    pressure = (A + B / (C + (double) raw_pressure)) / 100.0;
-    temperature = -45.0 + 175.0 / 65536.0 * (double) raw_temperature;
+		// PX4_INFO("A: %f, B: %f, C: %f", A, B, C);
+
+		pressure = (A + B / (C + raw_pressure)) / 100.0;
+
+		// PX4_INFO("Pressure: %f", (A + B / (C + raw_pressure)) / 100.0);
+
+    temperature = 175.0 / 65536.0 * (float) raw_temperature - 45.0;
+
+		// PX4_INFO("Temperature: %f", temperature);
 }
 
 // p_Pa -- List of 3 values corresponding to applied pressure in Pa
 // p_LUT -- List of 3 values corresponding to the measured p_LUT values at the applied pressures.
-void ICP10100::calculate_conversion_constants(double *p_Pa, double *p_LUT, double *out) {
-    double A, B, C;
+void ICP10100::calculate_conversion_constants(float *p_Pa, float *p_LUT, float *out) {
+    float A, B, C;
     C = (p_LUT[0] * p_LUT[1] * (p_Pa[0] - p_Pa[1]) +
          p_LUT[1] * p_LUT[2] * (p_Pa[1] - p_Pa[2]) +
          p_LUT[2] * p_LUT[0] * (p_Pa[2] - p_Pa[0])) /
