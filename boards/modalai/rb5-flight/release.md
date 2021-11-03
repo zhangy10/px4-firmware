@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.1.9alpha
+
+- Updated barometer driver calculations to exactly match original TDK driver for icp10100
+
 ## 1.1.8alpha
 
 - Added more default parameters. They are set up for indoor flights
