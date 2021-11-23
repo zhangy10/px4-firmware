@@ -249,12 +249,15 @@ RoverPositionControl::control_vio(const position_setpoint_triplet_s &pos_sp_trip
 			}
 		}
 
-		float dist_target =  0;
 
-        //float dist_target = get_distance_to_next_waypoint_vio(
-        //							(double)current_position(0), (double)current_position(1),
-         //                           (double)_curr_wp(0), (double)_curr_wp(1),
-	//								0,0);
+#ifdef EC_MOD
+        	float dist_target = get_distance_to_next_waypoint_vio(
+        							(double)current_position(0), (double)current_position(1),
+                                    (double)_curr_wp(0), (double)_curr_wp(1),
+									0,0);
+#else
+		float dis_target = 0.1;
+#endif
 
 		float smooth_accel_multipler = 1.0;
 
@@ -328,9 +331,13 @@ RoverPositionControl::control_vio(const position_setpoint_triplet_s &pos_sp_trip
 				_act_controls.control[actuator_controls_s::INDEX_YAW] = 0.0f;
 				_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
 
+#ifdef EC_MOD
                 float dist_between_waypoints = get_distance_to_next_waypoint_vio(
                 								(double)_prev_wp(0), (double)_prev_wp(1),
 												(double)_curr_wp(0), (double)_curr_wp(1),0,0);
+#else
+		float dis_target = 0.1;
+#endif
 
                 if (dist_between_waypoints > 0) {
                         _pos_ctrl_state = GOTO_WAYPOINT; // A new waypoint has arrived go to it
