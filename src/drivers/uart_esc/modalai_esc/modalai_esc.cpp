@@ -701,7 +701,8 @@ void ModalaiEsc::updateLeds(vehicle_control_mode_s mode, led_control_s control)
 bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 			       unsigned num_outputs, unsigned num_control_groups_updated)
 {
-	if (num_outputs != MODALAI_ESC_OUTPUT_CHANNELS) {
+	if (num_outputs != MODALAI_ESC_OUTPUT_CHANNELS && num_outputs != 2) {
+		PX4_ERR("num_outputs != MODALAI_ESC_OUTPUT_CHANNELS %d %d",num_outputs, MODALAI_ESC_OUTPUT_CHANNELS );
 		return false;
 	}
 

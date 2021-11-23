@@ -77,6 +77,7 @@ px4_add_romfs_files(
 	quad_x.main.mix
 	quad_x_vtol.main.mix
 	rover_diff_and_servo.main.mix
+	rover_zero2.main.mix
 	rover_generic.main.mix
 	standard_vtol_hitl.main.mix
 	TF-AutoG2.main.mix

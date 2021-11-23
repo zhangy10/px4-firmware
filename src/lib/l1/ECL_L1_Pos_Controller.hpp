@@ -146,6 +146,9 @@ public:
 	void navigate_waypoints(const matrix::Vector2f &vector_A, const matrix::Vector2f &vector_B,
 				const matrix::Vector2f &vector_curr_position, const matrix::Vector2f &ground_speed);
 
+	void navigate_waypoints_local(const matrix::Vector2f &vector_A, const matrix::Vector2f &vector_B,
+				const matrix::Vector2f &vector_curr_position, const matrix::Vector2f &ground_speed, float byaw);
+
 	/**
 	 * Navigate on an orbit around a loiter waypoint.
 	 *
@@ -223,6 +226,7 @@ private:
 	float _roll_setpoint{0.0f};	///< current roll angle setpoint in radians
 	float _roll_slew_rate{0.0f};	///< roll angle setpoint slew rate limit in rad/s
 	float _dt{0};				///< control loop time in seconds
+	float _last_eta{0.f};
 
 	/**
 	 * Convert a 2D vector from WGS84 to planar coordinates.
@@ -242,6 +246,9 @@ private:
 	 *
 	 */
 	void update_roll_setpoint();
+
+	float prevent_indecision(float eta, float body_yaw);
+
 
 };
 

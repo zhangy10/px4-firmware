@@ -77,6 +77,10 @@ _control_latency_perf(perf_alloc(PC_ELAPSED, "control latency"))
 	uORB::Publication<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
 	test_motor_pub.publish(test);
 	_motor_test.test_motor_sub.subscribe();
+
+	//MODALAI TODO, fix for ROVER as it expects the throttle range to be -1 to 1 instead of 0-1 for UAVCAN
+	param_get(param_find("SYS_AUTOSTART"), &_mixer_frame_type);
+
 }
 
 MixingOutput::~MixingOutput()
@@ -330,6 +334,8 @@ bool MixingOutput::update()
 {
 	if (!_mixers) {
 		handleCommands();
+		PX4_ERR("invalid mixer!");
+
 		// do nothing until we have a valid mixer
 		return false;
 	}
@@ -361,6 +367,8 @@ bool MixingOutput::update()
 				setAndPublishActuatorOutputs(num_motor_test, actuator_outputs);
 			}
 
+			PX4_ERR("under motor testing");
+
 			handleCommands();
 			return true;
 		}
@@ -379,6 +387,7 @@ bool MixingOutput::update()
 		if (_groups_subscribed & (1 << i)) {
 			if (_control_subs[i].copy(&_controls[i])) {
 				n_updates++;
+				PX4_ERR("update control values");
 			}
 
 			/* During ESC calibration, we overwrite the throttle value. */
@@ -400,38 +409,88 @@ bool MixingOutput::update()
 	float outputs[MAX_ACTUATORS] {};
 	const unsigned mixed_num_outputs = _mixers->mix(outputs, _max_num_outputs);
 
-	/* the output limit call takes care of out of band errors, NaN and constrains */
-	output_limit_calc(_throttle_armed, armNoThrottle(), mixed_num_outputs, _reverse_output_mask,
-			  _disarmed_value, _min_value, _max_value, outputs, _current_output_value, &_output_limit);
+	if (_mixer_frame_type == 50005)
+	{
+		PX4_ERR("mix values");
 
-	/* overwrite outputs in case of force_failsafe with _failsafe_value values */
-	if (_armed.force_failsafe) {
-		for (size_t i = 0; i < mixed_num_outputs; i++) {
-			_current_output_value[i] = _failsafe_value[i];
-		}
-	}
+		output_limit_calc_uavcan(_throttle_armed, armNoThrottle(), mixed_num_outputs, _reverse_output_mask,
+				  _disarmed_value, _min_value, _max_value, outputs, _uavcan_current_output_value, &_output_limit);
 
-	bool stop_motors = mixed_num_outputs == 0 || !_throttle_armed;
-
-	/* overwrite outputs in case of lockdown or parachute triggering with disarmed values */
-	if (_armed.lockdown || _armed.manual_lockdown) {
-		for (size_t i = 0; i < mixed_num_outputs; i++) {
-			_current_output_value[i] = _disarmed_value[i];
+		/* overwrite outputs in case of force_failsafe with _failsafe_value values */
+		if (_armed.force_failsafe) {
+			for (size_t i = 0; i < mixed_num_outputs; i++) {
+				_uavcan_current_output_value[i] = _failsafe_value[i];
+			}
 		}
 
-		stop_motors = true;
+		bool stop_motors = mixed_num_outputs == 0 || !_throttle_armed;
+
+		/* overwrite outputs in case of lockdown or parachute triggering with disarmed values */
+		if (_armed.lockdown || _armed.manual_lockdown) {
+			for (size_t i = 0; i < mixed_num_outputs; i++) {
+				_uavcan_current_output_value[i] = _disarmed_value[i];
+			}
+
+			stop_motors = true;
+		}
+
+		/* apply _param_mot_ordering UAVCAN NO SUPPORT FOR BETAFLIGHT FOR NOW*/
+		//reorderOutputs(_uavcan_current_output_value);
+
+		/* now return the outputs to the driver */
+		if (_interface.updateOutputsInt16(stop_motors, _uavcan_current_output_value, mixed_num_outputs, n_updates)) {
+			actuator_outputs_s actuator_outputs{};
+			setAndPublishActuatorOutputs(mixed_num_outputs, actuator_outputs);
+
+			publishMixerStatus(actuator_outputs);
+			updateLatencyPerfCounter(actuator_outputs);
+		}
+		else
+		{
+			PX4_ERR("can't _interface.updateOutputsInt16");
+
+		}
+
 	}
+	else
+	{
+		/* the output limit call takes care of out of band errors, NaN and constrains */
+		output_limit_calc(_throttle_armed, armNoThrottle(), mixed_num_outputs, _reverse_output_mask,
+				  _disarmed_value, _min_value, _max_value, outputs, _current_output_value, &_output_limit);
 
-	/* apply _param_mot_ordering */
-	reorderOutputs(_current_output_value);
+		/* overwrite outputs in case of force_failsafe with _failsafe_value values */
+		if (_armed.force_failsafe) {
+			for (size_t i = 0; i < mixed_num_outputs; i++) {
+				_current_output_value[i] = _failsafe_value[i];
+			}
+		}
 
-	/* now return the outputs to the driver */
-	if (_interface.updateOutputs(stop_motors, _current_output_value, mixed_num_outputs, n_updates)) {
-		actuator_outputs_s actuator_outputs{};
-		setAndPublishActuatorOutputs(mixed_num_outputs, actuator_outputs);
+		bool stop_motors = mixed_num_outputs == 0 || !_throttle_armed;
 
-		publishMixerStatus(actuator_outputs);
-		updateLatencyPerfCounter(actuator_outputs);
+		/* overwrite outputs in case of lockdown or parachute triggering with disarmed values */
+		if (_armed.lockdown || _armed.manual_lockdown) {
+			for (size_t i = 0; i < mixed_num_outputs; i++) {
+				_current_output_value[i] = _disarmed_value[i];
+			}
+
+			stop_motors = true;
+		}
+
+		/* apply _param_mot_ordering */
+		reorderOutputs(_current_output_value);
+
+		/* now return the outputs to the driver */
+		if (_interface.updateOutputs(stop_motors, _current_output_value, mixed_num_outputs, n_updates)) {
+			actuator_outputs_s actuator_outputs{};
+			setAndPublishActuatorOutputs(mixed_num_outputs, actuator_outputs);
+
+			publishMixerStatus(actuator_outputs);
+			updateLatencyPerfCounter(actuator_outputs);
+		}
+		else
+		{
+			PX4_ERR("can't _interface.updateOutputsInt");
+		}
 	}
 
 	handleCommands();
@@ -442,6 +501,8 @@ bool MixingOutput::update()
 void
 MixingOutput::setAndPublishActuatorOutputs(unsigned num_outputs, actuator_outputs_s &actuator_outputs)
 {
+	PX4_ERR("MixingOutput::setAndPublishActuatorOutputs");
+
 	actuator_outputs.noutputs = num_outputs;
 
 	for (size_t i = 0; i < num_outputs; ++i) {
@@ -586,6 +647,8 @@ int MixingOutput::loadMixer(const char *buf, unsigned len)
 		_groups_required = 0;
 		return -ENOMEM;
 	}
+
+	PX4_ERR(">>> mixer load with %s", buf);
 
 	int ret = _mixers->load_from_buf(controlCallback, (uintptr_t)this, buf, len);
 

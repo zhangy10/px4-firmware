@@ -286,3 +286,28 @@ PARAM_DEFINE_FLOAT(GND_WHEEL_BASE, 2.0f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_MAX_ANG, 0.7854f);
+
+/**
+ * Radius.
+ *
+ * @unit rad
+ * @min 0.0
+ * @max 10.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_NAV_RAD, 0.1f);
+
+
+/**
+ * Turn speed.
+ *
+ * @unit rad
+ * @min 0.0
+ * @max 1.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_TURN_SPD, 0.9f);

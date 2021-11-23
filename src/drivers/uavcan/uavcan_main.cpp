@@ -672,6 +672,10 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 	param_get(param_find("UAVCAN_ESC_IDLT"), &_idle_throttle_when_armed_param);
 	enable_idle_throttle_when_armed(true);
 
+	int tmp_test_frame = 0;
+	param_get(param_find("SYS_AUTOSTART"), &tmp_test_frame);
+	PX4_INFO("Frame Type used for mixer: %d", tmp_test_frame);
+
 	/*  Start the Node   */
 	return _node.start();
 }
@@ -913,6 +917,15 @@ bool UavcanMixingInterface::updateOutputs(bool stop_motors, uint16_t outputs[MAX
 	_esc_controller.update_outputs(stop_motors, outputs, num_outputs);
 	return true;
 }
+
+
+bool UavcanMixingInterface::updateOutputsInt16(bool stop_motors, int16_t outputs[MAX_ACTUATORS], unsigned num_outputs,
+		unsigned num_control_groups_updated)
+{
+	_esc_controller.update_outputs_int16(stop_motors, outputs, num_outputs);
+	return true;
+}
+
 
 void UavcanMixingInterface::Run()
 {

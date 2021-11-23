@@ -76,7 +76,7 @@ px4_add_board(
 		mc_hover_thrust_estimator
 		muorb/slpi
 		#rc_update
-		#rover_pos_control
+		rover_pos_control
 		sensors
 		# temperature_compensation
 		# vmount

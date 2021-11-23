@@ -76,6 +76,10 @@ public:
 	virtual bool updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 				   unsigned num_outputs, unsigned num_control_groups_updated) = 0;
 
+	virtual bool updateOutputsInt16(bool stop_motors, int16_t outputs[MAX_ACTUATORS],
+				   unsigned num_outputs, unsigned num_control_groups_updated) { return false; }; // non pure!
+
+
 	/** called whenever the mixer gets updated/reset */
 	virtual void mixerChanged() {};
 };
@@ -233,6 +237,11 @@ private:
 	uint16_t _min_value[MAX_ACTUATORS] {};
 	uint16_t _max_value[MAX_ACTUATORS] {};
 	uint16_t _current_output_value[MAX_ACTUATORS] {}; ///< current output values (reordered)
+
+	// modalai
+	int16_t _uavcan_current_output_value[MAX_ACTUATORS] {}; ///< current output values (reordered)
+	int32_t _mixer_frame_type = 0;
+
 	uint16_t _reverse_output_mask{0}; ///< reverses the interval [min, max] -> [max, min], NOT motor direction
 	output_limit_t _output_limit;
 

@@ -69,11 +69,18 @@ typedef struct {
 	bool ramp_up; ///< if true, motors will ramp up from disarmed to min_output after arming
 } output_limit_t;
 
+
+
 __EXPORT void output_limit_init(output_limit_t *limit);
 
 __EXPORT void output_limit_calc(const bool armed, const bool pre_armed, const unsigned num_channels,
 				const uint16_t reverse_mask, const uint16_t *disarmed_output,
 				const uint16_t *min_output, const uint16_t *max_output,
 				const float *output, uint16_t *effective_output, output_limit_t *limit);
+
+__EXPORT void output_limit_calc_uavcan(const bool armed, const bool pre_armed, const unsigned num_channels,
+				const uint16_t reverse_mask, const uint16_t *disarmed_output,
+				const uint16_t *min_output, const uint16_t *max_output,
+				const float *output, int16_t *effective_output, output_limit_t *limit);
 
 __END_DECLS
