@@ -256,7 +256,7 @@ RoverPositionControl::control_vio(const position_setpoint_triplet_s &pos_sp_trip
                                     (double)_curr_wp(0), (double)_curr_wp(1),
 									0,0);
 #else
-		float dis_target = 0.1;
+		float dist_target = 0.1;
 #endif
 
 		float smooth_accel_multipler = 1.0;
@@ -336,7 +336,7 @@ RoverPositionControl::control_vio(const position_setpoint_triplet_s &pos_sp_trip
                 								(double)_prev_wp(0), (double)_prev_wp(1),
 												(double)_curr_wp(0), (double)_curr_wp(1),0,0);
 #else
-		float dis_target = 0.1;
+		float dist_between_waypoints = 0.1;
 #endif
 
                 if (dist_between_waypoints > 0) {
