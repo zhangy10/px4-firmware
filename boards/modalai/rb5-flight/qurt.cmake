@@ -62,6 +62,9 @@ px4_add_board(
         imu/invensense/icm42688p
 				lights/rgbled_ncp5623c
 		pwm_out_sim
+		spektrum_rc
+		gps
+		uart_loopback
 	MODULES
 		attitude_estimator_q
 		# commander

@@ -45,6 +45,10 @@
 #include <poll.h>
 #endif
 
+#ifdef __PX4_QURT
+#include <drivers/device/qurt/uart.h>
+#endif
+
 #include <termios.h>
 
 #include <lib/parameters/param.h>
@@ -344,7 +348,11 @@ int GPS::callback(GPSCallbackType type, void *data1, int data2, void *user)
 	case GPSCallbackType::writeDeviceData:
 		gps->dumpGpsData((uint8_t *)data1, (size_t)data2, true);
 
+#ifdef __PX4_QURT
+	    return qurt_uart_write(gps->_serial_fd, (const char*) data1, (size_t) data2);
+#else
 		return write(gps->_serial_fd, data1, (size_t)data2);
+#endif
 
 	case GPSCallbackType::setBaudrate:
 		return gps->setBaudrate(data2);
@@ -358,7 +366,9 @@ int GPS::callback(GPSCallbackType type, void *data1, int data2, void *user)
 		break;
 
 	case GPSCallbackType::setClock:
+#ifndef __PX4_QURT
 		px4_clock_settime(CLOCK_REALTIME, (timespec *)data1);
+#endif
 		break;
 	}
 
@@ -431,7 +441,12 @@ int GPS::pollOrRead(uint8_t *buf, size_t buf_length, int timeout)
 	/* For QURT, just use read for now, since this doesn't block, we need to slow it down
 	 * just a bit. */
 	px4_usleep(10000);
-	return ::read(_serial_fd, buf, buf_length);
+
+	#define ASYNC_UART_READ_WAIT_US 2000
+    // The UART read on SLPI is via an asynchronous service so specify a timeout
+    // for the return. The driver will poll periodically until the read comes in
+    // so this may block for a while. However, it will timeout if no read comes in.
+    return qurt_uart_read(_serial_fd, (char*) buf, buf_length, ASYNC_UART_READ_WAIT_US);
 #endif
 }
 
@@ -482,6 +497,7 @@ bool GPS::injectData(uint8_t *data, size_t len)
 
 int GPS::setBaudrate(unsigned baud)
 {
+#ifndef __PX4_QURT
 	/* process baud rate */
 	int speed;
 
@@ -566,6 +582,7 @@ int GPS::setBaudrate(unsigned baud)
 		GPS_ERR("ERR: %d (tcsetattr)", termios_state);
 		return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -639,7 +656,11 @@ GPS::run()
 {
 	if (!_fake_gps) {
 		/* open the serial port */
+#ifdef __PX4_QURT
+		_serial_fd = qurt_uart_open("6", 115200);
+#else
 		_serial_fd = ::open(_port, O_RDWR | O_NOCTTY);
+#endif
 
 		if (_serial_fd < 0) {
 			PX4_ERR("GPS: failed to open serial port: %s err: %d", _port, errno);
@@ -905,7 +926,9 @@ GPS::run()
 	PX4_INFO("exiting");
 
 	if (_serial_fd >= 0) {
+#ifndef __PX4_QURT
 		::close(_serial_fd);
+#endif
 		_serial_fd = -1;
 	}
 }

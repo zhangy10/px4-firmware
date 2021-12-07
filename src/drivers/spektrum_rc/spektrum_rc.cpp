@@ -49,6 +49,10 @@
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_hrt.h>
 
+#ifdef __PX4_QURT
+#include <drivers/device/qurt/uart.h>
+#endif
+
 #include <uORB/uORB.h>
 #include <uORB/topics/input_rc.h>
 
@@ -83,7 +87,7 @@ void task_main(int argc, char *argv[])
 	int ch;
 	int myoptind = 1;
 	const char *myoptarg = NULL;
-    bool verbose = false;
+    bool verbose = true;
 
 	while ((ch = px4_getopt(argc, argv, "vd:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
@@ -119,6 +123,7 @@ void task_main(int argc, char *argv[])
     uint32_t loop_counter = 0;
     bool     print_msg = false;
     bool     first_full_frame_received = false;
+	int newbytes = 0;
 
 	// Main loop
 	while (!_task_should_exit) {
@@ -126,7 +131,15 @@ void task_main(int argc, char *argv[])
         if (((loop_counter % 20) == 0) && verbose) print_msg = true;
         loop_counter++;
 
-		int newbytes = read(uart_fd, &rx_buf[0], sizeof(rx_buf));
+#ifdef __PX4_QURT
+#define ASYNC_UART_READ_WAIT_US 2000
+	    // The UART read on SLPI is via an asynchronous service so specify a timeout
+	    // for the return. The driver will poll periodically until the read comes in
+	    // so this may block for a while. However, it will timeout if no read comes in.
+	    newbytes =  qurt_uart_read(uart_fd, (char*) &rx_buf[0], sizeof(rx_buf), ASYNC_UART_READ_WAIT_US);
+#else
+		newbytes = read(uart_fd, &rx_buf[0], sizeof(rx_buf));
+#endif
 
 		if (newbytes <= 0) {
 			if (print_msg) PX4_INFO("Spektrum RC: Read no bytes from UART");

@@ -188,6 +188,7 @@ sbus_config(int sbus_fd, bool singlewire)
 	ret = 0;
 #else
 
+#ifndef __PX4_QURT
 	if (sbus_fd >= 0) {
 		struct termios t;
 
@@ -205,9 +206,9 @@ sbus_config(int sbus_fd, bool singlewire)
 			ioctl(sbus_fd, TIOCSSINGLEWIRE, SER_SINGLEWIRE_ENABLED);
 #endif
 		}
-
 		ret = 0;
 	}
+#endif
 
 #endif
 	/* initialise the decoder */

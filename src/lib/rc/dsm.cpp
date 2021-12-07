@@ -54,6 +54,10 @@
 #include "common_rc.h"
 #include <drivers/drv_hrt.h>
 
+#ifdef __PX4_QURT
+#include <drivers/device/qurt/uart.h>
+#endif
+
 #include <include/containers/Bitset.hpp>
 
 #if defined(__PX4_NUTTX)
@@ -362,7 +366,7 @@ int dsm_config(int fd)
 	int ret = -1;
 
 	if (fd >= 0) {
-
+#ifndef __PX4_QURT
     	struct termios uart_config;
 
     	int termios_state;
@@ -420,6 +424,7 @@ int dsm_config(int fd)
     	   PX4_ERR("ERR: %d (tcsetattr)", termios_state);
     		return -1;
     	}
+#endif
 
 		/* initialise the decoder */
 		dsm_partial_frame_count = 0;
@@ -456,7 +461,11 @@ void dsm_proto_init()
 int dsm_init(const char *device)
 {
 	if (dsm_fd < 0) {
+#ifdef __PX4_QURT
+		dsm_fd = qurt_uart_open("7", 115200);
+#else
 		dsm_fd = open(device, O_RDWR | O_NONBLOCK);
+#endif
 	}
 
     if (dsm_fd < 0) {
@@ -483,9 +492,11 @@ void dsm_deinit()
 	SPEKTRUM_POWER_PASSIVE();
 #endif
 
+#ifndef __PX4_QURT
 	if (dsm_fd >= 0) {
 		close(dsm_fd);
 	}
+#endif
 
 	dsm_fd = -1;
 }
