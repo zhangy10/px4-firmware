@@ -548,5 +548,6 @@ void CollisionPrevention::_publishVehicleCmdDoLoiter()
 	command.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
 
 	// publish the vehicle command
+	PX4_ERR("CollisionPrevention::_publishVehicleCmdDoLoiter");
 	_vehicle_command_pub.publish(command);
 }

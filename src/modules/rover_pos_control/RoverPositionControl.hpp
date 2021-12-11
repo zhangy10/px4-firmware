@@ -177,13 +177,15 @@ private:
 		(ParamFloat<px4::params::GND_THR_MAX>) _param_throttle_max,
 		(ParamFloat<px4::params::GND_THR_CRUISE>) _param_throttle_cruise,
 
+		(ParamFloat<px4::params::GND_IMU_DLY>) _param_imu_delay,
+
 		(ParamFloat<px4::params::GND_WHEEL_BASE>) _param_wheel_base,
 		(ParamFloat<px4::params::GND_MAX_ANG>) _param_max_turn_angle,
 		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad	/**< loiter radius for Rover */
 	)
 
 	bool _skid_steer_turn_request = false;
-	//bool _skid_steer_turn_complete = false;
+	bool _skid_steer_turn_complete = false;
 	int32_t _frame_type  = 0;
 
 	double wrap_180(double x);

@@ -311,3 +311,16 @@ PARAM_DEFINE_FLOAT(GND_NAV_RAD, 0.1f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_TURN_SPD, 0.9f);
+
+/**
+ * Distance from front axle to rear axle
+ *
+ *
+ * @unit m
+ * @min 0.0
+ * @decimal 3
+ * @increment 0.0001
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_IMU_DLY, 0.001f);
+

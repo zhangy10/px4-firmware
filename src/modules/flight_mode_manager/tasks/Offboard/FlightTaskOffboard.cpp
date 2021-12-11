@@ -68,6 +68,7 @@ bool FlightTaskOffboard::update()
 	// reset setpoint for every loop
 	_resetSetpoints();
 
+
 	_sub_triplet_setpoint.update();
 
 	if (!_sub_triplet_setpoint.get().current.valid) {

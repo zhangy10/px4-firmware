@@ -529,6 +529,10 @@ Commander::handle_command(const vehicle_command_s &cmd)
 			// the command VEHICLE_CMD_COMPONENT_ARM_DISARM should be used
 			// instead according to the latest mavlink spec.
 
+			PX4_INFO("Command, base: %d  custom %d sub: %d",
+					base_mode, custom_main_mode, custom_sub_mode);
+
+
 			if (base_mode & VEHICLE_MODE_FLAG_CUSTOM_MODE_ENABLED) {
 				/* use autopilot-specific mode */
 				if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_MANUAL) {
@@ -608,6 +612,7 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_STAB, _status_flags, &_internal_state);
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_OFFBOARD) {
+
 					reset_posvel_validity();
 
 					/* OFFBOARD */
@@ -1912,6 +1917,8 @@ Commander::run()
 		const auto prev_mission_instance_count = _mission_result_sub.get().instance_count;
 
 		if (_mission_result_sub.update()) {
+			PX4_ERR("Mission info updated");
+
 			const mission_result_s &mission_result = _mission_result_sub.get();
 
 			// if mission_result is valid for the current mission
@@ -2975,6 +2982,8 @@ Commander::set_main_state_rc()
 	if (_manual_control_switches.offboard_switch == manual_control_switches_s::SWITCH_POS_ON) {
 		res = main_state_transition(_status, commander_state_s::MAIN_STATE_OFFBOARD, _status_flags, &_internal_state);
 
+		PX4_WARN("Going to OFFBOARD MDOE");
+
 		if (res == TRANSITION_DENIED) {
 			print_reject_mode("OFFBOARD");
 			/* mode rejected, continue to evaluate the main system mode */
@@ -3379,6 +3388,7 @@ Commander::update_control_mode()
 
 	switch (_status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
+
 		control_mode.flag_control_manual_enabled = true;
 		control_mode.flag_control_rates_enabled = stabilization_required();
 		control_mode.flag_control_attitude_enabled = stabilization_required();
@@ -3494,11 +3504,9 @@ Commander::update_control_mode()
 
 			control_mode.flag_control_acceleration_enabled = !offboard_control_mode.ignore_acceleration_force &&
 					!_status.in_transition_mode;
-
 			control_mode.flag_control_velocity_enabled = (!offboard_control_mode.ignore_velocity ||
 					!offboard_control_mode.ignore_position) && !_status.in_transition_mode &&
 					!control_mode.flag_control_acceleration_enabled;
-
 			control_mode.flag_control_climb_rate_enabled = (!offboard_control_mode.ignore_velocity ||
 					!offboard_control_mode.ignore_position);
 
@@ -4122,8 +4130,10 @@ Commander::offboard_control_update()
 		}
 	}
 
+	float dt = hrt_elapsed_time(&offboard_control_mode.timestamp);
+
 	_offboard_available.set_state_and_update(
-		hrt_elapsed_time(&offboard_control_mode.timestamp) < _param_com_of_loss_t.get() * 1e6f,
+		dt	< _param_com_of_loss_t.get() * 1e6f,
 		hrt_absolute_time());
 
 	const bool offboard_lost = !_offboard_available.get_state();

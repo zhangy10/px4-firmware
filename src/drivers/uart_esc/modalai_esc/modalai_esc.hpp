@@ -107,7 +107,7 @@ public:
 
 private:
 	static constexpr uint32_t MODALAI_ESC_UART_CONFIG = 1;
-	static constexpr uint32_t MODALAI_ESC_DEFAULT_BAUD = 250000;
+	static constexpr uint32_t MODALAI_ESC_DEFAULT_BAUD = 57600;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_CHANNELS = 4;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_DISABLED = 0;
 

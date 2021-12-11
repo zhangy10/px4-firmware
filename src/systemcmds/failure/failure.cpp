@@ -120,7 +120,7 @@ failure gps off
 
 int inject_failure(uint8_t unit, uint8_t type, uint8_t instance)
 {
-	PX4_WARN("inject failure unit: %s (%d), type: %s (%d), instance: %d", failure_units[unit].key, unit, failure_types[type].key, type, instance);
+	PX4_ERR("inject failure unit: %s (%d), type: %s (%d), instance: %d", failure_units[unit].key, unit, failure_types[type].key, type, instance);
 
 	uORB::Subscription command_ack_sub{ORB_ID(vehicle_command_ack)};
 

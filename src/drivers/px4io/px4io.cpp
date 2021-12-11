@@ -727,6 +727,8 @@ PX4IO::init()
 
 			/* send command once */
 			uORB::Publication<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
+			PX4_ERR("px4io pub");
+
 			vcmd_pub.publish(vcmd);
 
 			/* spin here until IO's state has propagated into the system */
@@ -760,6 +762,8 @@ PX4IO::init()
 
 		/* send command once */
 		uORB::Publication<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
+		PX4_ERR("px4io 2 pub");
+
 		vcmd_pub.publish(vcmd);
 
 		/* spin here until IO's state has propagated into the system */

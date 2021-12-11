@@ -33,6 +33,8 @@ int qurt_uart_open(const char *dev, speed_t speed)
             PX4_ERR("Could not convert %s into a valid uart port number", dev);
             return -1;
         }
+        PX4_ERR("uart port %d %d", port_number, speed);
+
     	return _open_uart(port_number, speed);
     } else {
         PX4_ERR("Cannot open uart until callbacks have been configured");

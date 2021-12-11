@@ -57,7 +57,7 @@ px4_add_board(
 		qshell/qurt
         #magnetometer/hmc5883
         magnetometer/isentek/ist8310
-        uart_esc/modalai_esc
+        uart_esc/cytron
         power_monitor/voxlpm
         imu/invensense/icm42688p
 		pwm_out_sim
