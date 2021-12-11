@@ -87,7 +87,7 @@ void task_main(int argc, char *argv[])
 	int ch;
 	int myoptind = 1;
 	const char *myoptarg = NULL;
-    bool verbose = true;
+    bool verbose = false;
 
 	while ((ch = px4_getopt(argc, argv, "vd:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
@@ -123,7 +123,7 @@ void task_main(int argc, char *argv[])
     uint32_t loop_counter = 0;
     bool     print_msg = false;
     bool     first_full_frame_received = false;
-	int newbytes = 0;
+	int      newbytes = 0;
 
 	// Main loop
 	while (!_task_should_exit) {

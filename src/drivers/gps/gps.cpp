@@ -446,7 +446,9 @@ int GPS::pollOrRead(uint8_t *buf, size_t buf_length, int timeout)
     // The UART read on SLPI is via an asynchronous service so specify a timeout
     // for the return. The driver will poll periodically until the read comes in
     // so this may block for a while. However, it will timeout if no read comes in.
-    return qurt_uart_read(_serial_fd, (char*) buf, buf_length, ASYNC_UART_READ_WAIT_US);
+    int bytes_read = qurt_uart_read(_serial_fd, (char*) buf, buf_length, ASYNC_UART_READ_WAIT_US);
+	_num_bytes_read += bytes_read;
+	return bytes_read;
 #endif
 }
 
