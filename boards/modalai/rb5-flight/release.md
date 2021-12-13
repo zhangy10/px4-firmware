@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.0alpha
+
+- Updated Spektrum RC and GPS drivers to work on QURT to support Voxl2
+
 ## 1.1.9alpha
 
 - Updated barometer driver calculations to exactly match original TDK driver for icp10100
