@@ -15,15 +15,20 @@ cp ../../../build/modalai_rb5-flight_default/bin/px4 debian/usr/bin
 cp ../../../build/modalai_rb5-flight_default/bin/px4-alias.sh debian/usr/bin
 chmod a+x debian/usr/bin/px4-alias.sh
 cp m0052-px4 debian/usr/bin
+cp m0054-px4 debian/usr/bin
 chmod a+x debian/usr/bin/m0052-px4
+chmod a+x debian/usr/bin/m0054-px4
 cp src/find-qgc-address debian/usr/bin
-chmod a+x debian/usr/bin/src/find-qgc-address
+chmod a+x debian/usr/bin/find-qgc-address
 
 rm -fR debian/etc
 mkdir -p debian/etc/modalai
 cp min-m0052.config debian/etc/modalai
+cp min-m0054.config debian/etc/modalai
 cp full-m0052.config debian/etc/modalai
+cp full-m0054.config debian/etc/modalai
 cp m0052-set-default-parameters.config debian/etc/modalai
+cp m0054-set-default-parameters.config debian/etc/modalai
 cp qgc-ip.cfg debian/etc/modalai
 
 # Create necessary directories for px4 operation
