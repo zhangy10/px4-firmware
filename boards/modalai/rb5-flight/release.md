@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.2alpha
+
+- Fixed some Voxl2 startup script errors
+
 ## 1.4.1alpha
 
 - Fixed packaging and installed scripts for Voxl2

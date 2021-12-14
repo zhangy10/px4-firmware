@@ -15,4 +15,4 @@ if [ ! -f /home/linaro/eeprom/parameters ]; then
    sync
 fi
 
-px4 $DAEMON -s /etc/modalai/min-m0054.config
+px4 $DAEMON -s /etc/modalai/full-m0054.config
