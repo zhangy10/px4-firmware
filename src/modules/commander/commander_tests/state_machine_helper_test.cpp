@@ -513,6 +513,8 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 		current_status_flags.condition_local_position_valid = test->condition_bits & MTT_LOC_POS_VALID;
 		current_status_flags.condition_home_position_valid = test->condition_bits & MTT_HOME_POS_VALID;
 		current_status_flags.condition_global_position_valid = test->condition_bits & MTT_GLOBAL_POS_VALID;
+
+		PX4_ERR("Transition TEST mission = true");
 		current_status_flags.condition_auto_mission_available = true;
 
 		// Attempt transition

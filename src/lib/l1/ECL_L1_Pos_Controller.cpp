@@ -107,7 +107,7 @@ ECL_L1_Pos_Controller::navigate_waypoints_local(const Vector2f &vector_A, const 
 			  (double)vector_B(0), (double)vector_B(1));
 
 	/* enforce a minimum ground speed of 0.1 m/s to avoid singularities */
-	float ground_speed = math::max(ground_speed_vector.length(), 0.1f);
+	float ground_speed = math::max(ground_speed_vector.length(), 0.01f);
 
 	/* calculate the L1 length required for the desired period */
 	_L1_distance = _L1_ratio * ground_speed;

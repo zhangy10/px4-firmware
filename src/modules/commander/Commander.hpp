@@ -84,6 +84,7 @@
 #include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vtol_vehicle_status.h>
@@ -227,6 +228,11 @@ private:
 
 		(ParamFloat<px4::params::COM_KILL_DISARM>) _param_com_kill_disarm,
 		(ParamFloat<px4::params::COM_LKDOWN_TKO>) _param_com_lkdown_tko,
+
+		// Fake home position for qvio
+		(ParamFloat<px4::params::COM_HOME_LAT>) _param_com_home_lat,
+		(ParamFloat<px4::params::COM_HOME_LON>) _param_com_home_lon,
+		(ParamBool<px4::params::COM_FCE_HOME>) _param_com_home_force,
 
 		// Engine failure
 		(ParamFloat<px4::params::COM_EF_THROT>) _param_ef_throttle_thres,
@@ -433,6 +439,7 @@ private:
 	uORB::SubscriptionData<vehicle_global_position_s>	_global_position_sub{ORB_ID(vehicle_global_position)};
 	uORB::SubscriptionData<vehicle_local_position_s>	_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionData<rtl_flight_time_s>		_rtl_flight_time_sub{ORB_ID(rtl_flight_time)};
+	uORB::SubscriptionData<vehicle_gps_position_s>					_gps_pos_sub{ORB_ID(vehicle_gps_position)};		/**< gps position subscription */
 
 	// Publications
 	uORB::Publication<actuator_armed_s>			_armed_pub{ORB_ID(actuator_armed)};

@@ -186,6 +186,8 @@ private:
 
 	bool _skid_steer_turn_request = false;
 	bool _skid_steer_turn_complete = false;
+	int pause_turn = 0;
+
 	int32_t _frame_type  = 0;
 
 	double wrap_180(double x);
