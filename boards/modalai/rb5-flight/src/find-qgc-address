@@ -17,7 +17,7 @@ else:
         # Strip any leading or trailng whitespace
         qgc_ip = qgc_ip.strip()
         # Skip any comment lines
-        if qgc_ip[0] != '#':
+        if qgc_ip and qgc_ip[0] != '#':
             # Make sure there are enough dots in the dot notation
             if qgc_ip.count('.') == 3:
                 parts = qgc_ip.split('.')
