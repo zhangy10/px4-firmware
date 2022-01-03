@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.4.3alpha
+
+- Moved logger start to beginning of sequence to capture driver and module startup messages
+- Fixed the QGC address script to allow blank lines
+
 ## 1.4.2alpha
 
 - Fixed some Voxl2 startup script errors
