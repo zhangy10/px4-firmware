@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.4alpha
+
+- Improved the bad packet detection in the Spektrum RC driver
+
 ## 1.4.3alpha
 
 - Moved logger start to beginning of sequence to capture driver and module startup messages
