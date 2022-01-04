@@ -122,7 +122,7 @@ void task_main(int argc, char *argv[])
 	uint16_t raw_rc_count = 0;
     uint32_t loop_counter = 0;
     bool     print_msg = false;
-    bool     first_full_frame_received = false;
+    bool     first_correct_frame_received = false;
 	int      newbytes = 0;
 
 	// Main loop
@@ -143,12 +143,12 @@ void task_main(int argc, char *argv[])
 
 		if (newbytes <= 0) {
 			if (print_msg) PX4_INFO("Spektrum RC: Read no bytes from UART");
-        } else if ((newbytes < DSM_FRAME_SIZE) && ( ! first_full_frame_received)){
-			PX4_INFO("Spektrum RC: Read less than full DSM frame on first read. Got %d bytes", newbytes);
+        } else if (((newbytes != DSM_FRAME_SIZE) || ((rx_buf[1] & 0x0F) != 0x02)) && ( ! first_correct_frame_received)){
+			PX4_ERR("Spektrum RC: Read something other than correct DSM frame on read. Got %d bytes. Protocol byte is 0x%.2x", newbytes, rx_buf[1]);
 		} else {
 			if (print_msg) PX4_INFO("Spektrum RC: Read %d bytes from UART", newbytes);
 
-            first_full_frame_received = true;
+            first_correct_frame_received = true;
 
     		const hrt_abstime now = hrt_absolute_time();
 
