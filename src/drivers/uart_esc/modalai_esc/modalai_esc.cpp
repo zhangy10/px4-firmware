@@ -706,34 +706,61 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 		return false;
 	}
 
-	uint8_t motor_idx;
+	int NUM_MOTORS = 2;
+	uint8_t sabertooth_outputs[NUM_MOTORS];
 
-	/* round robin feedfback reqest while sending RPM requests */
-	static int fb_idx = 0;
+	sabertooth_outputs[0] = (uint8_t)outputs[0];
+	for (int idx = 0; idx < NUM_MOTORS; idx++){
+		// Scale values from [x, y] to [1, 127] to be compatible with sabertooth
+		int min_input = 1000;
+		int max_input = 10500;
+		int min_target = 1;
+		int max_target = 127;
 
-	for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
-		if (!_outputs_on || stop_motors) {
-			_esc_chans[i].rate_req = 0;
-
-		} else {
-			motor_idx = _output_map[i].number;
-
-			if (motor_idx > 0 && motor_idx <= MODALAI_ESC_OUTPUT_CHANNELS) {
-				/* user defined mapping is 1-4, array is 0-3 */
-				motor_idx--;
-				_esc_chans[i].rate_req = outputs[motor_idx] * _output_map[i].direction;
-			}
+		// motor 0 expects a range from [128, 255] to control left side
+		if (idx == 0){
+			min_target = 128;
+			max_target = 255;
 		}
+
+		// check if vehicle is disarmed or out of bounds
+		if (outputs[idx] == 0){
+			sabertooth_outputs[idx] = 5750
+		}
+
+		sabertooth_outputs[idx] = ((outputs[idx] - min_input) * (max_target - min_target)) / (max_input - min_input);
+		sabertooth_outputs[idx] += min_target;
+
 	}
 
-    // static uint32_t msg_counter = 0;
-    // if ((msg_counter++ % 10) == 0) {
-    //     PX4_INFO("ESC %u %u %u %u", outputs[0], outputs[1], outputs[2], outputs[3]);
-    // }
+	// uint8_t motor_idx;
+
+	// /* round robin feedfback reqest while sending RPM requests */
+	// static int fb_idx = 0;
+
+	// for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
+	// 	if (!_outputs_on || stop_motors) {
+			// _esc_chans[i].rate_req = 0;
+
+	// 	} else {
+	// 		motor_idx = _output_map[i].number;
+
+	// 		if (motor_idx > 0 && motor_idx <= MODALAI_ESC_OUTPUT_CHANNELS) {
+	// 			/* user defined mapping is 1-4, array is 0-3 */
+	// 			motor_idx--;
+				// _esc_chans[i].rate_req = outputs[motor_idx] * _output_map[i].direction;
+	// 		}
+	// 	}
+	// }
+
+	// static uint32_t msg_counter = 0;
+	// if ((msg_counter++ % 10) == 0) {
+	// 	PX4_INFO("ESC %u %u %u %u", outputs[0], outputs[1], outputs[2], outputs[3]);
+	// }
 
     // Ignore feedback for now since we are trying to save processing cycles.
     // TODO: Enable feedback
-	Command cmd;
+	// Command cmd;
 	// cmd.len = qc_esc_create_rpm_packet4_fb(_esc_chans[0].rate_req,
 	// 				       _esc_chans[1].rate_req,
 	// 				       _esc_chans[2].rate_req,
@@ -745,26 +772,35 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 	// 				       fb_idx,
 	// 				       cmd.buf,
 	// 				       sizeof(cmd.buf));
-	cmd.len = qc_esc_create_rpm_packet4(_esc_chans[0].rate_req,
-					       _esc_chans[1].rate_req,
-					       _esc_chans[2].rate_req,
-					       _esc_chans[3].rate_req,
-					       _esc_chans[0].led,
-					       _esc_chans[1].led,
-					       _esc_chans[2].led,
-					       _esc_chans[3].led,
-					       cmd.buf,
-					       sizeof(cmd.buf));
+	// cmd.len = qc_esc_create_rpm_packet4(_esc_chans[0].rate_req,
+	// 				       _esc_chans[1].rate_req,
+	// 				       _esc_chans[2].rate_req,
+	// 				       _esc_chans[3].rate_req,
+	// 				       _esc_chans[0].led,
+	// 				       _esc_chans[1].led,
+	// 				       _esc_chans[2].led,
+	// 				       _esc_chans[3].led,
+	// 				       cmd.buf,
+	// 				       sizeof(cmd.buf));
 
-	if (_uart_port->uart_write(cmd.buf, cmd.len) != cmd.len) {
+	// if (_uart_port->uart_write(cmd.buf, cmd.len) != cmd.len) {
+	// 	PX4_ERR("Failed to send packet");
+	// 	return false;
+	// }
+
+	// if (fb_idx++ >= MODALAI_ESC_OUTPUT_CHANNELS) {
+	// 	fb_idx = 0;
+	// }
+
+	// send both serial packets in sequence
+	if (_uart_port->uart_write(sabertooth_outputs, sizeof(sabertooth_outputs)) != 2) {
 		PX4_ERR("Failed to send packet");
 		return false;
 	}
 
-	if (fb_idx++ >= MODALAI_ESC_OUTPUT_CHANNELS) {
-		fb_idx = 0;
-	}
-
+	// if (fb_idx++ >= MODALAI_ESC_OUTPUT_CHANNELS) {
+	// 	fb_idx = 0;
+	// }
 
 	// /*
 	//  * Comparing this to SNAV, there wasn't a delay between reading
@@ -773,9 +809,9 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 	//  * is ~2000us, we can afford to delay a little here
 	//  */
 	// px4_usleep(MODALAI_ESC_WRITE_WAIT_US);
-    //
+
 	// memset(&cmd.buf, 0x00, sizeof(cmd.buf));
-    //
+
 	// /*
 	//  * Here we parse the feedback response.  Rarely the packet is mangled
 	//  * but this means we simply miss a feedback response and will come back
@@ -783,7 +819,7 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 	//  * trucking I say
 	//  */
 	// int res = _uart_port->uart_read(cmd.buf, sizeof(cmd.buf));
-    //
+
 	// if (res > 0) {
 	// 	parseResponse(cmd.buf, res);
 	// }
@@ -852,41 +888,41 @@ void ModalaiEsc::Run()
 	}
 
 	/* Don't process commands if outputs on */
-	if (!_outputs_on) {
-		if (_current_cmd.valid()) {
-			do {
-				if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
-					if (_current_cmd.repeats == 0) {
-						_current_cmd.clear();
-					}
+	// if (!_outputs_on) {
+	// 	if (_current_cmd.valid()) {
+	// 		do {
+	// 			if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
+	// 				if (_current_cmd.repeats == 0) {
+	// 					_current_cmd.clear();
+	// 				}
 
-					if (_current_cmd.response) {
-						readResponse(&_current_cmd);
-					}
+	// 				if (_current_cmd.response) {
+	// 					readResponse(&_current_cmd);
+	// 				}
 
-				} else {
-					if (_current_cmd.retries == 0) {
-						_current_cmd.clear();
-						PX4_ERR("Failed to send command, errno: %i", errno);
+	// 			} else {
+	// 				if (_current_cmd.retries == 0) {
+	// 					_current_cmd.clear();
+	// 					PX4_ERR("Failed to send command, errno: %i", errno);
 
-					} else {
-						_current_cmd.retries--;
-						PX4_ERR("Failed to send command, errno: %i", errno);
-					}
-				}
+	// 				} else {
+	// 					_current_cmd.retries--;
+	// 					PX4_ERR("Failed to send command, errno: %i", errno);
+	// 				}
+	// 			}
 
-				px4_usleep(_current_cmd.repeat_delay_us);
-			} while (_current_cmd.repeats-- > 0);
+	// 			px4_usleep(_current_cmd.repeat_delay_us);
+	// 		} while (_current_cmd.repeats-- > 0);
 
-		} else {
-			Command *new_cmd = _pending_cmd.load();
+	// 	} else {
+	// 		Command *new_cmd = _pending_cmd.load();
 
-			if (new_cmd) {
-				_current_cmd = *new_cmd;
-				_pending_cmd.store(nullptr);
-			}
-		}
-	}
+	// 		if (new_cmd) {
+	// 			_current_cmd = *new_cmd;
+	// 			_pending_cmd.store(nullptr);
+	// 		}
+	// 	}
+	// }
 
 	/* check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread) */
 	_mixing_output.updateSubscriptions(true);
