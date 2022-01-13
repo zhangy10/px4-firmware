@@ -2,6 +2,17 @@
 
 import sys
 
+# This script will print out either the IP address or the
+# port number. If no arguments are specified it will print out
+# the IP address. If one argument is specified it will print out
+# the port number. The argument should be "-p" but that isn't
+# currently checked.
+print_port = False
+
+if len(sys.argv) == 2:
+    print_port = True
+
+# File descriptor
 f = 0
 
 # Check to see if a QGC IP address configuration file exists
@@ -16,11 +27,21 @@ else:
     for qgc_ip in f:
         # Strip any leading or trailng whitespace
         qgc_ip = qgc_ip.strip()
-        # Skip any comment lines
+        # Skip any blank or comment lines
         if qgc_ip and qgc_ip[0] != '#':
-            # Make sure there are enough dots in the dot notation
-            if qgc_ip.count('.') == 3:
-                parts = qgc_ip.split('.')
+            # Break line into individual words
+            line_words = qgc_ip.split(' ')
+            ip_address = line_words[0];
+            # Set default port to 14550
+            ip_port = '14550'
+            # Check to see if the line specifies a valid port number
+            if len(line_words) > 1:
+                value = int(line_words[1])
+                if value >= 0 and value <= 65535:
+                    ip_port = line_words[1]
+            # Make sure there are enough dots in the dot notation for the address
+            if ip_address.count('.') == 3:
+                parts = ip_address.split('.')
                 if len(parts) == 4:
                     for component in parts:
                         value = int(component)
@@ -28,7 +49,10 @@ else:
                         if value < 0 or value > 255:
                             sys.exit(-1)
                     # Seems like a good IP address so print it out
-                    print(qgc_ip)
+                    if print_port:
+                        print(ip_port)
+                    else:
+                        print(ip_address)
                     # Don't continue on, just print out first valid IP address
                     break
     f.close()

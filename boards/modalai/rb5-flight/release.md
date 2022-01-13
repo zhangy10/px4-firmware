@@ -19,6 +19,11 @@
 
 # Releases
 
+## 1.4.5alpha
+
+- Removed the -e logger option from m0054
+- Added ability to configure QGC port number
+
 ## 1.4.4alpha
 
 - Improved the bad packet detection in the Spektrum RC driver
