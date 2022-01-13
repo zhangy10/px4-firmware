@@ -21,6 +21,7 @@
 
 ## 1.4.5alpha
 
+- Fixed default value of MPC_THR_HOVER to 0.42
 - Removed the -e logger option from m0054
 - Added ability to configure QGC port number
 
