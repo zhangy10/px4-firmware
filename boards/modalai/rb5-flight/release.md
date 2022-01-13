@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.6alpha
+
+- Fixed typo in qgc-ip.cfg
+
 ## 1.4.5alpha
 
 - Fixed default value of MPC_THR_HOVER to 0.42
