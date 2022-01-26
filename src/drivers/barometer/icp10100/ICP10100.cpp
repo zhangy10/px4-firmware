@@ -159,7 +159,14 @@ int ICP10100::SendCommand(uint16_t cmd)
 
 int ICP10100::WriteData(const uint8_t *data, uint8_t len)
 {
-	return transfer(data, len, NULL, 0);
+	int ret = transfer(data, len, NULL, 0);
+
+    if (ret != PX4_OK) {
+		perf_count(_comms_errors);
+        PX4_ERR("%s transfer failed", __FUNCTION__);
+    }
+
+    return ret;
 }
 
 int ICP10100::ReadData(uint8_t *data, uint8_t len)
@@ -167,6 +174,7 @@ int ICP10100::ReadData(uint8_t *data, uint8_t len)
 	int ret = transfer(NULL, 0, data, len);
 
     if (ret != PX4_OK) {
+		perf_count(_comms_errors);
         PX4_ERR("%s transfer failed", __FUNCTION__);
     }
 
@@ -248,7 +256,6 @@ int ICP10100::measure()
 
     if (SendCommand(ICP10100_START_LN_CMD) != PX4_OK) {
         PX4_ERR("%s Send start command failed", __FUNCTION__);
-		perf_count(_comms_errors);
         ret = PX4_ERROR;
     }
 
