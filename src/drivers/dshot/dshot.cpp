@@ -59,6 +59,7 @@
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/esc_status.h>
@@ -208,6 +209,24 @@ private:
 
 	Mode		_mode{MODE_NONE};
 
+	manual_control_setpoint_s	_manual_control_setpoint{};		///< the current manual control setpoint
+	manual_control_setpoint_s	_last_manual_control_setpoint{};	///< the manual control setpoint valid at the last mode switch
+
+	enum class TurtleModeState {
+		None = 0,
+		Configuring = 1,
+		Saving = 2,
+		Beeping = 3,
+		Error = 4
+	};
+	bool		_turtle_mode_en{false};
+	TurtleModeState _turtle_mode_state{TurtleModeState::None};
+	bool		_turtle_mode_on{false};
+	int		_last_turtle_sw_state{0};
+
+	int		_turtle_mode_wait{-1};
+
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _param_sub{ORB_ID(parameter_update)};
 
 	Command _current_command;
@@ -234,10 +253,13 @@ private:
 	DShotOutput(const DShotOutput &) = delete;
 	DShotOutput operator=(const DShotOutput &) = delete;
 
+	void turtleIshMode();
+
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::DSHOT_CONFIG>) _param_dshot_config,
 		(ParamFloat<px4::params::DSHOT_MIN>) _param_dshot_min,
-		(ParamInt<px4::params::MOT_POLE_COUNT>) _param_mot_pole_count
+		(ParamInt<px4::params::MOT_POLE_COUNT>) _param_mot_pole_count,
+		(ParamInt<px4::params::TURTLE_MODE>) _param_turtle_mode
 	)
 };
 
@@ -668,6 +690,103 @@ void DShotOutput::retrieveAndPrintESCInfoThreadSafe(int motor_index)
 	DShotTelemetry::decodeAndPrintEscInfoPacket(output_buffer);
 }
 
+void
+DShotOutput::turtleIshMode()
+{
+	if(_turtle_mode_en) {
+		//
+		// This is currently hacky... but until I understand timing here better,
+		// this is helpful to debug the occasional bugs overcome by adding some delays
+		// Of course adding delays is a mask, so TODO: come back and fix
+		//
+		// Loop runs at ~50us
+		if(_turtle_mode_wait > 0){
+			_turtle_mode_wait--;
+			return;
+		}
+
+		if(_turtle_mode_state == TurtleModeState::None){
+
+			// let's check switch state
+			_manual_control_setpoint_sub.update(&_manual_control_setpoint);
+
+			// if there's new data since last time:
+			if(_last_manual_control_setpoint.timestamp != _manual_control_setpoint.timestamp) {
+
+				// TODO: currently this is hard coded to aux1
+				if(fabsf(_manual_control_setpoint.aux1) > 0.5f){
+					// -1 is the 'enable' state
+					if(_manual_control_setpoint.aux1 > 0.0f){
+
+						if(_last_turtle_sw_state != -1){
+							_last_turtle_sw_state = -1;
+							_turtle_mode_state = TurtleModeState::Configuring;
+							_turtle_mode_on = true;
+						}
+					} else {
+						if(_last_turtle_sw_state != 1){
+							_last_turtle_sw_state = 1;
+							_turtle_mode_state = TurtleModeState::Configuring;
+							_turtle_mode_on = false;
+						}
+					}
+
+				} else {
+					_last_turtle_sw_state = 0;
+				}
+
+				_last_manual_control_setpoint.timestamp = _manual_control_setpoint.timestamp;
+			}
+		}
+		if(_turtle_mode_state == TurtleModeState::Configuring){
+			//
+			// Testing with T-MotoreF55A PROII 6S
+			//
+			// sending the "direction_normal" doesn't appear to work
+			//
+			// sending this reverse command appears to reverse the first time, and then reverse
+			// back to normal the second time...
+			//
+			// This method will be used, but the state of the switch can get out of sync
+			//
+			_current_command.command = DShot_cmd_spin_direction_reversed;
+			_current_command.num_repetitions = 10;
+			_current_command.motor_mask = 0xff;
+			_turtle_mode_wait = 20; //~1ms
+
+			// next save
+			_turtle_mode_state = TurtleModeState::Saving;
+
+		}
+		else if(_turtle_mode_state == TurtleModeState::Saving){
+
+			_current_command.command = DShot_cmd_save_settings;
+			_current_command.num_repetitions = 10;
+			_current_command.motor_mask = 0xff;
+			_turtle_mode_wait = 700; // ~35ms
+
+			// next save
+			_turtle_mode_state = TurtleModeState::Beeping;
+		}
+		else if(_turtle_mode_state == TurtleModeState::Beeping){
+
+			// beep for feedback
+			if(_turtle_mode_on){
+				_current_command.command = DShot_cmd_beacon4;
+			} else {
+				_current_command.command = DShot_cmd_beacon1;
+			}
+			_current_command.motor_mask = 0xFF;
+			_current_command.num_repetitions = 1;
+			_turtle_mode_state = TurtleModeState::None;
+		}
+	}
+	else
+	{
+		_turtle_mode_state = TurtleModeState::None;
+	}
+}
+
 int DShotOutput::requestESCInfo()
 {
 	_telemetry->handler.redirectOutput(*_request_esc_info.load());
@@ -780,6 +899,11 @@ DShotOutput::Run()
 		}
 	}
 
+	// turtle mode enabled?
+	if(_turtle_mode_en && _outputs_on){
+		turtleIshMode();
+	}
+
 	if (_param_sub.updated()) {
 		update_params();
 	}
@@ -816,6 +940,8 @@ void DShotOutput::update_params()
 	// we use a minimum value of 1, since 0 is for disarmed
 	_mixing_output.setAllMinValues(math::constrain((int)(_param_dshot_min.get() * (float)DSHOT_MAX_THROTTLE),
 				       DISARMED_VALUE + 1, DSHOT_MAX_THROTTLE));
+
+	_turtle_mode_en = (bool)_param_turtle_mode.get();
 }
 
 
