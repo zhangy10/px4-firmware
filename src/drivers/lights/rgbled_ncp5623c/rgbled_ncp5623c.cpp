@@ -75,6 +75,7 @@ public:
 
 	int		init() override;
 	int		probe() override;
+	void 	print_status() override;
 
 	void			RunImpl();
 
@@ -87,6 +88,8 @@ private:
 	uint8_t			_g{0};
 	uint8_t			_b{0};
 	volatile bool		_running{false};
+
+	perf_counter_t _bad_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
@@ -111,6 +114,8 @@ RGBLED_NPC5623C::write(uint8_t reg, uint8_t data)
 	msg[0] = ((reg & 0xe0) | (data & 0x1f));
 
 	int ret = transfer(&msg[0], 1, nullptr, 0);
+
+	if (ret != PX4_OK) perf_count(_bad_transfer_perf);
 
 	return ret;
 }
@@ -139,6 +144,13 @@ RGBLED_NPC5623C::probe()
 	_retries = 4;
 
 	return write(NCP5623_LED_CURRENT, 0x00);
+}
+
+void RGBLED_NPC5623C::print_status()
+{
+	I2CSPIDriverBase::print_status();
+
+	perf_print_counter(_bad_transfer_perf);
 }
 
 void
@@ -219,7 +231,11 @@ RGBLED_NPC5623C::send_led_rgb()
 	msg[4] = NCP5623_LED_PWM1 | (uint8_t(_g * _brightness) & 0x1f);
 	msg[6] = NCP5623_LED_PWM2 | (uint8_t(_b * _brightness) & 0x1f);
 
-	return transfer(&msg[0], 7, nullptr, 0);
+	int ret = transfer(&msg[0], 7, nullptr, 0);
+
+	if (ret != PX4_OK) perf_count(_bad_transfer_perf);
+
+	return ret;
 }
 
 void
