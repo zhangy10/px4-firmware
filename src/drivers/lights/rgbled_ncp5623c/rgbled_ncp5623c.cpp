@@ -77,6 +77,8 @@ public:
 	int		probe() override;
 	void 	print_status() override;
 
+	void custom_method(const BusCLIArguments &cli) override;
+
 	void			RunImpl();
 
 private:
@@ -90,6 +92,7 @@ private:
 	volatile bool		_running{false};
 
 	perf_counter_t _bad_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")};
+	perf_counter_t _good_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": good transfer")};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
@@ -150,7 +153,9 @@ void RGBLED_NPC5623C::print_status()
 {
 	I2CSPIDriverBase::print_status();
 
+	perf_print_counter(_good_transfer_perf);
 	perf_print_counter(_bad_transfer_perf);
+	PX4_INFO("Red: 0x%.2x, Green: 0x%.2x, Blue: 0x%.2x", _r, _g, _b);
 }
 
 void
@@ -234,6 +239,7 @@ RGBLED_NPC5623C::send_led_rgb()
 	int ret = transfer(&msg[0], 7, nullptr, 0);
 
 	if (ret != PX4_OK) perf_count(_bad_transfer_perf);
+	else perf_count(_good_transfer_perf);
 
 	return ret;
 }
@@ -256,10 +262,15 @@ RGBLED_NPC5623C::update_params()
 void
 RGBLED_NPC5623C::print_usage()
 {
-	PRINT_MODULE_USAGE_NAME("rgbled", "driver");
+	PRINT_MODULE_USAGE_NAME("rgbled_ncp5623c", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
 	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x39);
+
+	PRINT_MODULE_USAGE_COMMAND("status");
+
+	PRINT_MODULE_USAGE_COMMAND_DESCR("set <red> <green> <blue>", "Set LED with red green and blue values each between 0 and 31");
+
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
@@ -281,6 +292,26 @@ I2CSPIDriverBase *RGBLED_NPC5623C::instantiate(const BusCLIArguments &cli, const
 
 	return instance;
 }
+
+void
+RGBLED_NPC5623C::custom_method(const BusCLIArguments &cli) {
+	switch (cli.custom1) {
+	case 0: // set LED
+	{
+		uint8_t *rgb = (uint8_t*) cli.custom_data;
+		_r = rgb[0];
+		_g = rgb[1];
+		_b = rgb[2];
+		PX4_INFO("Got set command. 0x%.2x 0x%.2x 0x%.2x", _r, _g, _b);
+		send_led_rgb();
+		break;
+	}
+	default:
+		print_usage();
+		break;
+	}
+}
+
 
 extern "C" __EXPORT int rgbled_ncp5623c_main(int argc, char *argv[])
 {
@@ -309,6 +340,21 @@ extern "C" __EXPORT int rgbled_ncp5623c_main(int argc, char *argv[])
 
 	if (!strcmp(verb, "status")) {
 		return ThisDriver::module_status(iterator);
+	}
+
+	if (!strcmp(verb, "set")) {
+		if (argc != 5) {
+			ThisDriver::print_usage();
+			return -1;
+		} else {
+			uint8_t rgb_array[3] = {0, 0, 0};
+			cli.custom1 = 0;
+			rgb_array[0] = (uint8_t) atoi(argv[2]);
+			rgb_array[1] = (uint8_t) atoi(argv[3]);
+			rgb_array[2] = (uint8_t) atoi(argv[4]);
+			cli.custom_data = (void*) rgb_array;
+			return ThisDriver::module_custom_method(cli, iterator);
+		}
 	}
 
 	ThisDriver::print_usage();
