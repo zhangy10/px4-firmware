@@ -394,6 +394,10 @@ void EKF2::Run()
 					_preflt_checker.reset();
 				}
 			}
+
+			if (_armed)
+				_ekf.set_in_air_status(_armed);
+
 		}
 
 		if (_vehicle_land_detected_sub.updated()) {

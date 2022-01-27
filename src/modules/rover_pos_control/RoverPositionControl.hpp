@@ -172,6 +172,10 @@ private:
 		(ParamFloat<px4::params::GND_SPEED_THR_SC>) _param_throttle_speed_scaler,
 		(ParamFloat<px4::params::GND_NAV_RAD>) _param_gnd_nav_rad,	/**< REAL loiter radius for Rover */
 		(ParamFloat<px4::params::GND_TURN_SPD>) _param_gnd_turn_spd,
+		(ParamFloat<px4::params::GND_YAWP>) _param_gnd_yaw_p,
+		(ParamFloat<px4::params::GND_YAWD>) _param_gnd_yaw_d,
+		(ParamFloat<px4::params::GND_YAWI>) _param_gnd_yaw_i,
+		(ParamFloat<px4::params::GND_YAWIMAX>) _param_gnd_yaw_imax,
 
 		(ParamFloat<px4::params::GND_THR_MIN>) _param_throttle_min,
 		(ParamFloat<px4::params::GND_THR_MAX>) _param_throttle_max,
@@ -186,9 +190,19 @@ private:
 
 	bool _skid_steer_turn_request = false;
 	bool _skid_steer_turn_complete = false;
+	//bool _new_waypoint = false;
 	int pause_turn = 0;
 
+	////
+	double _last_derivative = 0.;
+	double _last_turn_request = 0.;
+	double _fCut = 20.;
+	float _integrator = 0.0;
+
+
 	int32_t _frame_type  = 0;
+	double turn_inplace_thresh;
+	double turn_inplace_thresh_half;
 
 	double wrap_180(double x);
 

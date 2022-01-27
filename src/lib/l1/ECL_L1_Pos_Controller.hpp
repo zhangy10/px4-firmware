@@ -240,6 +240,7 @@ private:
 	 * @return The vector in meters pointing from the reference position to the coordinates
 	 */
 	matrix::Vector2f get_local_planar_vector(const matrix::Vector2f &origin, const matrix::Vector2f &target) const;
+	matrix::Vector2f get_local_planar_vector_vio(const matrix::Vector2f &origin, const matrix::Vector2f &target) const;
 
 	/**
 	 * Update roll angle setpoint. This will also apply slew rate limits if set.
