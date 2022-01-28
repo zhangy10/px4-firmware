@@ -38,6 +38,8 @@
 #include <stdbool.h>
 #include <drivers/drv_hrt.h>
 #include <stdio.h>
+#include <parameters/param.h>
+
 
 #define PROGRESS_INT_SCALING	10000
 
@@ -224,3 +226,5 @@ void output_limit_calc(const bool armed, const bool pre_armed, const unsigned nu
 	}
 
 }
+
+

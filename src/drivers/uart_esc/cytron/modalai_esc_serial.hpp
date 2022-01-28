@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,51 +31,35 @@
  *
  ****************************************************************************/
 
-/**
- * @file output_limit.h
- *
- * Library for output limiting (PWM for example)
- *
- * @author Julian Oes <julian@px4.io>
- */
-
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <px4_log.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <drivers/device/qurt/uart.h>
 
-__BEGIN_DECLS
+#ifdef __PX4_QURT
+#define FAR
+#endif
 
-/*
- * time for the ESCs to initialize
- * (this is not actually needed if the signal is sent right after boot)
- */
-#define INIT_TIME_US 50000
-/*
- * time to slowly ramp up the ESCs
- */
-#define RAMP_TIME_US 500000
+class ModalaiEscSerial
+{
+public:
+	ModalaiEscSerial();
+	virtual ~ModalaiEscSerial();
 
-enum output_limit_state {
-	OUTPUT_LIMIT_STATE_OFF = 0,
-	OUTPUT_LIMIT_STATE_INIT,
-	OUTPUT_LIMIT_STATE_RAMP,
-	OUTPUT_LIMIT_STATE_ON
+	int		uart_open(const char *dev, speed_t speed);
+	int		uart_close();
+	int		uart_write(FAR void *buf, size_t len);
+	int		uart_read(FAR void *buf, size_t len);
+	bool		is_open() { return _uart_fd >= 0; };
+
+private:
+	int			       _uart_fd = -1;
+
+#ifndef __PX4_QURT
+	struct termios		_orig_cfg;
+	struct termios		_cfg;
+#endif
 };
-
-typedef struct {
-	enum output_limit_state state;
-	uint64_t time_armed;
-	bool ramp_up; ///< if true, motors will ramp up from disarmed to min_output after arming
-} output_limit_t;
-
-
-
-__EXPORT void output_limit_init(output_limit_t *limit);
-
-__EXPORT void output_limit_calc(const bool armed, const bool pre_armed, const unsigned num_channels,
-				const uint16_t reverse_mask, const uint16_t *disarmed_output,
-				const uint16_t *min_output, const uint16_t *max_output,
-				const float *output, uint16_t *effective_output, output_limit_t *limit);
-
-__END_DECLS

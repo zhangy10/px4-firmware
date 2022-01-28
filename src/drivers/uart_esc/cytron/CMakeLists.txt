@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2018 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,67 +31,16 @@
 #
 ############################################################################
 
-px4_add_romfs_files(
-	AAERTWF.main.mix
-	AAVVTWFF.main.mix
-	AAVVTWFF_vtail.main.mix
-	AERT.main.mix
-	AETRFG.main.mix
-	babyshark.main.mix
-	blade130.main.mix
-	caipi.main.mix
-	CCPM.main.mix
-	claire.aux.mix
-	claire.main.mix
-	cloudship.main.mix
-	coax.main.mix
-	delta.main.mix
-	deltaquad.main.mix
-	direct.main.mix
-	dodeca_bottom_cox.aux.mix
-	dodeca_top_cox.main.mix
-	firefly6.aux.mix
-	firefly6.main.mix
-	fw_generic_wing.main.mix
-	FX79.main.mix
-	generic_diff_rover.main.mix
-	hexa_cox.main.mix
-	hexa_+.main.mix
-	hexa_x.main.mix
-	IO_pass.main.mix
-	mount.aux.mix
-	mount_legs.aux.mix
-	octo_cox.main.mix
-	octo_cox_w.main.mix
-	octo_+.main.mix
-	octo_x.main.mix
-	pass.aux.mix
-	phantom.main.mix
-	quad_dc.main.mix
-	quad_h.main.mix
-	quad_+.main.mix
-	quad_s250aq.main.mix
-	quad_+_vtol.main.mix
-	quad_w.main.mix
-	quad_x_cw.main.mix
-	quad_x.main.mix
-	quad_x_vtol.main.mix
-	rover_diff_and_servo.main.mix
-	rover_zero2.main.mix
-	rover_generic.main.mix
-	standard_vtol_hitl.main.mix
-	TF-AutoG2.main.mix
-	tilt_quad.aux.mix
-	tilt_quad.main.mix
-	tri_y_yaw+.main.mix
-	tri_y_yaw-.main.mix
-	uuv_x.main.mix
-	vectored6dof.main.mix
-	Viper.main.mix
-	vtol_AAERT.aux.mix
-	vtol_AAVVT.aux.mix
-	vtol_convergence.main.mix
-	vtol_delta.aux.mix
-	vtol_tailsitter_duo.main.mix
-	wingwing.main.mix
-)
+px4_add_module(
+	MODULE drivers__uart_esc__cytron
+	MAIN cytron
+	SRCS
+		crc16.c
+		qc_esc_packet.c
+		modalai_esc_serial.cpp
+		modalai_esc.cpp
+	DEPENDS
+		px4_work_queue
+        mixer_module
+        output_limit
+	)

@@ -286,3 +286,89 @@ PARAM_DEFINE_FLOAT(GND_WHEEL_BASE, 2.0f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_MAX_ANG, 0.7854f);
+
+/**
+ * Radius.
+ *
+ * @unit rad
+ * @min 0.0
+ * @max 10.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_NAV_RAD, 0.1f);
+
+
+/**
+ * Turn speed.
+ *
+ * @unit rad
+ * @min 0.0
+ * @max 1.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_TURN_SPD, 0.9f);
+
+/**
+ * YAW P.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 5.0
+ * @decimal 4
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_YAWP, 0.6f);
+
+/**
+ * YAW D.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 1.0
+ * @decimal 4
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_YAWD, 0.1f);
+
+/**
+ * YAW I.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 3.0
+ * @decimal 2
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_YAWI, 0.25f);
+
+/**
+ * YAW IMAX.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 10.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_YAWIMAX, 2.0f);
+
+/**
+ * Distance from front axle to rear axle
+ *
+ *
+ * @unit m
+ * @min 0.0
+ * @decimal 3
+ * @increment 0.0001
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_IMU_DLY, 0.001f);
+

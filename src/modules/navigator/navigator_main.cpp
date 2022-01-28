@@ -1353,6 +1353,8 @@ Navigator::publish_vehicle_cmd(vehicle_command_s *vcmd)
 		break;
 	}
 
+
+	PX4_ERR("publish_vehicle_cmd");
 	_vehicle_cmd_pub.publish(*vcmd);
 }
 

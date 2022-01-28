@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,50 +32,91 @@
  ****************************************************************************/
 
 /**
- * @file output_limit.h
+ * UART ESC configuration
  *
- * Library for output limiting (PWM for example)
+ * Selects what type of UART ESC, if any, is being used.
  *
- * @author Julian Oes <julian@px4.io>
+ * @reboot_required true
+ *
+ * @group UART ESC
+ * @value 0 - Disabled
+ * @value 1 - VOXL ESC
+ * @min 0
+ * @max 1
+ */
+PARAM_DEFINE_INT32(UART_CYT_CONFIG, 0);
+
+/**
+ * UART ESC baud rate
+ *
+ * Default rate is 250Kbps, which is used in off-the-shelf MoadalAI ESC products.
+ *
+ * @group UART ESC
+ * @unit bit/s
+ */
+PARAM_DEFINE_INT32(UART_CYT_BAUD, 57600);
+
+/**
+ * Motor mappings for ModalAI ESC M004
+ *
+ *  HW Channel Idexes (PX4 Indexes) (note: silkscreen shows 0 indexed)
+ *         4(1)     3(4)
+ * [front]
+ *         1(3)     2(2)
  */
 
-#pragma once
-
-#include <stdint.h>
-#include <stdbool.h>
-
-__BEGIN_DECLS
-
-/*
- * time for the ESCs to initialize
- * (this is not actually needed if the signal is sent right after boot)
+/**
+ * UART ESC Motor 1 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ * @min -4
+ * @max 4
  */
-#define INIT_TIME_US 50000
-/*
- * time to slowly ramp up the ESCs
+PARAM_DEFINE_INT32(UART_CYT_MOTOR1, 3);
+
+/**
+ *UART ESC Motor 2 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ * @min -4
+ * @max 4
  */
-#define RAMP_TIME_US 500000
+PARAM_DEFINE_INT32(UART_CYT_MOTOR2, 2);
 
-enum output_limit_state {
-	OUTPUT_LIMIT_STATE_OFF = 0,
-	OUTPUT_LIMIT_STATE_INIT,
-	OUTPUT_LIMIT_STATE_RAMP,
-	OUTPUT_LIMIT_STATE_ON
-};
+/**
+ * UART ESC Motor 3 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ * @min -4
+ * @max 4
+ */
+PARAM_DEFINE_INT32(UART_CYT_MOTOR3, 4);
 
-typedef struct {
-	enum output_limit_state state;
-	uint64_t time_armed;
-	bool ramp_up; ///< if true, motors will ramp up from disarmed to min_output after arming
-} output_limit_t;
+/**
+ * UART ESC Motor 4 Mapping.  1-4 (negative for reversal).
+ *
+ * @group UART ESC
+ * @min -4
+ * @max 4
+ */
+PARAM_DEFINE_INT32(UART_CYT_MOTOR4, 1);
 
+/**
+ * UART ESC RPM Min
+ *
+ * Minimum RPM for ESC
+ *
+ * @group UART ESC
+ * @unit RPM
+ */
+PARAM_DEFINE_INT32(UART_CYT_RPM_MIN, 1000);
 
-
-__EXPORT void output_limit_init(output_limit_t *limit);
-
-__EXPORT void output_limit_calc(const bool armed, const bool pre_armed, const unsigned num_channels,
-				const uint16_t reverse_mask, const uint16_t *disarmed_output,
-				const uint16_t *min_output, const uint16_t *max_output,
-				const float *output, uint16_t *effective_output, output_limit_t *limit);
-
-__END_DECLS
+/**
+ * UART ESC RPM Max
+ *
+ * Maximum RPM for ESC
+ *
+ * @group UART ESC
+ * @unit RPM
+ */
+PARAM_DEFINE_INT32(UART_CYT_RPM_MAX, 2000);

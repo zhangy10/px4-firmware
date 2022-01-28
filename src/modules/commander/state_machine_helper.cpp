@@ -314,10 +314,15 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 	case commander_state_s::MAIN_STATE_AUTO_MISSION:
 
 		/* need global position, home position, and a valid mission */
-		if (status_flags.condition_global_position_valid &&
-		    status_flags.condition_auto_mission_available) {
+//		if (status_flags.condition_global_position_valid &&
+		if (    status_flags.condition_auto_mission_available) {
 
 			ret = TRANSITION_CHANGED;
+		}
+		else
+		{
+			PX4_ERR("Not auto mission %d %d", status_flags.condition_global_position_valid,
+					status_flags.condition_auto_mission_available);
 		}
 
 		break;

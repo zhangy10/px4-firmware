@@ -538,6 +538,8 @@ void RCUpdate::UpdateManualSwitches(const hrt_abstime &timestamp_sample)
 		switches.mode_switch = get_rc_sw3pos_position(rc_channels_s::FUNCTION_MODE,
 				       _param_rc_auto_th.get(), _param_rc_assist_th.get());
 
+		PX4_ERR("Mode SWitch: %d", switches.mode_switch);
+
 		// only used with legacy mode switch
 		switches.man_switch       = get_rc_sw2pos_position(rc_channels_s::FUNCTION_MAN,       _param_rc_man_th.get());
 		switches.acro_switch      = get_rc_sw2pos_position(rc_channels_s::FUNCTION_ACRO,      _param_rc_acro_th.get());

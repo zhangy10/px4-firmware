@@ -162,6 +162,7 @@ EKF2::EKF2(bool multi_mode, const px4::wq_config_t &config, bool replay_mode):
 	_param_ekf2_synthetic_mag_z(_params->synthesize_mag_z),
 	_param_ekf2_gsf_tas_default(_params->EKFGSF_tas_default)
 {
+	PX4_ERR("**** Starting up PX4 rover EKF2 ****");
 }
 
 EKF2::~EKF2()
@@ -208,6 +209,8 @@ bool EKF2::multi_init(int imu, int mag)
 
 	PX4_ERR("publication instance problem: %d att: %d lpos: %d gpos: %d", status_instance,
 		_attitude_pub.get_instance(), _local_position_pub.get_instance(), _global_position_pub.get_instance());
+
+
 
 	return false;
 }
@@ -391,6 +394,10 @@ void EKF2::Run()
 					_preflt_checker.reset();
 				}
 			}
+
+			if (_armed)
+				_ekf.set_in_air_status(_armed);
+
 		}
 
 		if (_vehicle_land_detected_sub.updated()) {

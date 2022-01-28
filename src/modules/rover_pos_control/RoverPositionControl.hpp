@@ -69,6 +69,7 @@
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/actuator_controls.h>
 
 using matrix::Dcmf;
@@ -105,6 +106,7 @@ private:
 	int		_control_mode_sub{-1};		/**< control mode subscription */
 	int		_global_pos_sub{-1};
 	int		_local_pos_sub{-1};
+	int		_vio_pos_sub{-1};
 	int		_manual_control_setpoint_sub{-1};		/**< notification of manual control updates */
 	int		_pos_sp_triplet_sub{-1};
 	int		_att_sp_sub{-1};
@@ -122,6 +124,7 @@ private:
 	actuator_controls_s				_act_controls{};		/**< direct control of actuators */
 	vehicle_attitude_s				_vehicle_att{};
 	sensor_combined_s				_sensor_combined{};
+	vehicle_odometry_s				_vio_pos{};			/**< VIO FRD vehicle position */
 
 	uORB::SubscriptionData<vehicle_acceleration_s>		_vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 
@@ -151,6 +154,7 @@ private:
 
 	/* previous waypoint */
 	matrix::Vector2f _prev_wp{0.0f, 0.0f};
+	matrix::Vector2f _curr_wp{0.0f, 0.0f};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::GND_L1_PERIOD>) _param_l1_period,
@@ -166,15 +170,41 @@ private:
 		(ParamFloat<px4::params::GND_SPEED_D>) _param_speed_d,
 		(ParamFloat<px4::params::GND_SPEED_IMAX>) _param_speed_imax,
 		(ParamFloat<px4::params::GND_SPEED_THR_SC>) _param_throttle_speed_scaler,
+		(ParamFloat<px4::params::GND_NAV_RAD>) _param_gnd_nav_rad,	/**< REAL loiter radius for Rover */
+		(ParamFloat<px4::params::GND_TURN_SPD>) _param_gnd_turn_spd,
+		(ParamFloat<px4::params::GND_YAWP>) _param_gnd_yaw_p,
+		(ParamFloat<px4::params::GND_YAWD>) _param_gnd_yaw_d,
+		(ParamFloat<px4::params::GND_YAWI>) _param_gnd_yaw_i,
+		(ParamFloat<px4::params::GND_YAWIMAX>) _param_gnd_yaw_imax,
 
 		(ParamFloat<px4::params::GND_THR_MIN>) _param_throttle_min,
 		(ParamFloat<px4::params::GND_THR_MAX>) _param_throttle_max,
 		(ParamFloat<px4::params::GND_THR_CRUISE>) _param_throttle_cruise,
 
+		(ParamFloat<px4::params::GND_IMU_DLY>) _param_imu_delay,
+
 		(ParamFloat<px4::params::GND_WHEEL_BASE>) _param_wheel_base,
 		(ParamFloat<px4::params::GND_MAX_ANG>) _param_max_turn_angle,
 		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad	/**< loiter radius for Rover */
 	)
+
+	bool _skid_steer_turn_request = false;
+	bool _skid_steer_turn_complete = false;
+	//bool _new_waypoint = false;
+	int pause_turn = 0;
+
+	////
+	double _last_derivative = 0.;
+	double _last_turn_request = 0.;
+	double _fCut = 20.;
+	float _integrator = 0.0;
+
+
+	int32_t _frame_type  = 0;
+	double turn_inplace_thresh;
+	double turn_inplace_thresh_half;
+
+	double wrap_180(double x);
 
 	/**
 	 * Update our local parameter cache.
@@ -194,5 +224,7 @@ private:
 					 const position_setpoint_triplet_s &_pos_sp_triplet);
 	void		control_velocity(const matrix::Vector3f &current_velocity, const position_setpoint_triplet_s &pos_sp_triplet);
 	void		control_attitude(const vehicle_attitude_s &att, const vehicle_attitude_setpoint_s &att_sp);
+	bool 		control_vio(const position_setpoint_triplet_s &pos_sp_triplet);
+
 
 };

@@ -77,6 +77,7 @@ _control_latency_perf(perf_alloc(PC_ELAPSED, "control latency"))
 	uORB::Publication<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
 	test_motor_pub.publish(test);
 	_motor_test.test_motor_sub.subscribe();
+
 }
 
 MixingOutput::~MixingOutput()
@@ -361,6 +362,8 @@ bool MixingOutput::update()
 				setAndPublishActuatorOutputs(num_motor_test, actuator_outputs);
 			}
 
+			PX4_ERR("under motor testing");
+
 			handleCommands();
 			return true;
 		}
@@ -432,6 +435,10 @@ bool MixingOutput::update()
 
 		publishMixerStatus(actuator_outputs);
 		updateLatencyPerfCounter(actuator_outputs);
+	}
+	else
+	{
+		PX4_ERR("can't _interface.updateOutputsInt");
 	}
 
 	handleCommands();
@@ -586,6 +593,8 @@ int MixingOutput::loadMixer(const char *buf, unsigned len)
 		_groups_required = 0;
 		return -ENOMEM;
 	}
+
+	PX4_ERR(">>> mixer load with %s", buf);
 
 	int ret = _mixers->load_from_buf(controlCallback, (uintptr_t)this, buf, len);
 

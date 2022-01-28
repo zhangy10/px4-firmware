@@ -67,6 +67,7 @@ public:
 	int init();
 
 	void update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs);
+	void update_outputs_int16(bool stop_motors, int16_t outputs[MAX_ACTUATORS], unsigned num_outputs);
 
 	/**
 	 * Sets the number of rotors

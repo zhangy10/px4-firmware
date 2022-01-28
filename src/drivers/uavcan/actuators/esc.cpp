@@ -76,6 +76,73 @@ UavcanEscController::init()
 	return res;
 }
 
+
+void
+UavcanEscController::update_outputs_int16(bool stop_motors, int16_t outputs[MAX_ACTUATORS], unsigned num_outputs)
+{
+	if (num_outputs > uavcan::equipment::esc::RawCommand::FieldTypes::cmd::MaxSize) {
+		num_outputs = uavcan::equipment::esc::RawCommand::FieldTypes::cmd::MaxSize;
+	}
+
+	if (num_outputs > esc_status_s::CONNECTED_ESC_MAX) {
+		num_outputs = esc_status_s::CONNECTED_ESC_MAX;
+	}
+
+	/*
+	 * Rate limiting - we don't want to congest the bus
+	 */
+	const auto timestamp = _node.getMonotonicTime();
+
+	if ((timestamp - _prev_cmd_pub).toUSec() < (1000000 / MAX_RATE_HZ)) {
+		return;
+	}
+
+	_prev_cmd_pub = timestamp;
+
+	/*
+	 * Fill the command message
+	 * If unarmed, we publish an empty message anyway
+	 */
+	uavcan::equipment::esc::RawCommand msg;
+
+	for (unsigned i = 0; i < num_outputs; i++) {
+
+		if (stop_motors || outputs[i] == (int16_t)DISARMED_OUTPUT_VALUE) {
+			msg.cmd.push_back(static_cast<unsigned>(0));
+
+		} else {
+
+			msg.cmd.push_back(static_cast<int>(outputs[i]));
+		}
+	}
+
+	/*
+	 * Remove channels that are always zero.
+	 * The objective of this optimization is to avoid broadcasting multi-frame transfers when a single frame
+	 * transfer would be enough. This is a valid optimization as the UAVCAN specification implies that all
+	 * non-specified ESC setpoints should be considered zero.
+	 * The positive outcome is a (marginally) lower bus traffic and lower CPU load.
+	 *
+	 * From the standpoint of the PX4 architecture, however, this is a hack. It should be investigated why
+	 * the mixer returns more outputs than are actually used.
+	 */
+	for (int index = int(msg.cmd.size()) - 1; index >= _max_number_of_nonzero_outputs; index--) {
+		if (msg.cmd[index] != 0) {
+			_max_number_of_nonzero_outputs = index + 1;
+			break;
+		}
+	}
+
+	msg.cmd.resize(_max_number_of_nonzero_outputs);
+
+	/*
+	 * Publish the command message to the bus
+	 * Note that for a quadrotor it takes one CAN frame
+	 */
+	_uavcan_pub_raw_cmd.broadcast(msg);
+}
+
+
 void
 UavcanEscController::update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs)
 {
@@ -105,6 +172,7 @@ UavcanEscController::update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUA
 	uavcan::equipment::esc::RawCommand msg;
 
 	for (unsigned i = 0; i < num_outputs; i++) {
+
 		if (stop_motors || outputs[i] == DISARMED_OUTPUT_VALUE) {
 			msg.cmd.push_back(static_cast<unsigned>(0));
 

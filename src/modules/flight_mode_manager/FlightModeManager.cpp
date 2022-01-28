@@ -198,7 +198,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Transition activation failed with error: %s", errorToString(error));
+				PX4_ERR("Transition activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -213,6 +213,14 @@ void FlightModeManager::start_flight_task()
 	}
 
 	// offboard
+//	PX4_ERR("Mode %d OFFBOARD CHECK %d %d %d %d %d",
+//			_vehicle_status_sub.get().nav_state,
+//			_vehicle_control_mode_sub.get().flag_control_altitude_enabled,
+//					_vehicle_control_mode_sub.get().flag_control_position_enabled,
+//					_vehicle_control_mode_sub.get().flag_control_climb_rate_enabled,
+//					_vehicle_control_mode_sub.get().flag_control_velocity_enabled,
+//					_vehicle_control_mode_sub.get().flag_control_acceleration_enabled);
+
 	if (_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD
 	    && (_vehicle_control_mode_sub.get().flag_control_altitude_enabled ||
 		_vehicle_control_mode_sub.get().flag_control_position_enabled ||
@@ -225,7 +233,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Offboard activation failed with error: %s", errorToString(error));
+				PX4_ERR("Offboard activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -244,7 +252,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Follow-Me activation failed with error: %s", errorToString(error));
+				PX4_ERR("Follow-Me activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -264,7 +272,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Auto activation failed with error: %s", errorToString(error));
+				PX4_ERR("Auto activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -285,7 +293,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Descend activation failed with error: %s", errorToString(error));
+				PX4_ERR("Descend activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -320,13 +328,14 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Position-Ctrl activation failed with error: %s", errorToString(error));
+				PX4_ERR("Position-Ctrl activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
 			_task_failure_count++;
 
 		} else {
+			PX4_ERR("check_failure1");
 			check_failure(task_failure, vehicle_status_s::NAVIGATION_STATE_POSCTL);
 			task_failure = false;
 		}
@@ -350,7 +359,7 @@ void FlightModeManager::start_flight_task()
 
 		if (error != FlightTaskError::NoError) {
 			if (prev_failure_count == 0) {
-				PX4_WARN("Altitude-Ctrl activation failed with error: %s", errorToString(error));
+				PX4_ERR("Altitude-Ctrl activation failed with error: %s", errorToString(error));
 			}
 
 			task_failure = true;
@@ -393,7 +402,7 @@ void FlightModeManager::check_failure(bool task_failure, uint8_t nav_state)
 
 	} else if (_task_failure_count > NUM_FAILURE_TRIES) {
 		// tell commander to switch mode
-		PX4_WARN("Previous flight task failed, switching to mode %d", nav_state);
+		PX4_ERR("Previous flight task failed, switching to mode %d", nav_state);
 		send_vehicle_cmd_do(nav_state);
 		_task_failure_count = 0; // avoid immediate resending of a vehicle command in the next iteration
 	}
@@ -419,6 +428,7 @@ void FlightModeManager::send_vehicle_cmd_do(uint8_t nav_state)
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
+		PX4_ERR("ALTCTL");
 		command.param2 = (float)PX4_CUSTOM_MAIN_MODE_ALTCTL;
 		break;
 
@@ -434,6 +444,7 @@ void FlightModeManager::send_vehicle_cmd_do(uint8_t nav_state)
 
 	// publish the vehicle command
 	command.timestamp = hrt_absolute_time();
+	PX4_ERR("FlightModeManager::send_vehicle_cmd_do");
 	_vehicle_command_pub.publish(command);
 }
 
@@ -619,8 +630,13 @@ void FlightModeManager::reset_setpoint_to_nan(vehicle_local_position_setpoint_s 
 
 FlightTaskError FlightModeManager::switchTask(FlightTaskIndex new_task_index)
 {
+
+	//PX4_ERR("Task: %d", (int)new_task_index);
+
 	// switch to the running task, nothing to do
 	if (new_task_index == _current_task.index) {
+		//PX4_ERR("Task already running");
+
 		return FlightTaskError::NoError;
 	}
 
@@ -634,11 +650,14 @@ FlightTaskError FlightModeManager::switchTask(FlightTaskIndex new_task_index)
 	}
 
 	if (_initTask(new_task_index)) {
+		PX4_ERR("_initTask(new_task_index) %d", (int)new_task_index);
 		// invalid task
 		return FlightTaskError::InvalidTask;
 	}
 
 	if (!isAnyTaskActive()) {
+		PX4_ERR("isAnyTaskActive");
+
 		// no task running
 		return FlightTaskError::NoError;
 	}
@@ -648,6 +667,9 @@ FlightTaskError FlightModeManager::switchTask(FlightTaskIndex new_task_index)
 		_current_task.task->~FlightTask();
 		_current_task.task = nullptr;
 		_current_task.index = FlightTaskIndex::None;
+
+		PX4_ERR("IS QVIO or GPS running? activation failed _current_task.task->updateInitialize %f %f", (double)last_setpoint.x, (double)last_setpoint.y);
+
 		return FlightTaskError::ActivationFailed;
 	}
 
@@ -725,7 +747,7 @@ int FlightModeManager::print_status()
 int FlightModeManager::print_usage(const char *reason)
 {
 	if (reason) {
-		PX4_WARN("%s\n", reason);
+		PX4_ERR("%s\n", reason);
 	}
 
 	PRINT_MODULE_DESCRIPTION(

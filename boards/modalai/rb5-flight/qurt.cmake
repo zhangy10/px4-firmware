@@ -57,7 +57,7 @@ px4_add_board(
 		qshell/qurt
         #magnetometer/hmc5883
         magnetometer/isentek/ist8310
-        uart_esc/modalai_esc
+        uart_esc/cytron
         power_monitor/voxlpm
         imu/invensense/icm42688p
 				lights/rgbled_ncp5623c
@@ -80,7 +80,7 @@ px4_add_board(
 		mc_hover_thrust_estimator
 		muorb/slpi
 		#rc_update
-		#rover_pos_control
+		rover_pos_control
 		sensors
 		# temperature_compensation
 		# vmount

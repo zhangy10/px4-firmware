@@ -82,10 +82,10 @@ public:
 	virtual int	init();
 
 	typedef enum {
-		UART_ESC_RESET,
-		UART_ESC_VERSION,
-		UART_ESC_TONE,
-		UART_ESC_LED
+		UART_CYT_RESET,
+		UART_CYT_VERSION,
+		UART_CYT_TONE,
+		UART_CYT_LED
 	} uart_esc_cmd_t;
 
 	struct Command {
@@ -134,9 +134,9 @@ private:
 	} uart_esc_params_t;
 
 	struct EscChan {
-		uint16_t	rate_req;
+		int16_t	rate_req;
 		uint8_t		state;
-		uint16_t	rate_meas;
+		int16_t	rate_meas;
 		uint8_t		led;
 		uint8_t		cmd_counter;
 		int8_t		power;
@@ -190,6 +190,8 @@ private:
 	void 			updateLeds(vehicle_control_mode_s mode, led_control_s control);
 
 	int			populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd);
-	int 			readResponse(Command *out_cmd);
-	int 			parseResponse(uint8_t *buf, uint8_t len);
+	int 		readResponse(Command *out_cmd);
+	int 		parseResponse(uint8_t *buf, uint8_t len);
+
+	uint8_t uart_cmd[8];
 };
