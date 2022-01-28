@@ -779,8 +779,8 @@ void ModalaiEsc::Run()
 
 	/* Open serial port in this thread */
 	if (!_uart_port->is_open()) {
-		if (_uart_port->uart_open(_device, B57600) == PX4_OK) {
-			PX4_INFO("Opened UART ESC device @ %d", _parameters.baud_rate);
+		if (_uart_port->uart_open(_device, B230400) == PX4_OK) {
+			PX4_INFO("Cytron Opened UART ESC device @ %d", B230400);
 
 		} else {
 			PX4_ERR("Failed opening device");

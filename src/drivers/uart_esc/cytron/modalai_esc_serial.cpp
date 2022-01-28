@@ -54,7 +54,7 @@ int ModalaiEscSerial::uart_open(const char *dev, speed_t speed)
 
 #ifdef __PX4_QURT
 	_uart_fd = qurt_uart_open(dev, speed);
-	PX4_ERR("QURT Port in use: %s (%d) at speed: %d", dev, _uart_fd, speed);
+	PX4_ERR("QURT/CYTRON Port in use: %s (%d) at speed: %d", dev, _uart_fd, speed);
 #else
 	PX4_ERR("USB Port in use: %s at speed: %d", dev, speed);
 
