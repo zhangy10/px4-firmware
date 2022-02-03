@@ -19,6 +19,14 @@
 
 # Releases
 
+## 1.4.7alpha
+
+- Decreased the polling rate of UART drivers running on Qurt to avoid starving the OS services
+- Improve comms error counting in icp10100 barometer driver
+- Added a set command to the rgbled_ncp5623c driver
+- Added a performance counter to rgbled_ncp5623c to count bad i2c transfers
+- Changed qshell on apps side to return the value received from the DSP instead of 0
+
 ## 1.4.6alpha
 
 - Fixed typo in qgc-ip.cfg
