@@ -3,7 +3,7 @@
 #include <px4_platform_common/time.h>
 #include "uart.h"
 
-#define UART_READ_POLL_INTERVAL_US 100
+#define UART_READ_POLL_INTERVAL_US 1000
 
 // Static variables
 static bool _callbacks_configured = false;
