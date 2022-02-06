@@ -113,6 +113,11 @@ ln -f -s voxl-px4 m0054-px4
 # Enable the autostart service
 systemctl enable voxl-px4.service
 
+# Automatically generate the test signature so that px4 can run on SLPI DSP
+if [ -f /share/modalai/qrb5165-slpi-test-sig/generate-test-sig.sh ]; then
+    /share/modalai/qrb5165-slpi-test-sig/generate-test-sig.sh
+fi
+
 # Always flush all changes to disk
 sync
 
