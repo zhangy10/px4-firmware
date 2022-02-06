@@ -25,6 +25,9 @@ cp voxl.config debian/etc/modalai
 cp voxl-set-default-parameters.config debian/etc/modalai
 cp qgc-ip.cfg debian/etc/modalai
 
+mkdir -p debian/etc/systemd/system
+cp voxl-px4.service debian/etc/systemd/system
+
 # Create necessary directories for px4 operation
 mkdir -p debian/home/linaro/eeprom
 

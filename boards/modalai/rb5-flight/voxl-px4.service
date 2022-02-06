@@ -1,0 +1,10 @@
+[Unit]
+Description=px4
+After=sscrpcd.service
+Requires=sscrpcd.service
+
+[Service]
+ExecStart=/bin/bash -c "PATH=/usr/bin m0052-px4 -d"
+
+[Install]
+WantedBy=multi-user.target

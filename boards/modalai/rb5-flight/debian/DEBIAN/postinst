@@ -110,6 +110,9 @@ chmod a+x voxl-px4
 ln -f -s voxl-px4 m0052-px4
 ln -f -s voxl-px4 m0054-px4
 
+# Enable the autostart service
+systemctl enable voxl-px4.service
+
 # Always flush all changes to disk
 sync
 
