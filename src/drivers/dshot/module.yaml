@@ -51,15 +51,3 @@ parameters:
                     Typical motors for 5 inch props have 14 poles.
             type: int32
             default: 14
-        TURTLE_MODE: # only used by dshot so far, so keep it under the dshot group
-            description:
-                short: Configure turtle mode (EXPERIMENTAL)
-                long: |
-                    This enables/disables turtle mode. Not all DShot ESCs support all modes.
-                    When turtle mode is enabled, the motors spin in reverse.
-            type: enum
-            values:
-                0: Disable
-                1: Enable
-            reboot_required: true
-            default: 0
