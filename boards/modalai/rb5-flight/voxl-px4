@@ -10,9 +10,9 @@ do
 done
 
 if [ ! -f /home/linaro/eeprom/parameters ]; then
-   echo "Setting default parameters for PX4 on M0054"
+   echo "Setting default parameters for PX4 on voxl"
    px4 $DAEMON -s /etc/modalai/voxl-set-default-parameters.config
-   sync
+   /bin/sync
 fi
 
 px4 $DAEMON -s /etc/modalai/voxl.config
