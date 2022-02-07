@@ -19,6 +19,13 @@
 
 # Releases
 
+## 1.4.8alpha
+
+- Added voxl-px4.service to autostart px4
+- Added call to generate a SLPI DSP test signature in postinst
+- Added a check in the voxl.config startup script to make sure test signature is available
+- Consolidating m0052 / m0054 into single voxl structure with automatic platform configuration
+
 ## 1.4.7alpha
 
 - Decreased the polling rate of UART drivers running on Qurt to avoid starving the OS services
