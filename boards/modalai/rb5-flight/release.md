@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.9alpha
+
+- Some minor DSP test signature related changes
+
 ## 1.4.8alpha
 
 - Added voxl-px4.service to autostart px4
