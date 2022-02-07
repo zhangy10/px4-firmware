@@ -44,6 +44,7 @@
 #include <px4_platform_common/module.h>
 
 #include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/manual_control_setpoint.h>
 
 #include "modalai_esc_serial.hpp"
 
@@ -118,6 +119,9 @@ private:
 	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MIN = 5000;
 	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MAX = 17000;
 
+	static constexpr uint32_t MODALAI_ESC_MODE = 0;
+	static constexpr uint32_t MODALAI_ESC_MODE_TURTLE = 1;
+
 	//static constexpr uint16_t max_pwm(uint16_t pwm) { return math::min(pwm, MODALAI_ESC_PWM_MAX); }
 	//static constexpr uint16_t max_rpm(uint16_t rpm) { return math::min(rpm, MODALAI_ESC_RPM_MAX); }
 
@@ -125,6 +129,7 @@ private:
 
 	typedef struct {
 		int32_t		config{MODALAI_ESC_UART_CONFIG};
+		int32_t		mode{MODALAI_ESC_MODE};
 		int32_t		baud_rate{MODALAI_ESC_DEFAULT_BAUD};
 		int32_t		rpm_min{MODALAI_ESC_DEFAULT_RPM_MIN};
 		int32_t		rpm_max{MODALAI_ESC_DEFAULT_RPM_MAX};
@@ -132,7 +137,7 @@ private:
 	} uart_esc_params_t;
 
 	struct EscChan {
-		uint16_t	rate_req;
+		int16_t		rate_req;
 		uint8_t		state;
 		uint16_t	rate_meas;
 		uint8_t		led;
@@ -167,12 +172,17 @@ private:
 	unsigned		_current_update_rate{0};
 
 	uORB::Subscription	_vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
+	uORB::Subscription      _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription 	_parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription	_led_update_sub{ORB_ID(led_control)};
 
 	uart_esc_params_t	_parameters;
 	int			update_params();
 	int			load_params(uart_esc_params_t *params, ch_assign_t *map);
+
+	bool			_turtle_mode_en{false};
+	int32_t			_rpm_fullscale{0};
+	manual_control_setpoint_s _manual_control_setpoint{};
 
 	uint16_t		_cmd_id{0};
 	Command 		_current_cmd;
@@ -181,7 +191,7 @@ private:
 	EscChan			_esc_chans[MODALAI_ESC_OUTPUT_CHANNELS];
 	Command			_esc_cmd;
 
-	led_rsc_t            	_led_rsc;
+	led_rsc_t		_led_rsc;
 	void 			updateLeds(vehicle_control_mode_s mode, led_control_s control);
 
 	int			populateCommand(uart_esc_cmd_t cmd_type, uint8_t cmd_mask, Command *out_cmd);

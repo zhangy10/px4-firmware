@@ -120,3 +120,18 @@ PARAM_DEFINE_INT32(UART_ESC_RPM_MIN, 5500);
  * @unit RPM
  */
 PARAM_DEFINE_INT32(UART_ESC_RPM_MAX, 15000);
+
+/**
+ * UART ESC Extra Mode
+ *
+ * Selects what type of extra mode is enabled, if any
+ *
+ * @reboot_required true
+ *
+ * @group UART ESC
+ * @value 0 - None
+ * @value 1 - Turtle Enabled
+ * @min 0
+ * @max 1
+ */
+PARAM_DEFINE_INT32(UART_ESC_MODE, 0);
