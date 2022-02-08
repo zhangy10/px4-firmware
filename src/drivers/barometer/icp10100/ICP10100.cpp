@@ -294,15 +294,11 @@ void ICP10100::CalculatePressure(int32_t raw_pressure, int32_t raw_temperature) 
     B = out[1];
     C = out[2];
 
-		// PX4_INFO("A: %f, B: %f, C: %f", A, B, C);
+	// PX4_INFO("A: %f, B: %f, C: %f", A, B, C);
 
-		pressure = (A + B / (C + raw_pressure)) / 100.0;
+	pressure = (A + B / (C + raw_pressure)) / 100.0;
 
-		// PX4_INFO("Pressure: %f", (A + B / (C + raw_pressure)) / 100.0);
-
-    temperature = 175.0 / 65536.0 * (float) raw_temperature - 45.0;
-
-		// PX4_INFO("Temperature: %f", temperature);
+	// PX4_INFO("Pressure: %f", (A + B / (C + raw_pressure)) / 100.0);
 }
 
 // p_Pa -- List of 3 values corresponding to applied pressure in Pa
@@ -338,7 +334,7 @@ int ICP10100::collect()
 
     // TODO: Check CRC values
 
-    int16_t temp_val = (int16_t)(data_read[6] << 8 | data_read[7]);
+    uint32_t temp_val = (uint32_t)(data_read[6] << 8 | data_read[7]);
     temperature = ((175.0 / 65536.0) * (double) temp_val) - 45.0;
 
     int32_t pressure_val = (int32_t)(data_read[0] << 16 | data_read[1] << 8 | data_read[3]);
