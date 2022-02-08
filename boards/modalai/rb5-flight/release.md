@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.10alpha
+
+- Fixed bug in barometer temperature calculation. Register value is unsigned, not signed!
+
 ## 1.4.9alpha
 
 - Some minor DSP test signature related changes
