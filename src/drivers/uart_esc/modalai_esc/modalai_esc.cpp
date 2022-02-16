@@ -715,6 +715,7 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 
 						/* PX4 motor 1 - front right */
 						case 1:
+							/* Pitch and roll */
 							if(_manual_control_setpoint.x > _parameters.dead_zone_1) {
 								if(_manual_control_setpoint.y > -(_parameters.dead_zone_2)) {
 									setpoint = _manual_control_setpoint.x;
@@ -727,9 +728,16 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 									//PX4_ERR("motor1");
 								}
 							}
+
+							/* Yaw */
+							if(_manual_control_setpoint.r < -(_parameters.dead_zone_1)){
+								setpoint = fabs(_manual_control_setpoint.r);
+								PX4_ERR("motor1");
+							}
 							break;
 						/* PX4 motor 3 - front left */
 						case 3:
+							/* Pitch and roll */
 							if(_manual_control_setpoint.x > _parameters.dead_zone_1) {
 								if(_manual_control_setpoint.y < _parameters.dead_zone_2) {
 									setpoint = _manual_control_setpoint.x;
@@ -742,9 +750,16 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 									//PX4_ERR("motor3");
 								}
 							}
+
+							/* Yaw */
+							if(_manual_control_setpoint.r > _parameters.dead_zone_1){
+								setpoint = _manual_control_setpoint.r;
+								PX4_ERR("motor3");
+							}
 							break;
 						/* PX4 motor 2 - rear left */
 						case 2:
+							/* Pitch and roll */
 							if(_manual_control_setpoint.x < -(_parameters.dead_zone_1)) {
 								if(_manual_control_setpoint.y < _parameters.dead_zone_2) {
 									setpoint = fabs(_manual_control_setpoint.x);
@@ -757,9 +772,16 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 									//PX4_ERR("motor2");
 								}
 							}
+
+							/* Yaw */
+							if(_manual_control_setpoint.r < -(_parameters.dead_zone_1)){
+								setpoint = fabs(_manual_control_setpoint.r);
+								PX4_ERR("motor2");
+							}
 							break;
 						/* PX4 motor 4- rear right */
 						case 4:
+							/* Pitch and roll */
 							if(_manual_control_setpoint.x < -_parameters.dead_zone_1) {
 								if(_manual_control_setpoint.y > -_parameters.dead_zone_2) {
 									setpoint = fabs(_manual_control_setpoint.x);
@@ -771,6 +793,12 @@ bool ModalaiEsc::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS]
 									setpoint = _manual_control_setpoint.y;
 									//PX4_ERR("motor4");
 								}
+							}
+
+							/* Yaw */
+							if(_manual_control_setpoint.r > _parameters.dead_zone_1){
+								setpoint = _manual_control_setpoint.r;
+								PX4_ERR("motor4");
 							}
 							break;
 					}
