@@ -119,8 +119,17 @@ private:
 	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MIN = 5000;
 	static constexpr uint16_t MODALAI_ESC_DEFAULT_RPM_MAX = 17000;
 
+	static constexpr float    MODALAI_ESC_MODE_DISABLED_SETPOINT = -0.1f;
+	static constexpr float    MODALAI_ESC_MODE_THRESHOLD = 0.0f;
+
+	static constexpr float    MODALAI_ESC_MODE_DEAD_ZONE_MIN = 0.0f;
+	static constexpr float    MODALAI_ESC_MODE_DEAD_ZONE_MAX = 1.0f;
+	static constexpr float    MODALAI_ESC_MODE_DEAD_ZONE_1 = 0.30f;
+	static constexpr float    MODALAI_ESC_MODE_DEAD_ZONE_2 = 0.02f;
+
 	static constexpr uint32_t MODALAI_ESC_MODE = 0;
-	static constexpr uint32_t MODALAI_ESC_MODE_TURTLE = 1;
+	static constexpr uint32_t MODALAI_ESC_MODE_TURTLE_AUX1 = 1;
+	static constexpr uint32_t MODALAI_ESC_MODE_TURTLE_AUX2 = 2;
 
 	//static constexpr uint16_t max_pwm(uint16_t pwm) { return math::min(pwm, MODALAI_ESC_PWM_MAX); }
 	//static constexpr uint16_t max_rpm(uint16_t rpm) { return math::min(rpm, MODALAI_ESC_RPM_MAX); }
@@ -130,6 +139,8 @@ private:
 	typedef struct {
 		int32_t		config{MODALAI_ESC_UART_CONFIG};
 		int32_t		mode{MODALAI_ESC_MODE};
+		float		dead_zone_1{MODALAI_ESC_MODE_DEAD_ZONE_1};
+		float		dead_zone_2{MODALAI_ESC_MODE_DEAD_ZONE_2};
 		int32_t		baud_rate{MODALAI_ESC_DEFAULT_BAUD};
 		int32_t		rpm_min{MODALAI_ESC_DEFAULT_RPM_MIN};
 		int32_t		rpm_max{MODALAI_ESC_DEFAULT_RPM_MAX};
