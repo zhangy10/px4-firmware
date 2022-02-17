@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.11alpha
+
+- Changed Mavlink configuration method. All communication now goes through voxl-mavlink-server and voxl-vision-px4
+
 ## 1.4.10alpha
 
 - Fixed bug in barometer temperature calculation. Register value is unsigned, not signed!
