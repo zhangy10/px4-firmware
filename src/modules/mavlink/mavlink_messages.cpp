@@ -458,10 +458,14 @@ protected:
 			vehicle_status_s status{};
 			_status_sub.copy(&status);
 
-			uint8_t base_mode = 0;
+			uint8_t base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
 			uint32_t custom_mode = 0;
 			uint8_t system_status = 0;
 			get_mavlink_mode_state(&status, &system_status, &base_mode, &custom_mode);
+
+			if (status->hil_state == vehicle_status_s::HIL_STATE_ON) {
+				base_mode |= MAV_MODE_FLAG_HIL_ENABLED;
+			}
 
 			mavlink_msg_heartbeat_send(_mavlink->get_channel(), _mavlink->get_system_type(), MAV_AUTOPILOT_PX4,
 						   base_mode, custom_mode, system_status);
