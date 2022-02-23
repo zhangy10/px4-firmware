@@ -227,95 +227,6 @@ static_assert(MAV_SENSOR_ROTATION_ROLL_90_PITCH_315 == static_cast<MAV_SENSOR_OR
 
 static_assert(41 == ROTATION_MAX, "Keep MAV_SENSOR_ROTATION and PX4 Rotation in sync");
 
-union px4_custom_mode get_px4_custom_mode(const struct vehicle_status_s *const status)
-{
-	union px4_custom_mode custom_mode;
-	custom_mode.data = 0;
-
-	switch (status->nav_state) {
-	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_MANUAL;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_ALTCTL;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_POSCTL:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_POSCTL;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_MISSION;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTL:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_RTL;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LAND;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_ACRO:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_ACRO;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_DESCEND:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LAND;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_MANUAL;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_OFFBOARD;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_STAB:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_STABILIZED;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_LAND:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LAND;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW_TARGET:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_PRECLAND:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND;
-		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_ORBIT:
-		custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_POSCTL;
-		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT;
-		break;
-
-	}
-
-	return custom_mode;
-}
-
 static uint16_t cm_uint16_from_m_float(float m)
 {
 	if (m < 0.0f) {
@@ -490,95 +401,70 @@ static void get_mavlink_mode_state(const struct vehicle_status_s *const status, 
 	}
 }
 
+
 class MavlinkStreamHeartbeat : public MavlinkStream
 {
 public:
-	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamHeartbeat(mavlink); }
+	const char *get_name() const override
+	{
+		return MavlinkStreamHeartbeat::get_name_static();
+	}
 
-	static constexpr const char *get_name_static() { return "HEARTBEAT"; }
-	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_HEARTBEAT; }
+	static constexpr const char *get_name_static()
+	{
+		return "HEARTBEAT";
+	}
 
-	const char *get_name() const override { return get_name_static(); }
-	uint16_t get_id() override { return get_id_static(); }
+	static constexpr uint16_t get_id_static()
+	{
+		return MAVLINK_MSG_ID_HEARTBEAT;
+	}
 
-	bool const_rate() override { return true; }
+	uint16_t get_id() override
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamHeartbeat(mavlink);
+	}
 
 	unsigned get_size() override
 	{
 		return MAVLINK_MSG_ID_HEARTBEAT_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
 	}
 
-private:
-	explicit MavlinkStreamHeartbeat(Mavlink *mavlink) : MavlinkStream(mavlink) {}
+	bool const_rate() override
+	{
+		return true;
+	}
 
-	uORB::Subscription _acturator_armed_sub{ORB_ID(actuator_armed)};
-	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
-	uORB::Subscription _vehicle_status_flags_sub{ORB_ID(vehicle_status_flags)};
+private:
+	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
+
+	/* do not allow top copying this class */
+	MavlinkStreamHeartbeat(MavlinkStreamHeartbeat &) = delete;
+	MavlinkStreamHeartbeat &operator = (const MavlinkStreamHeartbeat &) = delete;
+
+protected:
+	explicit MavlinkStreamHeartbeat(Mavlink *mavlink) : MavlinkStream(mavlink)
+	{}
 
 	bool send() override
 	{
 		if (_mavlink->get_free_tx_buf() >= get_size()) {
 			// always send the heartbeat, independent of the update status of the topics
-			vehicle_status_s vehicle_status{};
-			_vehicle_status_sub.copy(&vehicle_status);
+			vehicle_status_s status{};
+			_status_sub.copy(&status);
 
-			vehicle_status_flags_s vehicle_status_flags{};
-			_vehicle_status_flags_sub.copy(&vehicle_status_flags);
-
-			actuator_armed_s actuator_armed{};
-			_acturator_armed_sub.copy(&actuator_armed);
-
-			uint8_t base_mode1 = 0;
-			uint32_t custom_mode1 = 0;
-			uint8_t system_status1 = 0;
-			get_mavlink_mode_state(&vehicle_status, &system_status1, &base_mode1, &custom_mode1);
-
-			// uint8_t base_mode (MAV_MODE_FLAG) - System mode bitmap.
-			uint8_t base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-
-			if (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
-				base_mode |= MAV_MODE_FLAG_SAFETY_ARMED;
-			}
-
-			if (vehicle_status.hil_state == vehicle_status_s::HIL_STATE_ON) {
-				base_mode |= MAV_MODE_FLAG_HIL_ENABLED;
-			}
-
-			// uint32_t custom_mode - A bitfield for use for autopilot-specific flags
-			union px4_custom_mode custom_mode {get_px4_custom_mode(&vehicle_status)};
-
-
-			// uint8_t system_status (MAV_STATE) - System status flag.
-			uint8_t system_status = MAV_STATE_UNINIT;
-
-			switch (vehicle_status.arming_state) {
-			case vehicle_status_s::ARMING_STATE_ARMED:
-				system_status = vehicle_status.failsafe ? MAV_STATE_CRITICAL : MAV_STATE_ACTIVE;
-				break;
-
-			case vehicle_status_s::ARMING_STATE_STANDBY:
-				system_status = MAV_STATE_STANDBY;
-				break;
-
-			case vehicle_status_s::ARMING_STATE_SHUTDOWN:
-				system_status = MAV_STATE_POWEROFF;
-				break;
-			}
-
-			// system_status overrides
-			if (actuator_armed.force_failsafe || actuator_armed.lockdown || actuator_armed.manual_lockdown
-			    || vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_TERMINATION) {
-				system_status = MAV_STATE_FLIGHT_TERMINATION;
-
-			} else if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL) {
-				system_status = MAV_STATE_EMERGENCY;
-
-			} else if (vehicle_status_flags.condition_calibration_enabled) {
-				system_status = MAV_STATE_CALIBRATING;
-			}
+			uint8_t base_mode = 0;
+			uint32_t custom_mode = 0;
+			uint8_t system_status = 0;
+			get_mavlink_mode_state(&status, &system_status, &base_mode, &custom_mode);
 
 			mavlink_msg_heartbeat_send(_mavlink->get_channel(), _mavlink->get_system_type(), MAV_AUTOPILOT_PX4,
-						   base_mode, custom_mode.data, system_status);
+						   base_mode, custom_mode, system_status);
 
 			return true;
 		}

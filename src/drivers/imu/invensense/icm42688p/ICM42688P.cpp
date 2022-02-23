@@ -618,8 +618,8 @@ void ICM42688P::ProcessIMU(const hrt_abstime &timestamp_sample, const FIFO::DATA
 
         // Publish samples for flight control at 500Hz
         if (_imu_server_samples % 2) {
-		    _px4_accel.update(timestamp_sample, accel_x, accel_y, accel_z);
-		    _px4_gyro.update(timestamp_sample, gyro_x, gyro_y, gyro_z);
+		    //_px4_accel.update(timestamp_sample, accel_x, accel_y, accel_z);
+		    //_px4_gyro.update(timestamp_sample, gyro_x, gyro_y, gyro_z);
         }
 
         // Scale everything appropriately
@@ -756,7 +756,7 @@ void ICM42688P::ProcessAccel(const hrt_abstime &timestamp_sample, const FIFO::DA
 				   perf_event_count(_fifo_empty_perf) + perf_event_count(_fifo_overflow_perf));
 
 	if (accel.samples > 0) {
-		_px4_accel.updateFIFO(accel);
+		//_px4_accel.updateFIFO(accel);
 	}
 }
 
@@ -828,7 +828,7 @@ void ICM42688P::ProcessGyro(const hrt_abstime &timestamp_sample, const FIFO::DAT
 				  perf_event_count(_fifo_empty_perf) + perf_event_count(_fifo_overflow_perf));
 
 	if (gyro.samples > 0) {
-		_px4_gyro.updateFIFO(gyro);
+		//_px4_gyro.updateFIFO(gyro);
 	}
 }
 
