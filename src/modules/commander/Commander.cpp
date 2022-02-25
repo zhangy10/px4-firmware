@@ -866,6 +866,7 @@ Commander::handle_command(const vehicle_command_s &cmd)
 				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 
 			} else {
+				PX4_ERR("There is an issue with the vehicle cmd nav takeoff, (%d)", _internal_state.main_state);
 				mavlink_log_critical(&_mavlink_log_pub, "Takeoff denied! Please disarm and retry");
 				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
 			}

@@ -84,9 +84,11 @@ Takeoff::set_takeoff_position()
 	float min_abs_altitude;
 
 	if (_navigator->home_position_valid()) { //only use home position if it is valid
+		PX4_ERR("HOME POSITION IS VALID");
 		min_abs_altitude = _navigator->get_global_position()->alt + _navigator->get_takeoff_min_alt();
 
 	} else { //e.g. flow
+		PX4_ERR("HOME POSITION IS NOT VALID");
 		min_abs_altitude = _navigator->get_takeoff_min_alt();
 	}
 
