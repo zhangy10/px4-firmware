@@ -31,3 +31,4 @@ build:
     - chmod -R 777 $DEST_DIR/$PX4_VER_BASE/$BUILD_DIR/
   only:
     - modalai-1.12
+    - modalai-1.12-dev
