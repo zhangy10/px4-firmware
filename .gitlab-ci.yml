@@ -1,14 +1,25 @@
-image: px4io/px4-dev-nuttx-bionic:2021-12-11
-
 stages:
   - build
+  - deploy
 
 build:
   stage: build
+  image: px4io/px4-dev-nuttx-bionic:2021-12-11
   script:
     - make modalai_fc-v1
     - make modalai_fc-v2_bootloader
     - make modalai_fc-v2
+  only:
+    - modalai-1.12
+    - modalai-1.12-dev
+  artifacts:
+    untracked: true
+    expire_in: 20 min
+
+deploy:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  script:
     - BUILD=$(git describe --tags)
     - DATE=$(date +"%Y-%m-%d--%H-%M")
     - DEST_DIR=/tank/modalai/public/px4/firmware/
@@ -25,3 +36,4 @@ build:
   only:
     - modalai-1.12
     - modalai-1.12-dev
+
