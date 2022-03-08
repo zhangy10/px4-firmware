@@ -297,14 +297,17 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		switch (msg->msgid) {
 		case MAVLINK_MSG_ID_HIL_SENSOR:
 			handle_message_hil_sensor(msg);
+			PX4_ERR("MAVLINK_MSG_ID_HIL_SENSOR");
 			break;
 
 		case MAVLINK_MSG_ID_HIL_STATE_QUATERNION:
 			handle_message_hil_state_quaternion(msg);
+			PX4_ERR("MAVLINK_MSG_ID_HIL_STATE_QUATERNION");
 			break;
 
 		case MAVLINK_MSG_ID_HIL_OPTICAL_FLOW:
 			handle_message_hil_optical_flow(msg);
+			PX4_ERR("MAVLINK_MSG_ID_HIL_OPTICAL_FLOW");
 			break;
 
 		default:

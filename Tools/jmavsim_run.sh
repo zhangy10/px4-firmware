@@ -48,9 +48,12 @@ done
 
 if [ "$device" == "" ]; then
 	device="-udp $ip:$udp_port"
+elif [ "$device" == "/dev/*" ]; then
+	device="-serial $device $baudrate";
 else
-	device="-serial $device $baudrate"
+	device="-serialudp $device $baudrate $ip:$udp_port";
 fi
+
 
 if [ "$HEADLESS" = "1" ]; then
     extra_args="$extra_args -no-gui"
@@ -58,5 +61,5 @@ fi
 
 ant create_run_jar copy_res
 cd out/production
-
+echo $device $extra_args
 java -XX:GCTimeRatio=20 -Djava.ext.dirs= -jar jmavsim_run.jar $device $extra_args

@@ -39,4 +39,9 @@ px4_add_module(
 		modalai_dsp.cpp
 	INCLUDES
 		${PX4_SOURCE_DIR}/mavlink/include/mavlink
+		${PX4_SOURCE_DIR}/src/drivers/uart_esc/modalai_esc
+	DEPENDS
+		px4_work_queue
+        mixer_module
+        output_limit
 	)
