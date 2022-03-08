@@ -3,6 +3,7 @@
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/posix.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
 #include <lib/rc/dsm.h>
 #include <drivers/drv_rc_input.h>
@@ -12,7 +13,7 @@
 #include <drivers/device/qurt/uart.h>
 #endif
 
-#include <common/mavlink.h>
+#include <v2.0/standard/mavlink.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_gps.h>
@@ -24,15 +25,21 @@
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 
 #include <uORB/Publication.hpp>
+#include "modalai_dsp_serial.hpp"
 
+#include <lib/mixer_module/mixer_module.hpp>
+#include <px4_log.h>
+#include <px4_platform_common/module.h>
 
-class ModalAI_DSP : public ModuleParams
+class Mavlink;
+
+class ModalAI_DSP
 {
 public:
 	ModalAI_DSP();
 	virtual ~ModalAI_DSP();
 
-	void Run(mavlink_message_t *msg) override;
+	void Run(mavlink_message_t *msg);
 
 private:
 
@@ -63,9 +70,8 @@ private:
 	PX4Gyroscope *_px4_gyro{nullptr};
 	PX4Magnetometer *_px4_mag{nullptr};
 
-	Mavlink			*_mavlink;
 	bool			_outputs_on{false};
 	ModalaiDSPSerial 	*_uart_port;
 
 
-}
+};

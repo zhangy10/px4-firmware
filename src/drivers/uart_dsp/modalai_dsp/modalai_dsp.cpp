@@ -11,13 +11,16 @@
 #define MODALAI_DSP_DEFAULT_PORT 	"/dev/ttyS1"
 #endif
 
+using matrix::wrap_2pi;
+
 const char *_device;
 
-ModalAI_DSP::ModalAI_DSP(): {
+ModalAI_DSP::ModalAI_DSP()
+{
 	_device = MODALAI_DSP_DEFAULT_PORT;
 }
 
-ModalAI_DSP::~ModalAI_DSP(): {
+ModalAI_DSP::~ModalAI_DSP() {
 	_outputs_on = false;
 
 	if (_uart_port) {
@@ -26,6 +29,7 @@ ModalAI_DSP::~ModalAI_DSP(): {
 	}
 }
 
+void
 ModalAI_DSP::Run(mavlink_message_t *msg){
 	/* Open serial port in this thread */
 	if (!_uart_port->is_open()) {
@@ -39,18 +43,14 @@ ModalAI_DSP::Run(mavlink_message_t *msg){
 	}
 
 
-	if (_mavlink->get_hil_enabled()) {
+	//if (_mavlink->get_hil_enabled()) {
+	int hitl_on;
+	param_get(param_find("SYS_HITL"), &hitl_on);
+
+	if (hitl_on){
 		switch (msg->msgid) {
 		case MAVLINK_MSG_ID_HIL_SENSOR:
-			handle_message_hil_sensor(msg);
-			break;
-
-		case MAVLINK_MSG_ID_HIL_STATE_QUATERNION:
-			handle_message_hil_state_quaternion(msg);
-			break;
-
-		case MAVLINK_MSG_ID_HIL_OPTICAL_FLOW:
-			handle_message_hil_optical_flow(msg);
+			handle_message_hil_sensor_dsp(msg);
 			break;
 
 		default:
@@ -58,10 +58,10 @@ ModalAI_DSP::Run(mavlink_message_t *msg){
 		}
 	}
 
-	if (_mavlink->get_hil_enabled() || (_mavlink->get_use_hil_gps() && msg->sysid == mavlink_system.sysid)) {
+	if (hitl_on) {
 		switch (msg->msgid) {
 		case MAVLINK_MSG_ID_HIL_GPS:
-			handle_message_hil_gps(msg);
+			handle_message_hil_gps_dsp(msg);
 			break;
 
 		default:
@@ -72,7 +72,7 @@ ModalAI_DSP::Run(mavlink_message_t *msg){
 }
 
 void
-ModalAI_DSP::handle_message_hil_sensor(mavlink_message_t *msg)
+ModalAI_DSP::handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 {
 	mavlink_hil_sensor_t hil_sensor;
 	mavlink_msg_hil_sensor_decode(msg, &hil_sensor);
@@ -173,7 +173,7 @@ ModalAI_DSP::handle_message_hil_sensor(mavlink_message_t *msg)
 }
 
 void
-ModalAI_DSP::handle_message_hil_gps(mavlink_message_t *msg)
+ModalAI_DSP::handle_message_hil_gps_dsp(mavlink_message_t *msg)
 {
 	mavlink_hil_gps_t gps;
 	mavlink_msg_hil_gps_decode(msg, &gps);

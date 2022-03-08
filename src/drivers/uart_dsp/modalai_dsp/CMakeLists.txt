@@ -33,14 +33,10 @@
 
 px4_add_module(
 	MODULE drivers__uart_dsp__modalai_dsp
-	MAIN modalai_esc
+	MAIN modalai_dsp
 	SRCS
-		crc16.c
-		qc_esc_packet.c
-		modalai_esc_serial.cpp
-		modalai_esc.cpp
-	DEPENDS
-		px4_work_queue
-        mixer_module
-        output_limit
+		modalai_dsp_serial.cpp
+		modalai_dsp.cpp
+	INCLUDES
+		${PX4_SOURCE_DIR}/mavlink/include/mavlink
 	)
