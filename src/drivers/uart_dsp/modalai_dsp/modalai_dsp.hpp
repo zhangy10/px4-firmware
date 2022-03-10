@@ -123,7 +123,7 @@ public:
 	struct Command {
 		uint16_t	id = 0;
 		uint8_t 	BUF_SIZE = 255;
-		uint8_t 	buf[255] = {0x00};
+		uint8_t 	buf[255];
 		uint8_t 	len;
 		uint16_t	repeats = 0;
 		uint16_t	repeat_delay_us = 2000;
@@ -139,7 +139,7 @@ public:
 
 private:
 	static constexpr uint32_t MODALAI_ESC_UART_CONFIG = 1;
-	static constexpr uint32_t MODALAI_ESC_DEFAULT_BAUD = 250000;
+	static constexpr uint32_t MODALAI_ESC_DEFAULT_BAUD = 115200;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_CHANNELS = 4;
 	static constexpr uint16_t MODALAI_ESC_OUTPUT_DISABLED = 0;
 

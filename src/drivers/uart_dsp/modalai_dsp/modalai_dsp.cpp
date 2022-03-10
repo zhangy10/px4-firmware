@@ -38,6 +38,8 @@
 #include "qc_esc_packet.h"
 #include "qc_esc_packet_types.h"
 
+#include <unistd.h>
+
 #define MODALAI_ESC_DEVICE_PATH 	"/dev/uart_esc"
 
 #ifdef __PX4_QURT
@@ -58,8 +60,6 @@ ModalaiDSP::ModalaiDSP() :
 {
 	_device_dsp = MODALAI_ESC_DEFAULT_PORT;
 
-	//_mixing_output.setAllFailsafeValues(0);
-	//_mixing_output.setAllDisarmedValues(0);
 }
 
 ModalaiDSP::~ModalaiDSP()
@@ -96,57 +96,11 @@ int ModalaiDSP::init()
 		PX4_ERR("FAILED registering class device");
 	}
 
-	//_mixing_output.setDriverInstance(_class_instance);
-
-	/* Getting initial parameter values */
-	//ret = update_params();
-
-	//if (ret != OK) {
-	//	return ret;
-	//}
-
 	_uart_port = new ModalaiDSPSerial();
-	//memset(&_esc_chans, 0x00, sizeof(_esc_chans));
 
 	ScheduleNow();
 
 	return 0;
-}
-
-int ModalaiDSP::load_params(uart_esc_params_t *params, ch_assign_t *map)
-{
-	int ret = PX4_OK;
-
-	//param_get(param_find("UART_ESC_CONFIG"),  &params->config);
-	//param_get(param_find("UART_ESC_BAUD"),    &params->baud_rate);
-	//param_get(param_find("UART_ESC_MOTOR1"),  &params->motor_map[0]);
-	//param_get(param_find("UART_ESC_MOTOR2"),  &params->motor_map[1]);
-	//param_get(param_find("UART_ESC_MOTOR3"),  &params->motor_map[2]);
-	//param_get(param_find("UART_ESC_MOTOR4"),  &params->motor_map[3]);
-	//param_get(param_find("UART_ESC_RPM_MIN"), &params->rpm_min);
-	//param_get(param_find("UART_ESC_RPM_MAX"), &params->rpm_max);
-
-	//if (params->rpm_min >= params->rpm_max) {
-	//	PX4_ERR("Invalid parameter UART_ESC_RPM_MIN.  Please verify parameters.");
-	//	params->rpm_min = 0;
-	//	ret = PX4_ERROR;
-	//}
-
-	//for (int i = 0; i < MODALAI_ESC_OUTPUT_CHANNELS; i++) {
-	//	if (params->motor_map[i] == MODALAI_ESC_OUTPUT_DISABLED ||
-	//	    params->motor_map[i] < -(MODALAI_ESC_OUTPUT_CHANNELS) ||
-	//	    params->motor_map[i] > MODALAI_ESC_OUTPUT_CHANNELS) {
-	//		PX4_ERR("Invalid parameter UART_ESC_MOTORX.  Please verify parameters.");
-	//		params->motor_map[i] = 0;
-	//		ret = PX4_ERROR;
-	//	}
-
-		/* Can map -4 to 4, 0 being disabled.  Negative represents reverse direction */
-	//	map[i].number = abs(params->motor_map[i]);
-	//	map[i].direction = (params->motor_map[i] > 0) ? 1 : -1;
-	//}
-
-	return ret;
 }
 
 int ModalaiDSP::task_spawn(int argc, char *argv[])
@@ -192,6 +146,8 @@ int ModalaiDSP::readResponse(Command *out_cmd)
 	px4_usleep(_current_cmd.resp_delay_us);
 
 	int res = _uart_port->uart_read(_current_cmd.buf, sizeof(_current_cmd.buf));
+	PX4_ERR("VALUE OR RES: %d", res);
+	PX4_ERR("SIZE OR CMD BUF: %d", sizeof(_current_cmd.buf));
 
 	if (res > 0) {
 		if (parseResponse(_current_cmd.buf, res) < 0) {
@@ -214,73 +170,10 @@ int ModalaiDSP::parseResponse(uint8_t *buf, uint8_t len)
 	if (len < 4 || buf[0] != ESC_PACKET_HEADER) {
 		return -1;
 	}
+	PX4_ERR("LENGTH OF BUFFER: %d", len);
 	for (int i = 0; i <= len; i++){
     		PX4_ERR("BUFFER IN: %d", buf[i]);
 	}
-	switch (buf[2]) {
-	case ESC_PACKET_TYPE_VERSION_RESPONSE:
-		if (len != sizeof(QC_ESC_VERSION_INFO)) {
-			return -1;
-		} else {
-			QC_ESC_VERSION_INFO ver;
-			memcpy(&ver, buf, len);
-			PX4_INFO("ESC ID: %i", ver.id);
-			PX4_INFO("HW Version: %i", ver.hw_version);
-			PX4_INFO("SW Version: %i", ver.sw_version);
-			PX4_INFO("Unique ID: %i", ver.unique_id);
-		}
-
-		break;
-
-	case ESC_PACKET_TYPE_FB_RESPONSE:
-    {
-        // The extended feedback message and the feedback message use the same
-        // message id so they need to be differentiated by message length.
-        bool extended_fb = false;
-		if (len == sizeof(QC_ESC_EXTENDED_FB_RESPONSE)) {
-            extended_fb = true;
-		} else if (len != (sizeof(QC_ESC_EXTENDED_FB_RESPONSE) - 4)) {
-            // PX4_ERR("Got feedback response with invalid length %d", len);
-			return -1;
-		}
-
-		QC_ESC_EXTENDED_FB_RESPONSE fb;
-		memcpy(&fb, buf, len);
-		uint8_t id = (fb.state & 0xF0) >> 4;
-
-		if (id < MODALAI_ESC_OUTPUT_CHANNELS) {
-			_esc_chans[id].rate_meas = fb.rpm;
-			_esc_chans[id].state = fb.state & 0x0F;
-			_esc_chans[id].cmd_counter = fb.cmd_counter;
-			_esc_chans[id].power = fb.power;
-			_esc_chans[id].voltage = fb.voltage * 0.001;
-
-            if (extended_fb) {
-				_esc_chans[id].current = fb.current * 0.008;
-				_esc_chans[id].temperature = fb.temperature * 0.01;
-                // PX4_INFO("EXT FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f, current %f, temperature %f",
-                //           id, _esc_chans[id].rate_meas, _esc_chans[id].state,
-                //           _esc_chans[id].cmd_counter, _esc_chans[id].power,
-                //           _esc_chans[id].voltage, _esc_chans[id].current, _esc_chans[id].temperature);
-            // } else {
-            //     PX4_INFO("FB: id: %u, rpm: %u, state: %u, count: %u, pwr: %d, volts: %f",
-            //               id, _esc_chans[id].rate_meas, _esc_chans[id].state,
-            //               _esc_chans[id].cmd_counter, _esc_chans[id].power,
-            //               _esc_chans[id].voltage);
-            }
-
-            // if (id == MODALAI_ESC_OUTPUT_CHANNELS - 1) {
-            //     PX4_INFO("FB  %u %u %u %u", _esc_chans[0].rate_meas, _esc_chans[1].rate_meas, _esc_chans[2].rate_meas, _esc_chans[3].rate_meas);
-            // }
-		} else {
-            PX4_ERR("Invalid ESC id %d in feedback packet", id);
-        }
-		break;
-    }
-	default:
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -289,7 +182,6 @@ int ModalaiDSP::sendCommandThreadSafe(Command *cmd)
 	cmd->id = _cmd_id++;
 	_pending_cmd.store(cmd);
 
-	/* wait until main thread processed it */
 	while (_pending_cmd.load()) {
 		px4_usleep(1000);
 	}
@@ -301,17 +193,8 @@ int ModalaiDSP::sendCommandThreadSafe(Command *cmd)
 
 int ModalaiDSP::custom_command(int argc, char *argv[])
 {
-	//int myoptind = 0;
-	//int ch;
-	//const char *myoptarg = nullptr;
 
 	Command cmd;
-	//uint8_t esc_id = 255;
-	//uint8_t period = 0;
-	//uint8_t duration = 0;
-	//uint8_t power = 0;
-	//uint16_t led_mask = 0;
-	//int16_t rate = 0;
 
 	if (argc < 3) {
 		return print_usage("unknown command");
@@ -334,104 +217,15 @@ int ModalaiDSP::custom_command(int argc, char *argv[])
 	return print_usage("unknown command");
 }
 
-int ModalaiDSP::update_params()
-{
-	//int ret = PX4_ERROR;
-
-	//updateParams();
-	//ret = load_params(&_parameters, (ch_assign_t *)&_output_map);
-
-	//if (ret == PX4_OK) {
-	//	_mixing_output.setAllMinValues(_parameters.rpm_min);
-	//	_mixing_output.setAllMaxValues(_parameters.rpm_max);
-	//}
-
-	//return ret;
-	return 1;
-}
-
-
-int ModalaiDSP::ioctl(file_t *filp, int cmd, unsigned long arg)
-{
-	int ret = OK;
-
-	//PX4_DEBUG("modalai_esc ioctl cmd: %d, arg: %ld", cmd, arg);
-
-	//switch (cmd) {
-	//case PWM_SERVO_ARM:
-	//	PX4_INFO("PWM_SERVO_ARM");
-	//	break;
-
-	//case PWM_SERVO_DISARM:
-	//	PX4_INFO("PWM_SERVO_DISARM");
-	//	break;
-
-	//case MIXERIOCRESET:
-	//	_mixing_output.resetMixerThreadSafe();
-	//	break;
-
-	//case MIXERIOCLOADBUF: {
-	//		const char *buf = (const char *)arg;
-	//		unsigned buflen = strlen(buf);
-	//		ret = _mixing_output.loadMixerThreadSafe(buf, buflen);
-	//	}
-	//	break;
-
-	//default:
-	//	ret = -ENOTTY;
-	//	break;
-	//}
-
-	/* if nobody wants it, let CDev have it */
-	//if (ret == -ENOTTY) {
-	//	ret = CDev::ioctl(filp, cmd, arg);
-	//}
-
-	return ret;
-}
-
-/* OutputModuleInterface */
-void ModalaiDSP::mixerChanged()
-{
-	/*
-	 * No need for mavlink understanding
-	 */
-}
-
-
-void ModalaiDSP::updateLeds(vehicle_control_mode_s mode, led_control_s control)
-{
-	/*
-	 * No need for mavlink understanding
-	 */
-}
-
-/* OutputModuleInterface */
-bool ModalaiDSP::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs, unsigned num_control_groups_updated)
-{
-	/*
-	 * No need for mavlink understanding
-	 */
-	return 1;
-}
-
-
 void ModalaiDSP::Run()
 {
-	if (should_exit()) {
-		ScheduleClear();
-		_mixing_output.unregister();
-
-		exit_and_cleanup();
-		return;
-	}
 
 	perf_begin(_cycle_perf);
 
 	/* Open serial port in this thread */
 	if (!_uart_port->is_open()) {
-		if (_uart_port->uart_open(_device_dsp, _parameters.baud_rate) == PX4_OK) {
-			PX4_INFO("Opened UART ESC device");
+		if (_uart_port->uart_open(_device_dsp, 250000) == PX4_OK) {
+			PX4_ERR("Opened UART ESC device");
 
 		} else {
 			PX4_ERR("Failed opening device");
@@ -439,99 +233,15 @@ void ModalaiDSP::Run()
 		}
 	}
 
-	_mixing_output.update();
-
-	/* update output status if armed */
-	_outputs_on = _mixing_output.armed().armed;
-
-	/* check for parameter updates */
-	if (!_outputs_on && _parameter_update_sub.updated()) {
-		/* clear update */
-		parameter_update_s pupdate;
-		_parameter_update_sub.copy(&pupdate);
-
-		/* update parameters from storage */
-		update_params();
-	}
-
-	vehicle_control_mode_s vehicle_control_mode{};
-
-	if (_vehicle_control_mode_sub.updated()) {
-		_vehicle_control_mode_sub.copy(&vehicle_control_mode);
-		updateLeds(vehicle_control_mode, _led_rsc.control);
-	}
-
-	led_control_s led_control{};
-
-	if (_led_update_sub.updated()) {
-		_led_update_sub.copy(&led_control);
-		updateLeds(_led_rsc.mode, led_control);
-	}
-
-	/* breathing requires continuous updates */
-	if (_led_rsc.breath_en) {
-		updateLeds(_led_rsc.mode, _led_rsc.control);
-	}
-
 	/* Don't process commands if outputs on */
-	if (!_outputs_on) {
-		if (_current_cmd.valid()) {
-			do {
-				if (_uart_port->uart_write(_current_cmd.buf, _current_cmd.len) == _current_cmd.len) {
-					if (_current_cmd.repeats == 0) {
-						_current_cmd.clear();
-					}
-
-					if (_current_cmd.response) {
-						readResponse(&_current_cmd);
-					}
-
-				} else {
-					if (_current_cmd.retries == 0) {
-						_current_cmd.clear();
-						PX4_ERR("Failed to send command, errno: %i", errno);
-
-					} else {
-						_current_cmd.retries--;
-						PX4_ERR("Failed to send command, errno: %i", errno);
-					}
-				}
-
-				px4_usleep(_current_cmd.repeat_delay_us);
-			} while (_current_cmd.repeats-- > 0);
-
-		} else {
-			Command *new_cmd = _pending_cmd.load();
-
-			if (new_cmd) {
-				_current_cmd = *new_cmd;
-				_pending_cmd.store(nullptr);
-			}
-		}
+	while (_uart_port->is_open()) {
+		PX4_ERR("GOING INTO READ RESPONSE");
+		readResponse(&_current_cmd);
+		PX4_ERR("FINISHED READ RESPONSE");
+		sleep(3);
 	}
-
-	/* check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread) */
-	_mixing_output.updateSubscriptions(true);
 
 	perf_end(_cycle_perf);
-}
-
-
-int ModalaiDSP::print_usage(const char *reason)
-{
-	/*
-	 * No need for mavlink understanding
-	 */
-	return 0;
-}
-
-int ModalaiDSP::print_status()
-{
-	/*
-	 * No need for mavlink understanding
-	 */
-
-	return 0;
 }
 
 void
@@ -672,6 +382,46 @@ ModalaiDSP::handle_message_hil_gps_dsp(mavlink_message_t *msg)
 
 	_gps_pub.publish(hil_gps);
 }
+
+/* OutputModuleInterface */
+void ModalaiDSP::mixerChanged()
+{
+	/*
+	 * This driver is only supporting 4 channel ESC
+	 */
+}
+
+/* OutputModuleInterface */
+int ModalaiDSP::print_status()
+{
+	return 1;
+	/*
+	 * This driver is only supporting 4 channel ESC
+	 */
+}
+
+/* OutputModuleInterface */
+int ModalaiDSP::print_usage(const char *reason)
+{
+	return 1;
+	/*
+	 * This driver is only supporting 4 channel ESC
+	 */
+}
+
+/* OutputModuleInterface */
+bool ModalaiDSP::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
+			       unsigned num_outputs, unsigned num_control_groups_updated)
+{
+	return true;
+}
+
+int ModalaiDSP::ioctl(file_t *filp, int cmd, unsigned long arg)
+{
+	return 1;
+}
+
+
 
 extern "C" __EXPORT int modalai_dsp_main(int argc, char *argv[]);
 
