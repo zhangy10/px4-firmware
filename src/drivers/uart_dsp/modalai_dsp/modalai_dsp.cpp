@@ -84,8 +84,8 @@ int _uart_fd = -1;
 int openPort(const char *dev, speed_t speed);
 int closePort();
 
-int readResponse(FAR void *buf, size_t len);
-int writeResponse(FAR void *buf, size_t len);
+int readResponse(void *buf, size_t len);
+int writeResponse(void *buf, size_t len);
 
 int start(int argc, char *argv[]);
 int stop();
@@ -106,14 +106,13 @@ void task_main(int argc, char *argv[])
 		PX4_ERR("Port is open: %d", openRetval);
 	}
 
-	uint8_t rx_buf[255];
-
+	uint8_t rx_buf[256];
+	rx_buf[255] = '\0';
 	while (!_task_should_exit){
 		int readRetval = readResponse(&rx_buf[0], sizeof(rx_buf));
 		if(readRetval){
 			PX4_ERR("Value of rx_buff: %s", rx_buf);
 		}
-		sleep(1);
 
 		int writeRetval = writeResponse(&rx_buf[0], sizeof(rx_buf));
 		if(writeRetval){
@@ -208,7 +207,7 @@ int closePort()
 	return 0;
 }
 
-int readResponse(FAR void *buf, size_t len)
+int readResponse(void *buf, size_t len)
 {
 	if (_uart_fd < 0 || buf == NULL) {
 		PX4_ERR("invalid state for reading or buffer");
@@ -226,7 +225,7 @@ int readResponse(FAR void *buf, size_t len)
 #endif
 }
 
-int writeResponse(FAR void *buf, size_t len)
+int writeResponse(void *buf, size_t len)
 {
 	if (_uart_fd < 0 || buf == NULL) {
 		PX4_ERR("invalid state for writing or buffer");
