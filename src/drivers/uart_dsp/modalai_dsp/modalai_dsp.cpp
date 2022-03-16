@@ -31,16 +31,39 @@
  *
  ****************************************************************************/
 
+#include <string.h>
+
+#include <px4_platform_common/tasks.h>
+#include <px4_platform_common/posix.h>
 #include <px4_platform_common/getopt.h>
 
-#include "modalai_dsp.hpp"
-#include "modalai_dsp_serial.hpp"
-#include "qc_esc_packet.h"
-#include "qc_esc_packet_types.h"
+#ifdef __PX4_QURT
+#include <drivers/device/qurt/uart.h>
+#endif
+
+#include <uORB/uORB.h>
+#include <uORB/topics/sensor_gps.h>
+#include <uORB/topics/battery_status.h>
+#include <uORB/topics/differential_pressure.h>
+#include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
+#include <lib/drivers/barometer/PX4Barometer.hpp>
+#include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
+#include <uORB/Publication.hpp>
+
+#include <lib/cdev/CDev.hpp>
+#include <lib/cdev/CDev.hpp>
+
+
+#include <px4_log.h>
+#include <px4_platform_common/module.h>
+
+#include <uORB/topics/vehicle_control_mode.h>
 
 #include <unistd.h>
 
 #define MODALAI_ESC_DEVICE_PATH 	"/dev/uart_esc"
+#define ASYNC_UART_READ_WAIT_US 2000
 
 #ifdef __PX4_QURT
 #define MODALAI_ESC_DEFAULT_PORT 	"2"
@@ -48,384 +71,259 @@
 #define MODALAI_ESC_DEFAULT_PORT 	"/dev/ttyS1"
 #endif
 
-using matrix::wrap_2pi;
+extern "C" { __EXPORT int modalai_dsp_main(int argc, char *argv[]); }
 
-const char *_device_dsp;
-
-ModalaiDSP::ModalaiDSP() :
-	CDev(MODALAI_ESC_DEVICE_PATH),
-	OutputModuleInterface(MODULE_NAME, px4::wq_configurations::hp_default),
-	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
-	_output_update_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": output update interval"))
+namespace modalai_dsp
 {
-	_device_dsp = MODALAI_ESC_DEFAULT_PORT;
 
-}
+static bool _is_running = false;
+volatile bool _task_should_exit = false;
+static px4_task_t _task_handle = -1;
+int _uart_fd = -1;
 
-ModalaiDSP::~ModalaiDSP()
+int openPort(const char *dev, speed_t speed);
+int closePort();
+
+int readResponse(FAR void *buf, size_t len);
+int writeResponse(FAR void *buf, size_t len);
+
+int start(int argc, char *argv[]);
+int stop();
+int info();
+bool isOpen() { return _uart_fd >= 0; };
+
+void usage();
+void task_main(int argc, char *argv[]);
+
+void handle_message_hil_sensor_dsp();
+void handle_message_hil_gps_dsp();
+
+void task_main(int argc, char *argv[])
 {
-	_outputs_on = false;
-
-	if (_uart_port) {
-		_uart_port->uart_close();
-		_uart_port = nullptr;
+	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 250000);
+	int open = isOpen();
+	if(open){
+		PX4_ERR("Port is open: %d", openRetval);
 	}
 
-	/* clean up the alternate device node */
-	unregister_class_devname(PWM_OUTPUT_BASE_DEVICE_PATH, _class_instance);
+	uint8_t rx_buf[255];
 
-	perf_free(_cycle_perf);
-	perf_free(_output_update_perf);
-}
-
-int ModalaiDSP::init()
-{
-	/* do regular cdev init */
-	int ret = CDev::init();
-
-	if (ret != OK) {
-		return ret;
-	}
-
-	/* try to claim the generic PWM output device node as well - it's OK if we fail at this */
-	_class_instance = register_class_devname(MODALAI_ESC_DEVICE_PATH);
-
-	if (_class_instance == CLASS_DEVICE_PRIMARY) {
-		/* lets not be too verbose */
-	} else if (_class_instance < 0) {
-		PX4_ERR("FAILED registering class device");
-	}
-
-	_uart_port = new ModalaiDSPSerial();
-
-	ScheduleNow();
-
-	return 0;
-}
-
-int ModalaiDSP::task_spawn(int argc, char *argv[])
-{
-	int myoptind = 0;
-	int ch;
-	const char *myoptarg = nullptr;
-
-	while ((ch = px4_getopt(argc, argv, "d", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'd':
-			_device_dsp = argv[myoptind];
-			break;
-
-		default:
-			break;
+	while (!_task_should_exit){
+		int readRetval = readResponse(&rx_buf[0], sizeof(rx_buf));
+		if(readRetval){
+			PX4_ERR("Value of rx_buff: %s", rx_buf);
 		}
-	}
+		sleep(1);
 
-	ModalaiDSP *instance = new ModalaiDSP();
-
-	if (instance) {
-		_object.store(instance);
-		_task_id = task_id_is_work_queue;
-
-		if (instance->init() == PX4_OK) {
-			return PX4_OK;
+		int writeRetval = writeResponse(&rx_buf[0], sizeof(rx_buf));
+		if(writeRetval){
+			PX4_ERR("Write published");
 		}
-
-	} else {
-		PX4_ERR("alloc failed");
+		sleep(1);
 	}
-
-	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
-
-	return PX4_ERROR;
 }
 
-int ModalaiDSP::readResponse(Command *out_cmd)
+int openPort(const char *dev, speed_t speed)
 {
-	px4_usleep(_current_cmd.resp_delay_us);
-
-	int res = _uart_port->uart_read(_current_cmd.buf, sizeof(_current_cmd.buf));
-	PX4_ERR("VALUE OR RES: %d", res);
-	PX4_ERR("SIZE OR CMD BUF: %d", sizeof(_current_cmd.buf));
-
-	if (res > 0) {
-		if (parseResponse(_current_cmd.buf, res) < 0) {
-			PX4_ERR("Error parsing response");
-			return -1;
-		}
-
-	} else {
-		PX4_ERR("Read error: %i", res);
+	if (_uart_fd >= 0) {
+		PX4_ERR("Port in use: %s (%i)", dev, errno);
 		return -1;
 	}
 
-	_current_cmd.response = false;
+#ifdef __PX4_QURT
+	_uart_fd = qurt_uart_open(dev, speed);
+	PX4_ERR("qurt_uart_opened");
+#else
+	/* Open UART */
+	_uart_fd = open(dev, O_RDWR | O_NOCTTY | O_NONBLOCK);
+#endif
 
-	return 0;
-}
-
-int ModalaiDSP::parseResponse(uint8_t *buf, uint8_t len)
-{
-	if (len < 4 || buf[0] != ESC_PACKET_HEADER) {
-		return -1;
-	}
-	PX4_ERR("LENGTH OF BUFFER: %d", len);
-	for (int i = 0; i <= len; i++){
-    		PX4_ERR("BUFFER IN: %d", buf[i]);
-	}
-	return 0;
-}
-
-int ModalaiDSP::sendCommandThreadSafe(Command *cmd)
-{
-	cmd->id = _cmd_id++;
-	_pending_cmd.store(cmd);
-
-	while (_pending_cmd.load()) {
-		px4_usleep(1000);
-	}
-
-	return 0;
-}
-
-
-
-int ModalaiDSP::custom_command(int argc, char *argv[])
-{
-
-	Command cmd;
-
-	if (argc < 3) {
-		return print_usage("unknown command");
-	}
-
-	const char *verb = argv[argc - 1];
-
-	/* start the FMU if not running */
-	if (!strcmp(verb, "start")) {
-		if (!is_running()) {
-			return ModalaiDSP::task_spawn(argc, argv);
-		}
-	}
-
-	if (!is_running()) {
-		PX4_INFO("Not running");
+	if (_uart_fd < 0) {
+		PX4_ERR("Error opening port: %s (%i)", dev, errno);
 		return -1;
 	}
 
-	return print_usage("unknown command");
+#ifndef __PX4_QURT
+	/* Back up the original UART configuration to restore it after exit */
+	int termios_state;
+
+	if ((termios_state = tcgetattr(_uart_fd, &_orig_cfg)) < 0) {
+		PX4_ERR("Error configuring port: tcgetattr %s: %d", dev, termios_state);
+		uart_close();
+		return -1;
+	}
+
+	/* Fill the struct for the new configuration */
+	tcgetattr(_uart_fd, &_cfg);
+
+	/* Disable output post-processing */
+	_cfg.c_oflag &= ~OPOST;
+
+	_cfg.c_cflag |= (CLOCAL | CREAD);    /* ignore modem controls */
+	_cfg.c_cflag &= ~CSIZE;
+	_cfg.c_cflag |= CS8;                 /* 8-bit characters */
+	_cfg.c_cflag &= ~PARENB;             /* no parity bit */
+	_cfg.c_cflag &= ~CSTOPB;             /* only need 1 stop bit */
+	_cfg.c_cflag &= ~CRTSCTS;            /* no hardware flowcontrol */
+
+	/* setup for non-canonical mode */
+	_cfg.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+	_cfg.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+
+	if (cfsetispeed(&_cfg, speed) < 0 || cfsetospeed(&_cfg, speed) < 0) {
+		PX4_ERR("Error configuring port: %s: %d (cfsetispeed, cfsetospeed)", dev, termios_state);
+		uart_close();
+		return -1;
+	}
+
+	if ((termios_state = tcsetattr(_uart_fd, TCSANOW, &_cfg)) < 0) {
+		PX4_ERR("Error configuring port: %s (tcsetattr)", dev);
+		uart_close();
+		return -1;
+	}
+#endif
+
+	return 0;
 }
 
-void ModalaiDSP::Run()
+int closePort()
 {
-
-	perf_begin(_cycle_perf);
-
-	/* Open serial port in this thread */
-	if (!_uart_port->is_open()) {
-		if (_uart_port->uart_open(_device_dsp, 250000) == PX4_OK) {
-			PX4_ERR("Opened UART ESC device");
-
-		} else {
-			PX4_ERR("Failed opening device");
-			return;
-		}
+#ifndef __PX4_QURT
+	if (_uart_fd < 0) {
+		PX4_ERR("invalid state for closing");
+		return -1;
 	}
 
-	/* Don't process commands if outputs on */
-	while (_uart_port->is_open()) {
-		PX4_ERR("GOING INTO READ RESPONSE");
-		readResponse(&_current_cmd);
-		PX4_ERR("FINISHED READ RESPONSE");
-		sleep(3);
+	if (tcsetattr(_uart_fd, TCSANOW, &_orig_cfg)) {
+		PX4_ERR("failed restoring uart to original state");
 	}
 
-	perf_end(_cycle_perf);
+	if (close(_uart_fd)) {
+		PX4_ERR("error closing uart");
+	}
+#endif
+
+	_uart_fd = -1;
+
+	return 0;
+}
+
+int readResponse(FAR void *buf, size_t len)
+{
+	if (_uart_fd < 0 || buf == NULL) {
+		PX4_ERR("invalid state for reading or buffer");
+		return -1;
+	}
+
+#ifdef __PX4_QURT
+#define ASYNC_UART_READ_WAIT_US 2000
+    // The UART read on SLPI is via an asynchronous service so specify a timeout
+    // for the return. The driver will poll periodically until the read comes in
+    // so this may block for a while. However, it will timeout if no read comes in.
+    return qurt_uart_read(_uart_fd, (char*) buf, len, ASYNC_UART_READ_WAIT_US);
+#else
+	return read(_uart_fd, buf, len);
+#endif
+}
+
+int writeResponse(FAR void *buf, size_t len)
+{
+	if (_uart_fd < 0 || buf == NULL) {
+		PX4_ERR("invalid state for writing or buffer");
+		return -1;
+	}
+
+#ifdef __PX4_QURT
+    return qurt_uart_write(_uart_fd, (const char*) buf, len);
+#else
+	return write(_uart_fd, buf, len);
+#endif
+}
+
+int start(int argc, char *argv[])
+{
+	if (_is_running) {
+		PX4_WARN("already running");
+		return -1;
+	}
+
+	_task_should_exit = false;
+
+	_task_handle = px4_task_spawn_cmd("modalai_dsp__main",
+					  SCHED_DEFAULT,
+					  SCHED_PRIORITY_DEFAULT,
+					  2000,
+					  (px4_main_t)&task_main,
+					  (char *const *)argv);
+
+	if (_task_handle < 0) {
+		PX4_ERR("task start failed");
+		return -1;
+	}
+
+	return 0;
+}
+
+int stop()
+{
+	if (!_is_running) {
+		PX4_WARN("not running");
+		return -1;
+	}
+
+	_task_should_exit = true;
+
+	while (_is_running) {
+		usleep(200000);
+		PX4_INFO(".");
+	}
+
+	_task_handle = -1;
+	return 0;
+}
+
+int info()
+{
+	PX4_INFO("running: %s", _is_running ? "yes" : "no");
+
+	return 0;
 }
 
 void
-ModalaiDSP::handle_message_hil_sensor_dsp(mavlink_message_t *msg)
+usage()
 {
-	mavlink_hil_sensor_t hil_sensor;
-	mavlink_msg_hil_sensor_decode(msg, &hil_sensor);
-
-	const uint64_t timestamp = hrt_absolute_time();
-
-	// temperature only updated with baro
-	float temperature = NAN;
-
-	if ((hil_sensor.fields_updated & SensorSource::BARO) == SensorSource::BARO) {
-		temperature = hil_sensor.temperature;
-	}
-
-	// gyro
-	if ((hil_sensor.fields_updated & SensorSource::GYRO) == SensorSource::GYRO) {
-		if (_px4_gyro == nullptr) {
-			// 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
-			_px4_gyro = new PX4Gyroscope(1310988);
-		}
-
-		if (_px4_gyro != nullptr) {
-			if (PX4_ISFINITE(temperature)) {
-				_px4_gyro->set_temperature(temperature);
-			}
-
-			_px4_gyro->update(timestamp, hil_sensor.xgyro, hil_sensor.ygyro, hil_sensor.zgyro);
-		}
-	}
-
-	// accelerometer
-	if ((hil_sensor.fields_updated & SensorSource::ACCEL) == SensorSource::ACCEL) {
-		if (_px4_accel == nullptr) {
-			// 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
-			_px4_accel = new PX4Accelerometer(1310988);
-		}
-
-		if (_px4_accel != nullptr) {
-			if (PX4_ISFINITE(temperature)) {
-				_px4_accel->set_temperature(temperature);
-			}
-
-			_px4_accel->update(timestamp, hil_sensor.xacc, hil_sensor.yacc, hil_sensor.zacc);
-		}
-	}
-
-	// magnetometer
-	if ((hil_sensor.fields_updated & SensorSource::MAG) == SensorSource::MAG) {
-		if (_px4_mag == nullptr) {
-			// 197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
-			_px4_mag = new PX4Magnetometer(197388);
-		}
-
-		if (_px4_mag != nullptr) {
-			if (PX4_ISFINITE(temperature)) {
-				_px4_mag->set_temperature(temperature);
-			}
-
-			_px4_mag->update(timestamp, hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag);
-		}
-	}
-
-	// baro
-	if ((hil_sensor.fields_updated & SensorSource::BARO) == SensorSource::BARO) {
-		if (_px4_baro == nullptr) {
-			// 6620172: DRV_BARO_DEVTYPE_BAROSIM, BUS: 1, ADDR: 4, TYPE: SIMULATION
-			_px4_baro = new PX4Barometer(6620172);
-		}
-
-		if (_px4_baro != nullptr) {
-			_px4_baro->set_temperature(hil_sensor.temperature);
-			_px4_baro->update(timestamp, hil_sensor.abs_pressure);
-		}
-	}
-
-	// differential pressure
-	if ((hil_sensor.fields_updated & SensorSource::DIFF_PRESS) == SensorSource::DIFF_PRESS) {
-		differential_pressure_s report{};
-		report.timestamp = timestamp;
-		report.temperature = hil_sensor.temperature;
-		report.differential_pressure_filtered_pa = hil_sensor.diff_pressure * 100.0f; // convert from millibar to bar;
-		report.differential_pressure_raw_pa = hil_sensor.diff_pressure * 100.0f; // convert from millibar to bar;
-
-		_differential_pressure_pub.publish(report);
-	}
-
-	// battery status
-	{
-		battery_status_s hil_battery_status{};
-
-		hil_battery_status.timestamp = timestamp;
-		hil_battery_status.voltage_v = 11.5f;
-		hil_battery_status.voltage_filtered_v = 11.5f;
-		hil_battery_status.current_a = 10.0f;
-		hil_battery_status.discharged_mah = -1.0f;
-
-		_battery_pub.publish(hil_battery_status);
-	}
+	PX4_INFO("Usage: modalai_dsp {start|info|stop}");
 }
 
-void
-ModalaiDSP::handle_message_hil_gps_dsp(mavlink_message_t *msg)
-{
-	mavlink_hil_gps_t gps;
-	mavlink_msg_hil_gps_decode(msg, &gps);
-
-	const uint64_t timestamp = hrt_absolute_time();
-
-	sensor_gps_s hil_gps{};
-
-	hil_gps.timestamp_time_relative = 0;
-	hil_gps.time_utc_usec = gps.time_usec;
-
-	hil_gps.timestamp = timestamp;
-	hil_gps.lat = gps.lat;
-	hil_gps.lon = gps.lon;
-	hil_gps.alt = gps.alt;
-	hil_gps.eph = (float)gps.eph * 1e-2f; // from cm to m
-	hil_gps.epv = (float)gps.epv * 1e-2f; // from cm to m
-
-	hil_gps.s_variance_m_s = 0.1f;
-
-	hil_gps.vel_m_s = (float)gps.vel * 1e-2f; // from cm/s to m/s
-	hil_gps.vel_n_m_s = gps.vn * 1e-2f; // from cm to m
-	hil_gps.vel_e_m_s = gps.ve * 1e-2f; // from cm to m
-	hil_gps.vel_d_m_s = gps.vd * 1e-2f; // from cm to m
-	hil_gps.vel_ned_valid = true;
-	hil_gps.cog_rad = ((gps.cog == 65535) ? NAN : wrap_2pi(math::radians(gps.cog * 1e-2f)));
-
-	hil_gps.fix_type = gps.fix_type;
-	hil_gps.satellites_used = gps.satellites_visible;  //TODO: rename mavlink_hil_gps_t sats visible to used?
-
-	hil_gps.heading = NAN;
-	hil_gps.heading_offset = NAN;
-
-	_gps_pub.publish(hil_gps);
 }
-
-/* OutputModuleInterface */
-void ModalaiDSP::mixerChanged()
-{
-	/*
-	 * This driver is only supporting 4 channel ESC
-	 */
-}
-
-/* OutputModuleInterface */
-int ModalaiDSP::print_status()
-{
-	return 1;
-	/*
-	 * This driver is only supporting 4 channel ESC
-	 */
-}
-
-/* OutputModuleInterface */
-int ModalaiDSP::print_usage(const char *reason)
-{
-	return 1;
-	/*
-	 * This driver is only supporting 4 channel ESC
-	 */
-}
-
-/* OutputModuleInterface */
-bool ModalaiDSP::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
-			       unsigned num_outputs, unsigned num_control_groups_updated)
-{
-	return true;
-}
-
-int ModalaiDSP::ioctl(file_t *filp, int cmd, unsigned long arg)
-{
-	return 1;
-}
-
-
-
-extern "C" __EXPORT int modalai_dsp_main(int argc, char *argv[]);
 
 int modalai_dsp_main(int argc, char *argv[])
 {
-	return ModalaiDSP::main(argc, argv);
+	int myoptind = 1;
+
+	if (argc <= 1) {
+		modalai_dsp::usage();
+		return 1;
+	}
+
+	const char *verb = argv[myoptind];
+
+
+	if (!strcmp(verb, "start")) {
+		return modalai_dsp::start(argc - 1, argv + 1);
+	}
+
+	else if (!strcmp(verb, "stop")) {
+		return modalai_dsp::stop();
+	}
+
+	else if (!strcmp(verb, "info")) {
+		return modalai_dsp::info();
+	}
+
+	else {
+		modalai_dsp::usage();
+		return 1;
+	}
 }
+
