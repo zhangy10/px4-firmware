@@ -114,11 +114,10 @@ void task_main(int argc, char *argv[])
 			PX4_ERR("Value of rx_buff: %s", rx_buf);
 		}
 
-		int writeRetval = writeResponse(&rx_buf[0], sizeof(rx_buf));
+		int writeRetval = writeResponse(&rx_buf[0], (int) readRetval);
 		if(writeRetval){
 			PX4_ERR("Write published");
 		}
-		sleep(1);
 	}
 }
 
