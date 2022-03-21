@@ -44,18 +44,21 @@
 #include <v2.0/standard/mavlink.h>
 
 #include <uORB/uORB.h>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/differential_pressure.h>
+#include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/vehicle_control_mode.h>
+#include <uORB/topics/vehicle_status.h>
+
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
-#include <uORB/Publication.hpp>
 
 #include <lib/cdev/CDev.hpp>
 #include <lib/cdev/CDev.hpp>
-
 
 #include <px4_log.h>
 #include <px4_platform_common/module.h>
@@ -88,6 +91,7 @@ int _uart_fd = -1;
 uORB::Publication<battery_status_s>			_battery_pub{ORB_ID(battery_status)};
 uORB::Publication<sensor_gps_s>				_gps_pub{ORB_ID(sensor_gps)};
 uORB::Publication<differential_pressure_s>		_differential_pressure_pub{ORB_ID(differential_pressure)};
+uORB::Subscription _act_sub{ORB_ID(actuator_outputs)};
 
 // hil_sensor and hil_state_quaternion
 enum SensorSource {
@@ -136,10 +140,112 @@ void task_main(int argc, char *argv[])
 			PX4_ERR("Value of rx_buff: %s", rx_buf);
 		}
 
-		int writeRetval = writeResponse(&rx_buf[0], (int) readRetval);
-		if(writeRetval){
-			PX4_ERR("Write published");
+		//Take readRetval and convert it into mavlink msg
+		mavlink_message_t msg;
+		mavlink_status_t _status{};
+		if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[0], &msg, &_status)) {
+			PX4_ERR("msg ID: %s", (std::string) msg->msgid);
+			switch (msg->msgid) {
+			case MAVLINK_MSG_ID_HIL_SENSOR:
+				handle_message_hil_sensor_dsp(msg);
+				break;
+			case MAVLINK_MSG_ID_HIL_GPS:
+				handle_message_hil_gps_dsp(msg);
+				break;
+			}
 		}
+
+		actuator_outputs_s act;
+		if (_act_sub.update(&act)) {
+			mavlink_hil_actuator_controls_t actuator_msg{};
+			actuator_msg.time_usec = act.timestamp;
+
+			static constexpr float pwm_center = (PWM_DEFAULT_MAX + PWM_DEFAULT_MIN) / 2;
+
+			unsigned system_type = MAV_TYPE_QUADROTOR;
+			unsigned n = 4;
+
+			if (system_type == MAV_TYPE_QUADROTOR){
+				for (unsigned i = 0; i < 16; i++) {
+					if (act.output[i] > PWM_DEFAULT_MIN / 2) {
+						if (i < n) {
+							/* scale PWM out 900..2100 us to 0..1 for rotors */
+							actuator_msg.controls[i] = (act.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
+
+						} else {
+							/* scale PWM out 900..2100 us to -1..1 for other channels */
+							actuator_msg.controls[i] = (act.output[i] - pwm_center) / ((PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2);
+						}
+
+					} else {
+						/* send 0 when disarmed and for disabled channels */
+						actuator_msg.controls[i] = 0.0f;
+					}
+				}
+			} else {
+				/* fixed wing: scale throttle to 0..1 and other channels to -1..1 */
+				for (unsigned i = 0; i < 16; i++) {
+					if (act.output[i] > PWM_DEFAULT_MIN / 2) {
+						if (i != 3) {
+							/* scale PWM out 900..2100 us to -1..1 for normal channels */
+							actuator_msg.controls[i] = (act.output[i] - pwm_center) / ((PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2);
+
+						} else {
+							/* scale PWM out 900..2100 us to 0..1 for throttle */
+							actuator_msg.controls[i] = (act.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
+						}
+
+					} else {
+						/* set 0 for disabled channels */
+						actuator_msg.controls[i] = 0.0f;
+					}
+				}
+			}
+
+			// mode (MAV_MODE_FLAG)
+			msg.mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+
+			vehicle_control_mode_s control_mode;
+
+			if (_vehicle_control_mode_sub.copy(&control_mode)) {
+				if (control_mode.flag_control_auto_enabled) {
+					msg.mode |= MAV_MODE_FLAG_AUTO_ENABLED;
+				}
+
+				if (control_mode.flag_control_manual_enabled) {
+					msg.mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
+				}
+
+				if (control_mode.flag_control_attitude_enabled) {
+					msg.mode |= MAV_MODE_FLAG_STABILIZE_ENABLED;
+				}
+			}
+
+			vehicle_status_s status;
+
+			if (_vehicle_status_sub.copy(&status)) {
+				if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+					msg.mode |= MAV_MODE_FLAG_SAFETY_ARMED;
+				}
+
+				if (status.hil_state == vehicle_status_s::HIL_STATE_ON) {
+					msg.mode |= MAV_MODE_FLAG_HIL_ENABLED;
+				}
+
+				if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+					msg.mode |= MAV_MODE_FLAG_GUIDED_ENABLED;
+				}
+			}
+
+			msg.flags = 0;
+
+			mavlink_msg_hil_actuator_controls_send_struct(MAVLINK_COMM_0, &msg);
+			PX4_ERR("mavlink_msg_hil_actuator_controls_send_struct complete")
+
+		//int writeRetval = writeResponse(&rx_buf[0], (int) readRetval);
+		//if(writeRetval){
+		//	PX4_ERR("Write published");
+		//}
 	}
 }
 
