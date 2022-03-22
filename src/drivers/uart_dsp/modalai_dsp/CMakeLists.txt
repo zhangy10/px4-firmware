@@ -31,14 +31,32 @@
 #
 ############################################################################
 
+px4_add_git_submodule(TARGET git_mavlink_v2 PATH "${PX4_SOURCE_DIR}/mavlink/include/mavlink/v2.0")
+
 px4_add_module(
 	MODULE drivers__uart_dsp__modalai_dsp
 	MAIN modalai_dsp
-	SRCS
-		modalai_dsp.cpp
+	COMPILE_FLAGS
+		-Wno-cast-align # TODO: fix and enable
+		-Wno-address-of-packed-member # TODO: fix in c_library_v2
+		-Wno-enum-compare # ROTATION <-> MAV_SENSOR_ROTATION
+		#-DDEBUG_BUILD
 	INCLUDES
 		${PX4_SOURCE_DIR}/mavlink/include/mavlink
-		${PX4_SOURCE_DIR}/src/drivers/uart_esc/modalai_esc
+		/usr/include/arpa
+	SRCS
+		modalai_dsp.cpp
+		#${PX4_SOURCE_DIR}/src/modules/mavlink/mavlink_main.cpp
+		#${PX4_SOURCE_DIR}/src/modules/mavlink/mavlink.c
 	DEPENDS
 		px4_work_queue
+		git_mavlink_v2
+		drivers_accelerometer
+		drivers_barometer
+		drivers_gyroscope
+		drivers_magnetometer
+		conversion
+		git_ecl
+		ecl_geo
+		version
 	)

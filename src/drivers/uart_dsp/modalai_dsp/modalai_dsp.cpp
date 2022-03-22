@@ -41,24 +41,33 @@
 #include <drivers/device/qurt/uart.h>
 #endif
 
+#include <commander/px4_custom_mode.h>
+
+#include <drivers/drv_pwm_output.h>
+#include <drivers/drv_hrt.h>
+
+#include <v2.0/mavlink_types.h>
 #include <v2.0/standard/mavlink.h>
+#include <v2.0/standard/standard.h>
+#include <v2.0/protocol.h>
+#include <v2.0/mavlink_helpers.h>
+#include <v2.0/minimal/mavlink_msg_heartbeat.h>
 
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/telemetry_status.h>
 
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
-
-#include <lib/cdev/CDev.hpp>
-#include <lib/cdev/CDev.hpp>
 
 #include <px4_log.h>
 #include <px4_platform_common/module.h>
@@ -76,6 +85,7 @@
 #define MODALAI_ESC_DEFAULT_PORT 	"/dev/ttyS1"
 #endif
 
+
 extern "C" { __EXPORT int modalai_dsp_main(int argc, char *argv[]); }
 
 namespace modalai_dsp
@@ -91,7 +101,6 @@ int _uart_fd = -1;
 uORB::Publication<battery_status_s>			_battery_pub{ORB_ID(battery_status)};
 uORB::Publication<sensor_gps_s>				_gps_pub{ORB_ID(sensor_gps)};
 uORB::Publication<differential_pressure_s>		_differential_pressure_pub{ORB_ID(differential_pressure)};
-uORB::Subscription _act_sub{ORB_ID(actuator_outputs)};
 
 // hil_sensor and hil_state_quaternion
 enum SensorSource {
@@ -107,6 +116,30 @@ PX4Barometer *_px4_baro{nullptr};
 PX4Gyroscope *_px4_gyro{nullptr};
 PX4Magnetometer *_px4_mag{nullptr};
 
+hrt_abstime _last_heartbeat_check{0};
+
+hrt_abstime _heartbeat_type_antenna_tracker{0};
+hrt_abstime _heartbeat_type_gcs{0};
+hrt_abstime _heartbeat_type_onboard_controller{0};
+hrt_abstime _heartbeat_type_gimbal{0};
+hrt_abstime _heartbeat_type_adsb{0};
+hrt_abstime _heartbeat_type_camera{0};
+
+hrt_abstime _heartbeat_component_telemetry_radio{0};
+hrt_abstime _heartbeat_component_log{0};
+hrt_abstime _heartbeat_component_osd{0};
+hrt_abstime _heartbeat_component_obstacle_avoidance{0};
+hrt_abstime _heartbeat_component_visual_inertial_odometry{0};
+hrt_abstime _heartbeat_component_pairing_manager{0};
+hrt_abstime _heartbeat_component_udp_bridge{0};
+hrt_abstime _heartbeat_component_uart_bridge{0};
+
+vehicle_status_s _vehicle_status{};
+actuator_outputs_s _actuator_outputs{};
+
+const unsigned mode_flag_armed = 128;
+const unsigned mode_flag_custom = 1;
+
 int openPort(const char *dev, speed_t speed);
 int closePort();
 
@@ -121,8 +154,49 @@ bool isOpen() { return _uart_fd >= 0; };
 void usage();
 void task_main(int argc, char *argv[]);
 
-void handle_message_hil_sensor_dsp();
-void handle_message_hil_gps_dsp();
+void handle_message_hil_sensor_dsp(mavlink_message_t *msg);
+void handle_message_hil_gps_dsp(mavlink_message_t *msg);
+void handle_message_heartbeat_dsp(mavlink_message_t *msg);
+void CheckHeartbeats(const hrt_abstime &t, bool force);
+void get_mavlink_mode_state_dsp(const struct vehicle_status_s *const status, uint8_t *mavlink_state,
+				   uint8_t *mavlink_base_mode, uint32_t *mavlink_custom_mode);
+void get_mavlink_navigation_mode_dsp(const struct vehicle_status_s *const status, uint8_t *mavlink_base_mode,
+				 union px4_custom_mode *custom_mode);
+
+void handle_message_dsp(mavlink_message_t *msg);
+void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg);
+
+void
+handle_message_dsp(mavlink_message_t *msg)
+{
+	PX4_DEBUG("msg ID: %d", msg->msgid);
+	switch (msg->msgid) {
+	case MAVLINK_MSG_ID_HIL_SENSOR:
+		handle_message_hil_sensor_dsp(msg);
+		PX4_DEBUG("MAVLINK HIL SENSOR");
+		break;
+	case MAVLINK_MSG_ID_HIL_GPS:
+		handle_message_hil_gps_dsp(msg);
+		PX4_DEBUG("MAVLINK HIL GPS");
+		break;
+	case MAVLINK_MSG_ID_HEARTBEAT:
+		handle_message_heartbeat_dsp(msg);
+		PX4_DEBUG("MAVLINK HEART");
+
+		mavlink_heartbeat_t hb = {};
+		mavlink_message_t message = {};
+		hb.autopilot = 12;
+		hb.base_mode |= (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) ? 128 : 0;
+		mavlink_msg_heartbeat_encode(1, 1, &message, &hb);
+
+		uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
+		uint16_t newBufLen = 0;
+		newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
+		int writeRetval = writeResponse(&newBuf, newBufLen);
+		PX4_DEBUG("Succesful write of heartbeat back to jMAVSim: %d", writeRetval);
+		break;
+	}
+}
 
 void task_main(int argc, char *argv[])
 {
@@ -132,121 +206,149 @@ void task_main(int argc, char *argv[])
 		PX4_ERR("Port is open: %d", openRetval);
 	}
 
-	uint8_t rx_buf[256];
-	rx_buf[255] = '\0';
+	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
+	int _actuator_outputs_sub = orb_subscribe(ORB_ID(actuator_outputs));
+	PX4_DEBUG("Got %d from orb_subscribe", _actuator_outputs_sub);
+	int _vehicle_control_mode_sub_ = orb_subscribe(ORB_ID(vehicle_control_mode));
+	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
+	int _vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
+	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_status_sub);
+
 	while (!_task_should_exit){
+
+		uint8_t rx_buf[256];
+		rx_buf[255] = '\0';
+
 		int readRetval = readResponse(&rx_buf[0], sizeof(rx_buf));
 		if(readRetval){
-			PX4_ERR("Value of rx_buff: %s", rx_buf);
+			PX4_DEBUG("Value of rx_buff: %s", rx_buf);
 		}
 
 		//Take readRetval and convert it into mavlink msg
 		mavlink_message_t msg;
 		mavlink_status_t _status{};
-		if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[0], &msg, &_status)) {
-			PX4_ERR("msg ID: %s", (std::string) msg->msgid);
-			switch (msg->msgid) {
-			case MAVLINK_MSG_ID_HIL_SENSOR:
-				handle_message_hil_sensor_dsp(msg);
-				break;
-			case MAVLINK_MSG_ID_HIL_GPS:
-				handle_message_hil_gps_dsp(msg);
-				break;
+
+		orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
+
+		for (int i = 0; i <= readRetval; i++){
+			if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[i], &msg, &_status)) {
+				handle_message_dsp(&msg);
 			}
 		}
 
-		actuator_outputs_s act;
-		if (_act_sub.update(&act)) {
-			mavlink_hil_actuator_controls_t actuator_msg{};
-			actuator_msg.time_usec = act.timestamp;
+		orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
 
-			static constexpr float pwm_center = (PWM_DEFAULT_MAX + PWM_DEFAULT_MIN) / 2;
+		if (_actuator_outputs.timestamp > 0) {
+			mavlink_hil_actuator_controls_t hil_act_control;
+			actuator_controls_from_outputs_dsp(&hil_act_control);
 
-			unsigned system_type = MAV_TYPE_QUADROTOR;
-			unsigned n = 4;
+			mavlink_message_t message{};
+			mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
 
-			if (system_type == MAV_TYPE_QUADROTOR){
-				for (unsigned i = 0; i < 16; i++) {
-					if (act.output[i] > PWM_DEFAULT_MIN / 2) {
-						if (i < n) {
-							/* scale PWM out 900..2100 us to 0..1 for rotors */
-							actuator_msg.controls[i] = (act.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
-
-						} else {
-							/* scale PWM out 900..2100 us to -1..1 for other channels */
-							actuator_msg.controls[i] = (act.output[i] - pwm_center) / ((PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2);
-						}
-
-					} else {
-						/* send 0 when disarmed and for disabled channels */
-						actuator_msg.controls[i] = 0.0f;
-					}
-				}
-			} else {
-				/* fixed wing: scale throttle to 0..1 and other channels to -1..1 */
-				for (unsigned i = 0; i < 16; i++) {
-					if (act.output[i] > PWM_DEFAULT_MIN / 2) {
-						if (i != 3) {
-							/* scale PWM out 900..2100 us to -1..1 for normal channels */
-							actuator_msg.controls[i] = (act.output[i] - pwm_center) / ((PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2);
-
-						} else {
-							/* scale PWM out 900..2100 us to 0..1 for throttle */
-							actuator_msg.controls[i] = (act.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
-						}
-
-					} else {
-						/* set 0 for disabled channels */
-						actuator_msg.controls[i] = 0.0f;
-					}
-				}
-			}
-
-			// mode (MAV_MODE_FLAG)
-			msg.mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-
-			vehicle_control_mode_s control_mode;
-
-			if (_vehicle_control_mode_sub.copy(&control_mode)) {
-				if (control_mode.flag_control_auto_enabled) {
-					msg.mode |= MAV_MODE_FLAG_AUTO_ENABLED;
-				}
-
-				if (control_mode.flag_control_manual_enabled) {
-					msg.mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
-				}
-
-				if (control_mode.flag_control_attitude_enabled) {
-					msg.mode |= MAV_MODE_FLAG_STABILIZE_ENABLED;
-				}
-			}
-
-			vehicle_status_s status;
-
-			if (_vehicle_status_sub.copy(&status)) {
-				if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
-					msg.mode |= MAV_MODE_FLAG_SAFETY_ARMED;
-				}
-
-				if (status.hil_state == vehicle_status_s::HIL_STATE_ON) {
-					msg.mode |= MAV_MODE_FLAG_HIL_ENABLED;
-				}
-
-				if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
-					msg.mode |= MAV_MODE_FLAG_GUIDED_ENABLED;
-				}
-			}
-
-			msg.flags = 0;
-
-			mavlink_msg_hil_actuator_controls_send_struct(MAVLINK_COMM_0, &msg);
-			PX4_ERR("mavlink_msg_hil_actuator_controls_send_struct complete")
-
-		//int writeRetval = writeResponse(&rx_buf[0], (int) readRetval);
-		//if(writeRetval){
-		//	PX4_ERR("Write published");
-		//}
+			uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
+			uint16_t newBufLen = 0;
+			newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
+			int writeRetval = writeResponse(&newBuf, newBufLen);
+			PX4_ERR("Succesful write of actuator back to jMAVSim: %d", writeRetval);
+		}
 	}
+}
+
+void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg)
+{
+	memset(msg, 0, sizeof(mavlink_hil_actuator_controls_t));
+
+	msg->time_usec = hrt_absolute_time() + hrt_absolute_time_offset();
+
+	bool armed = (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
+
+	int _system_type = MAV_TYPE_QUADROTOR;
+
+	/* 'pos_thrust_motors_count' indicates number of motor channels which are configured with 0..1 range (positive thrust)
+	all other motors are configured for -1..1 range */
+	unsigned pos_thrust_motors_count;
+	bool is_fixed_wing;
+
+	switch (_system_type) {
+	case MAV_TYPE_AIRSHIP:
+	case MAV_TYPE_VTOL_DUOROTOR:
+	case MAV_TYPE_COAXIAL:
+		pos_thrust_motors_count = 2;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_TRICOPTER:
+		pos_thrust_motors_count = 3;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_QUADROTOR:
+	case MAV_TYPE_VTOL_QUADROTOR:
+	case MAV_TYPE_VTOL_TILTROTOR:
+		pos_thrust_motors_count = 4;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_VTOL_RESERVED2:
+		pos_thrust_motors_count = 5;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_HEXAROTOR:
+		pos_thrust_motors_count = 6;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_OCTOROTOR:
+		pos_thrust_motors_count = 8;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_SUBMARINE:
+		pos_thrust_motors_count = 0;
+		is_fixed_wing = false;
+		break;
+
+	case MAV_TYPE_FIXED_WING:
+		pos_thrust_motors_count = 0;
+		is_fixed_wing = true;
+		break;
+
+	default:
+		pos_thrust_motors_count = 0;
+		is_fixed_wing = false;
+		break;
+	}
+
+	for (unsigned i = 0; i < actuator_outputs_s::NUM_ACTUATOR_OUTPUTS; i++) {
+		if (!armed) {
+			/* send 0 when disarmed and for disabled channels */
+			msg->controls[i] = 0.0f;
+
+		} else if ((is_fixed_wing && i == 4) ||
+			   (!is_fixed_wing && i < pos_thrust_motors_count)) {	//multirotor, rotor channel
+			/* scale PWM out PWM_DEFAULT_MIN..PWM_DEFAULT_MAX us to 0..1 for rotors */
+			msg->controls[i] = (_actuator_outputs.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
+			msg->controls[i] = math::constrain(msg->controls[i], 0.f, 1.f);
+
+		} else {
+			const float pwm_center = (PWM_DEFAULT_MAX + PWM_DEFAULT_MIN) / 2;
+			const float pwm_delta = (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2;
+
+			/* scale PWM out PWM_DEFAULT_MIN..PWM_DEFAULT_MAX us to -1..1 for other channels */
+			msg->controls[i] = (_actuator_outputs.output[i] - pwm_center) / pwm_delta;
+			msg->controls[i] = math::constrain(msg->controls[i], -1.f, 1.f);
+		}
+
+	}
+	msg->mode |= MAV_MODE_FLAG_HIL_ENABLED;
+	msg->mode = mode_flag_custom;
+	msg->mode |= (armed) ? mode_flag_armed : 0;
+	msg->flags = 0;
+
+#if defined(ENABLE_LOCKSTEP_SCHEDULER)
+	msg->flags |= 1;
+#endif
 }
 
 int openPort(const char *dev, speed_t speed)
@@ -522,6 +624,37 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	}
 }
 
+void get_mavlink_mode_state_dsp(const struct vehicle_status_s *const status, uint8_t *mavlink_state,
+				   uint8_t *mavlink_base_mode, uint32_t *mavlink_custom_mode)
+{
+	*mavlink_state = 0;
+	*mavlink_base_mode = 0;
+	*mavlink_custom_mode = 0;
+
+	union px4_custom_mode custom_mode;
+	get_mavlink_navigation_mode_dsp(status, mavlink_base_mode, &custom_mode);
+	*mavlink_custom_mode = custom_mode.data;
+
+	/* set system state */
+	if (status->arming_state == vehicle_status_s::ARMING_STATE_INIT
+	    || status->arming_state == vehicle_status_s::ARMING_STATE_IN_AIR_RESTORE
+	    || status->arming_state == vehicle_status_s::ARMING_STATE_STANDBY_ERROR) {	// TODO review
+		*mavlink_state = MAV_STATE_UNINIT;
+
+	} else if (status->arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+		*mavlink_state = MAV_STATE_ACTIVE;
+
+	} else if (status->arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
+		*mavlink_state = MAV_STATE_STANDBY;
+
+	} else if (status->arming_state == vehicle_status_s::ARMING_STATE_SHUTDOWN) {
+		*mavlink_state = MAV_STATE_POWEROFF;
+
+	} else {
+		*mavlink_state = MAV_STATE_CRITICAL;
+	}
+}
+
 void
 handle_message_hil_gps_dsp(mavlink_message_t *msg)
 {
@@ -558,6 +691,260 @@ handle_message_hil_gps_dsp(mavlink_message_t *msg)
 	hil_gps.heading_offset = NAN;
 
 	_gps_pub.publish(hil_gps);
+}
+
+void
+handle_message_heartbeat_dsp(mavlink_message_t *msg)
+{
+	/* telemetry status supported only on first TELEMETRY_STATUS_ORB_ID_NUM mavlink channels */
+	const hrt_abstime now = hrt_absolute_time();
+
+	mavlink_heartbeat_t hb;
+	mavlink_msg_heartbeat_decode(msg, &hb);
+
+	const bool same_system = 1;
+
+	if (same_system || hb.type == MAV_TYPE_GCS) {
+
+		switch (hb.type) {
+		case MAV_TYPE_ANTENNA_TRACKER:
+			_heartbeat_type_antenna_tracker = now;
+			break;
+
+		case MAV_TYPE_GCS:
+			_heartbeat_type_gcs = now;
+			break;
+
+		case MAV_TYPE_ONBOARD_CONTROLLER:
+			_heartbeat_type_onboard_controller = now;
+			break;
+
+		case MAV_TYPE_GIMBAL:
+			_heartbeat_type_gimbal = now;
+			break;
+
+		case MAV_TYPE_ADSB:
+			_heartbeat_type_adsb = now;
+			break;
+
+		case MAV_TYPE_CAMERA:
+			_heartbeat_type_camera = now;
+			break;
+
+		default:
+			PX4_DEBUG("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
+		}
+
+
+		switch (msg->compid) {
+		case MAV_COMP_ID_TELEMETRY_RADIO:
+			_heartbeat_component_telemetry_radio = now;
+			break;
+
+		case MAV_COMP_ID_LOG:
+			_heartbeat_component_log = now;
+			break;
+
+		case MAV_COMP_ID_OSD:
+			_heartbeat_component_osd = now;
+			break;
+
+		case MAV_COMP_ID_OBSTACLE_AVOIDANCE:
+			_heartbeat_component_obstacle_avoidance = now;
+			//_mavlink->telemetry_status().avoidance_system_healthy = (hb.system_status == MAV_STATE_ACTIVE);
+			break;
+
+		case MAV_COMP_ID_VISUAL_INERTIAL_ODOMETRY:
+			_heartbeat_component_visual_inertial_odometry = now;
+			break;
+
+		case MAV_COMP_ID_PAIRING_MANAGER:
+			_heartbeat_component_pairing_manager = now;
+			break;
+
+		case MAV_COMP_ID_UDP_BRIDGE:
+			_heartbeat_component_udp_bridge = now;
+			break;
+
+		case MAV_COMP_ID_UART_BRIDGE:
+			_heartbeat_component_uart_bridge = now;
+			break;
+
+		default:
+			PX4_DEBUG("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
+		}
+
+		CheckHeartbeats(now, true);
+	}
+
+}
+
+void CheckHeartbeats(const hrt_abstime &t, bool force)
+{
+	// check HEARTBEATs for timeout
+	static constexpr uint64_t TIMEOUT = telemetry_status_s::HEARTBEAT_TIMEOUT_US;
+
+	if (t <= TIMEOUT) {
+		return;
+	}
+
+	//int _telemetry_status_sub = orb_subscribe(ORB_ID(telemetry_status));
+		// 	vehicle_control_mode_s control_mode;
+
+		// 	if (_vehicle_control_mode_sub.copy(&control_mode)) {
+	// if ((t >= _last_heartbeat_check + (TIMEOUT / 2)) || force) {
+	// 	telemetry_status_s tstatus;
+
+	// 	tstatus.heartbeat_type_antenna_tracker         = (t <= TIMEOUT + _heartbeat_type_antenna_tracker);
+	// 	tstatus.heartbeat_type_gcs                     = (t <= TIMEOUT + _heartbeat_type_gcs);
+	// 	tstatus.heartbeat_type_onboard_controller      = (t <= TIMEOUT + _heartbeat_type_onboard_controller);
+	// 	tstatus.heartbeat_type_gimbal                  = (t <= TIMEOUT + _heartbeat_type_gimbal);
+	// 	tstatus.heartbeat_type_adsb                    = (t <= TIMEOUT + _heartbeat_type_adsb);
+	// 	tstatus.heartbeat_type_camera                  = (t <= TIMEOUT + _heartbeat_type_camera);
+
+	// 	tstatus.heartbeat_component_telemetry_radio    = (t <= TIMEOUT + _heartbeat_component_telemetry_radio);
+	// 	tstatus.heartbeat_component_log                = (t <= TIMEOUT + _heartbeat_component_log);
+	// 	tstatus.heartbeat_component_osd                = (t <= TIMEOUT + _heartbeat_component_osd);
+	// 	tstatus.heartbeat_component_obstacle_avoidance = (t <= TIMEOUT + _heartbeat_component_obstacle_avoidance);
+	// 	tstatus.heartbeat_component_vio                = (t <= TIMEOUT + _heartbeat_component_visual_inertial_odometry);
+	// 	tstatus.heartbeat_component_pairing_manager    = (t <= TIMEOUT + _heartbeat_component_pairing_manager);
+	// 	tstatus.heartbeat_component_udp_bridge         = (t <= TIMEOUT + _heartbeat_component_udp_bridge);
+	// 	tstatus.heartbeat_component_uart_bridge        = (t <= TIMEOUT + _heartbeat_component_uart_bridge);
+
+	// 	//_mavlink->telemetry_status_updated();
+	// 	_last_heartbeat_check = t;
+	// }
+}
+
+void get_mavlink_navigation_mode_dsp(const struct vehicle_status_s *const status, uint8_t *mavlink_base_mode,
+				 union px4_custom_mode *custom_mode)
+{
+	custom_mode->data = 0;
+	*mavlink_base_mode = 0;
+
+	/* HIL */
+	if (status->hil_state == vehicle_status_s::HIL_STATE_ON) {
+		*mavlink_base_mode |= MAV_MODE_FLAG_HIL_ENABLED;
+	}
+
+	/* arming state */
+	if (status->arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+		*mavlink_base_mode |= MAV_MODE_FLAG_SAFETY_ARMED;
+	}
+
+	/* main state */
+	*mavlink_base_mode |= MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+
+	const uint8_t auto_mode_flags	= MAV_MODE_FLAG_AUTO_ENABLED
+					  | MAV_MODE_FLAG_STABILIZE_ENABLED
+					  | MAV_MODE_FLAG_GUIDED_ENABLED;
+
+	switch (status->nav_state) {
+	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
+		*mavlink_base_mode	|= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+					   | (status->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING ? MAV_MODE_FLAG_STABILIZE_ENABLED : 0);
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_MANUAL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_ACRO:
+		*mavlink_base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_ACRO;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_RATTITUDE:
+		*mavlink_base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_RATTITUDE;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_STAB:
+		*mavlink_base_mode	|= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+					   | MAV_MODE_FLAG_STABILIZE_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_STABILIZED;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
+		*mavlink_base_mode	|= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+					   | MAV_MODE_FLAG_STABILIZE_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_ALTCTL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_POSCTL:
+		*mavlink_base_mode	|= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+					   | MAV_MODE_FLAG_STABILIZE_ENABLED
+					   | MAV_MODE_FLAG_GUIDED_ENABLED; // TODO: is POSCTL GUIDED?
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_POSCTL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_ORBIT:
+		*mavlink_base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+				      | MAV_MODE_FLAG_STABILIZE_ENABLED
+				      | MAV_MODE_FLAG_GUIDED_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_POSCTL;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_MISSION;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW_TARGET:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_PRECLAND:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTL:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_RTL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_LAND:
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
+
+	/* fallthrough */
+	case vehicle_status_s::NAVIGATION_STATE_DESCEND:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+		custom_mode->sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_LAND;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
+		*mavlink_base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_MANUAL;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
+		*mavlink_base_mode |= auto_mode_flags;
+		custom_mode->main_mode = PX4_CUSTOM_MAIN_MODE_OFFBOARD;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_MAX:
+		/* this is an unused case, ignore */
+		break;
+
+	}
 }
 
 }
