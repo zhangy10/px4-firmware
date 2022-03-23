@@ -60,6 +60,7 @@
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/telemetry_status.h>
@@ -136,6 +137,7 @@ hrt_abstime _heartbeat_component_uart_bridge{0};
 
 vehicle_status_s _vehicle_status{};
 actuator_outputs_s _actuator_outputs{};
+actuator_controls_s _actuator_controls{};
 
 const unsigned mode_flag_armed = 128;
 const unsigned mode_flag_custom = 1;
@@ -202,12 +204,14 @@ void task_main(int argc, char *argv[])
 	}
 
 	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
-	int _actuator_outputs_sub = orb_subscribe(ORB_ID(actuator_outputs));
+	int _actuator_outputs_sub = orb_subscribe_multi(ORB_ID(actuator_outputs), 0);
 	PX4_DEBUG("Got %d from orb_subscribe", _actuator_outputs_sub);
 	int _vehicle_control_mode_sub_ = orb_subscribe(ORB_ID(vehicle_control_mode));
 	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
 	int _vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_status_sub);
+	int _actuator_controls_sub = orb_subscribe(ORB_ID(actuator_controls));
+	PX4_DEBUG("Got %d from orb_subscribe", _actuator_controls_sub);
 
 	while (!_task_should_exit){
 
@@ -223,7 +227,12 @@ void task_main(int argc, char *argv[])
 		mavlink_message_t msg;
 		mavlink_status_t _status{};
 
-		orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
+		bool vehicle_updated = false;
+       		(void) orb_check(_vehicle_status_sub, &vehicle_updated);
+		if(vehicle_updated){
+			PX4_DEBUG("Value of updated vehicle status: %d", vehicle_updated);
+			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
+		}
 
 		for (int i = 0; i <= readRetval; i++){
 			if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[i], &msg, &_status)) {
@@ -231,7 +240,12 @@ void task_main(int argc, char *argv[])
 			}
 		}
 
-		orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
+		bool actuator_updated = false;
+       		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
+		if(actuator_updated){
+			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
+			PX4_DEBUG("Value of updated actuator: %d", actuator_updated);
+		}
 
 		if (_actuator_outputs.timestamp > 0) {
 			mavlink_hil_actuator_controls_t hil_act_control;
@@ -244,7 +258,7 @@ void task_main(int argc, char *argv[])
 			uint16_t newBufLen = 0;
 			newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
 			int writeRetval = writeResponse(&newBuf, newBufLen);
-			PX4_ERR("Succesful write of actuator back to jMAVSim: %d", writeRetval);
+			PX4_DEBUG("Succesful write of actuator back to jMAVSim: %d", writeRetval);
 		}
 	}
 }
