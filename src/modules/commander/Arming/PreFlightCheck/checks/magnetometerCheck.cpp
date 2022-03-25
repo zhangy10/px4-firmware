@@ -71,7 +71,10 @@ bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_st
 		} else {
 			calibration_valid = (calibration::FindCalibrationIndex("MAG", device_id) >= 0);
 		}
-		
+
+		PX4_ERR("Status hil state?: %d", status.hil_state);
+		PX4_ERR("CALIBRATION_MAG_VALUE: %d", calibration_valid);
+
 		if (!calibration_valid) {
 			if (report_fail) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Compass %u uncalibrated", instance);

@@ -71,7 +71,10 @@ bool PreFlightCheck::gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 		} else {
 			calibration_valid = (calibration::FindCalibrationIndex("GYRO", device_id) >= 0);
 		}
-		
+
+		PX4_ERR("Status hil state?: %d", status.hil_state);
+		PX4_ERR("CALIBRATION_GYRO_VALUE: %d", calibration_valid);
+
 		if (!calibration_valid) {
 			if (report_fail) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Gyro %u uncalibrated", instance);

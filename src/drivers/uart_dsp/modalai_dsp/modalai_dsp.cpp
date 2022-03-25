@@ -222,18 +222,19 @@ void task_main(int argc, char *argv[])
 	int _actuator_controls_sub = orb_subscribe(ORB_ID(actuator_controls));
 	PX4_INFO("Got %d from orb_subscribe", _actuator_controls_sub);
 
+	uint64_t last_heartbeat_timestamp = hrt_absolute_time();
+
 	while (!_task_should_exit){
 
 		uint8_t rx_buf[512];
 		rx_buf[511] = '\0';
 
-        usleep(10000);
+        	usleep(10000);
 
 		int readRetval = readResponse(&rx_buf[0], sizeof(rx_buf));
 		if (readRetval) {
-		// 	// PX4_INFO("Value of rx_buff: %s", rx_buf);
-		    // PX4_INFO("Got %d bytes", readRetval);
-
+		 	// PX4_INFO("Value of rx_buff: %s", rx_buf);
+		    	// PX4_INFO("Got %d bytes", readRetval);
 			//Take readRetval and convert it into mavlink msg
 			mavlink_message_t msg;
 			mavlink_status_t _status{};
@@ -244,15 +245,31 @@ void task_main(int argc, char *argv[])
 			}
 		}
 
+		uint64_t current_timestamp = hrt_absolute_time();
+
+		if ((current_timestamp - last_heartbeat_timestamp) > 1000000) {
+			mavlink_heartbeat_t hb = {};
+			mavlink_message_t message = {};
+			hb.autopilot = 12;
+			hb.base_mode |= (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) ? 128 : 0;
+			mavlink_msg_heartbeat_encode(1, 1, &message, &hb);
+
+			uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
+			uint16_t newBufLen = 0;
+			newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
+			(void) writeResponse(&newBuf, newBufLen);
+			last_heartbeat_timestamp = current_timestamp;
+		}
+
 		bool vehicle_updated = false;
-        (void) orb_check(_vehicle_status_sub, &vehicle_updated);
+        	(void) orb_check(_vehicle_status_sub, &vehicle_updated);
 		if(vehicle_updated){
 			// PX4_INFO("Value of updated vehicle status: %d", vehicle_updated);
 			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
 		}
 
 		bool actuator_updated = false;
-       	(void) orb_check(_actuator_outputs_sub, &actuator_updated);
+       		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
 		if(actuator_updated){
 			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
 			PX4_INFO("Value of updated actuator: %d", actuator_updated);
