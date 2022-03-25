@@ -43,14 +43,16 @@
 #include "InvenSense_ICM42688P_registers.hpp"
 
 #include <drivers/drv_hrt.h>
-#include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
+//#include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/device/spi.h>
-#include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
+//#include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/atomic.h>
 #include <px4_platform_common/i2c_spi_buses.h>
-#include <uORB/topics/imu_server.h>
+//#include <uORB/topics/imu_server.h>
+#include <uORB/topics/sensor_accel_fifo.h>
+#include <uORB/topics/sensor_gyro_fifo.h>
 
 using namespace InvenSense_ICM42688P;
 
@@ -147,8 +149,8 @@ private:
 
 	const spi_drdy_gpio_t _drdy_gpio;
 
-	PX4Accelerometer _px4_accel;
-	PX4Gyroscope _px4_gyro;
+	//PX4Accelerometer _px4_accel;
+	//PX4Gyroscope _px4_gyro;
 
 	perf_counter_t _bad_register_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad register")};
 	perf_counter_t _bad_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")};
@@ -218,8 +220,8 @@ private:
     uint32_t _temperature_samples{0};
 
     // Support for the IMU server
-    uint32_t _imu_server_samples{0};
-    imu_server_s _imu_server_data;
-	uORB::Publication<imu_server_s> _imu_server_pub{ORB_ID(imu_server)};
+    //uint32_t _imu_server_samples{0};
+    //imu_server_s _imu_server_data;
+	//uORB::Publication<imu_server_s> _imu_server_pub{ORB_ID(imu_server)};
 
 };

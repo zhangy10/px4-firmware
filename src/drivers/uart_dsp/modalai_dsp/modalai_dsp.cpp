@@ -166,19 +166,21 @@ void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg);
 void
 handle_message_dsp(mavlink_message_t *msg)
 {
-	PX4_DEBUG("msg ID: %d", msg->msgid);
+	//PX4_INFO("msg ID: %d", msg->msgid);
+	// PX4_ERR("msg ID: %d", msg->msgid);
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_HIL_SENSOR:
 		handle_message_hil_sensor_dsp(msg);
-		PX4_DEBUG("MAVLINK HIL SENSOR");
+		//PX4_INFO("MAVLINK HIL SENSOR");
 		break;
 	case MAVLINK_MSG_ID_HIL_GPS:
 		handle_message_hil_gps_dsp(msg);
-		PX4_DEBUG("MAVLINK HIL GPS");
+		PX4_INFO("MAVLINK HIL GPS");
 		break;
 	case MAVLINK_MSG_ID_HEARTBEAT:
+	{
 		handle_message_heartbeat_dsp(msg);
-		PX4_DEBUG("MAVLINK HEART");
+		PX4_INFO("MAVLINK HEART");
 
 		mavlink_heartbeat_t hb = {};
 		mavlink_message_t message = {};
@@ -190,7 +192,14 @@ handle_message_dsp(mavlink_message_t *msg)
 		uint16_t newBufLen = 0;
 		newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
 		int writeRetval = writeResponse(&newBuf, newBufLen);
-		PX4_DEBUG("Succesful write of heartbeat back to jMAVSim: %d", writeRetval);
+		PX4_INFO("Succesful write of heartbeat back to jMAVSim: %d", writeRetval);
+		break;
+	}
+	case MAVLINK_MSG_ID_SYSTEM_TIME:
+		PX4_INFO("MAVLINK SYSTEM TIME");
+		break;
+	default:
+		PX4_ERR("Unknown msg ID: %d", msg->msgid);
 		break;
 	}
 }
@@ -205,60 +214,62 @@ void task_main(int argc, char *argv[])
 
 	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
 	int _actuator_outputs_sub = orb_subscribe_multi(ORB_ID(actuator_outputs), 0);
-	PX4_DEBUG("Got %d from orb_subscribe", _actuator_outputs_sub);
+	PX4_INFO("Got %d from orb_subscribe", _actuator_outputs_sub);
 	int _vehicle_control_mode_sub_ = orb_subscribe(ORB_ID(vehicle_control_mode));
-	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
+	PX4_INFO("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
 	int _vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
-	PX4_DEBUG("Got %d from orb_subscribe", _vehicle_status_sub);
+	PX4_INFO("Got %d from orb_subscribe", _vehicle_status_sub);
 	int _actuator_controls_sub = orb_subscribe(ORB_ID(actuator_controls));
-	PX4_DEBUG("Got %d from orb_subscribe", _actuator_controls_sub);
+	PX4_INFO("Got %d from orb_subscribe", _actuator_controls_sub);
 
 	while (!_task_should_exit){
 
-		uint8_t rx_buf[256];
-		rx_buf[255] = '\0';
+		uint8_t rx_buf[512];
+		rx_buf[511] = '\0';
+
+        usleep(10000);
 
 		int readRetval = readResponse(&rx_buf[0], sizeof(rx_buf));
-		if(readRetval){
-			PX4_DEBUG("Value of rx_buff: %s", rx_buf);
-		}
+		if (readRetval) {
+		// 	// PX4_INFO("Value of rx_buff: %s", rx_buf);
+		    // PX4_INFO("Got %d bytes", readRetval);
 
-		//Take readRetval and convert it into mavlink msg
-		mavlink_message_t msg;
-		mavlink_status_t _status{};
-
-		bool vehicle_updated = false;
-       		(void) orb_check(_vehicle_status_sub, &vehicle_updated);
-		if(vehicle_updated){
-			PX4_DEBUG("Value of updated vehicle status: %d", vehicle_updated);
-			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
-		}
-
-		for (int i = 0; i <= readRetval; i++){
-			if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[i], &msg, &_status)) {
-				handle_message_dsp(&msg);
+			//Take readRetval and convert it into mavlink msg
+			mavlink_message_t msg;
+			mavlink_status_t _status{};
+			for (int i = 0; i <= readRetval; i++){
+				if (mavlink_parse_char(MAVLINK_COMM_0, rx_buf[i], &msg, &_status)) {
+					handle_message_dsp(&msg);
+				}
 			}
 		}
 
-		bool actuator_updated = false;
-       		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
-		if(actuator_updated){
-			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
-			PX4_DEBUG("Value of updated actuator: %d", actuator_updated);
+		bool vehicle_updated = false;
+        (void) orb_check(_vehicle_status_sub, &vehicle_updated);
+		if(vehicle_updated){
+			// PX4_INFO("Value of updated vehicle status: %d", vehicle_updated);
+			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
 		}
 
-		if (_actuator_outputs.timestamp > 0) {
-			mavlink_hil_actuator_controls_t hil_act_control;
-			actuator_controls_from_outputs_dsp(&hil_act_control);
+		bool actuator_updated = false;
+       	(void) orb_check(_actuator_outputs_sub, &actuator_updated);
+		if(actuator_updated){
+			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
+			PX4_INFO("Value of updated actuator: %d", actuator_updated);
 
-			mavlink_message_t message{};
-			mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
+			if (_actuator_outputs.timestamp > 0) {
+				mavlink_hil_actuator_controls_t hil_act_control;
+				actuator_controls_from_outputs_dsp(&hil_act_control);
 
-			uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
-			uint16_t newBufLen = 0;
-			newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
-			int writeRetval = writeResponse(&newBuf, newBufLen);
-			PX4_DEBUG("Succesful write of actuator back to jMAVSim: %d", writeRetval);
+				mavlink_message_t message{};
+				mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
+
+				uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
+				uint16_t newBufLen = 0;
+				newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
+				int writeRetval = writeResponse(&newBuf, newBufLen);
+				PX4_INFO("Succesful write of actuator back to jMAVSim: %d", writeRetval);
+			}
 		}
 	}
 }
@@ -328,6 +339,12 @@ void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg)
 		is_fixed_wing = false;
 		break;
 	}
+
+	PX4_INFO("Actuator controls. Armed: %d, %f %f %f %f %f %f %f %f", armed,
+             (double) _actuator_outputs.output[0], (double) _actuator_outputs.output[1],
+			 (double) _actuator_outputs.output[2], (double) _actuator_outputs.output[3],
+             (double) _actuator_outputs.output[4], (double) _actuator_outputs.output[5],
+			 (double) _actuator_outputs.output[6], (double) _actuator_outputs.output[7]);
 
 	for (unsigned i = 0; i < actuator_outputs_s::NUM_ACTUATOR_OUTPUTS; i++) {
 		if (!armed) {
@@ -450,6 +467,8 @@ int readResponse(void *buf, size_t len)
 	if (_uart_fd < 0 || buf == NULL) {
 		PX4_ERR("invalid state for reading or buffer");
 		return -1;
+	// } else {
+	// 	PX4_INFO("Reading UART");
 	}
 
 #ifdef __PX4_QURT
@@ -539,6 +558,8 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	mavlink_msg_hil_sensor_decode(msg, &hil_sensor);
 
 	const uint64_t timestamp = hrt_absolute_time();
+
+	PX4_INFO("Processing HIL SENSOR message at %llu", timestamp);
 
 	// temperature only updated with baro
 	float temperature = NAN;
@@ -710,7 +731,7 @@ handle_message_heartbeat_dsp(mavlink_message_t *msg)
 			break;
 
 		default:
-			PX4_DEBUG("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
+			PX4_INFO("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
 		}
 
 
@@ -749,7 +770,7 @@ handle_message_heartbeat_dsp(mavlink_message_t *msg)
 			break;
 
 		default:
-			PX4_DEBUG("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
+			PX4_INFO("unhandled HEARTBEAT MAV_TYPE: %d from SYSID: %d, COMPID: %d", hb.type, msg->sysid, msg->compid);
 		}
 
 		CheckHeartbeats(now, true);
@@ -824,4 +845,3 @@ int modalai_dsp_main(int argc, char *argv[])
 		return 1;
 	}
 }
-
