@@ -212,7 +212,8 @@ handle_message_dsp(mavlink_message_t *msg)
 
 void task_main(int argc, char *argv[])
 {
-	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 250000);
+	// int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 250000);
+	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 921600);
 	int open = isOpen();
 	if(open){
 		PX4_ERR("Port is open: %d", openRetval);
