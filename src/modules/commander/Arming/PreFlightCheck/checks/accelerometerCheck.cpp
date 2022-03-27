@@ -73,8 +73,8 @@ bool PreFlightCheck::accelerometerCheck(orb_advert_t *mavlink_log_pub, vehicle_s
 			calibration_valid = (calibration::FindCalibrationIndex("ACC", device_id) >= 0);
 		}
 
-		PX4_ERR("Status hil state?: %d", status.hil_state);
-		PX4_ERR("CALIBRATION_ACCEL_VALUE: %d", calibration_valid);
+		// PX4_ERR("Status hil state?: %d", status.hil_state);
+		// PX4_ERR("CALIBRATION_ACCEL_VALUE: %d", calibration_valid);
 
 		if (!calibration_valid) {
 			if (report_fail) {
