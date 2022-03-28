@@ -202,7 +202,7 @@ handle_message_dsp(mavlink_message_t *msg)
 		break;
 	}
 	case MAVLINK_MSG_ID_SYSTEM_TIME:
-		PX4_INFO("MAVLINK SYSTEM TIME");
+		// PX4_INFO("MAVLINK SYSTEM TIME");
 		break;
 	default:
 		PX4_ERR("Unknown msg ID: %d", msg->msgid);
@@ -234,7 +234,6 @@ void task_main(int argc, char *argv[])
 
 	_px4_accel = new PX4Accelerometer(1310988);
 	_px4_gyro = new PX4Gyroscope(1310988);
-
 
 	while (!_task_should_exit){
 
@@ -310,17 +309,17 @@ void task_main(int argc, char *argv[])
 				mavlink_message_t message{};
 				mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
 
-				uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
+				uint8_t  newBuf[512];
 				uint16_t newBufLen = 0;
 				newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
-				writeResponse(&newBuf, newBufLen);
-				// int writeRetval = writeResponse(&newBuf, newBufLen);
-				// PX4_INFO("Succesful write of actuator back to jMAVSim: %d", writeRetval);
+					int writeRetval = writeResponse(&newBuf, newBufLen);
+					PX4_INFO("Succesful write of actuator back to jMAVSim: %d at %llu", writeRetval, hrt_absolute_time());
 			}
 		}
 
 		uint64_t elapsed_time = hrt_absolute_time() - timestamp;
-		if (elapsed_time < 10000) usleep(10000 - elapsed_time);
+		// if (elapsed_time < 10000) usleep(10000 - elapsed_time);
+		if (elapsed_time < 5000) usleep(5000 - elapsed_time);
 	}
 }
 
