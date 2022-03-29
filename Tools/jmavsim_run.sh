@@ -47,12 +47,18 @@ while getopts ":b:d:p:qsr:f:i:lo" opt; do
 done
 
 if [ "$device" == "" ]; then
-	device="-udp $ip:$udp_port"
-elif [ "$device" == "/dev/*" ]; then
-	device="-serial $device $baudrate";
+        device="-tcp $ip:$tcp_port"
 else
-	device="-serialudp $device $baudrate $ip:$udp_port";
+        device="-serial $device $baudrate"
 fi
+
+#if [ "$device" == "" ]; then
+#	device="-udp $ip:$udp_port"
+#elif [ "$device" == "/dev/*" ]; then
+#	device="-serial $device $baudrate";
+#else
+#	device="-serialudp $device $baudrate $ip:$udp_port";
+#fi
 
 
 if [ "$HEADLESS" = "1" ]; then
