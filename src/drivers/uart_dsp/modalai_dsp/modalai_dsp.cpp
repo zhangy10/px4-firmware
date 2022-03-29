@@ -313,7 +313,7 @@ void task_main(int argc, char *argv[])
 				uint16_t newBufLen = 0;
 				newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
 					int writeRetval = writeResponse(&newBuf, newBufLen);
-					PX4_INFO("Succesful write of actuator back to jMAVSim: %d at %llu", writeRetval, hrt_absolute_time());
+					PX4_DEBUG("Succesful write of actuator back to jMAVSim: %d at %llu", writeRetval, hrt_absolute_time());
 			}
 		}
 
