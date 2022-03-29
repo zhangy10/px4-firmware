@@ -295,7 +295,8 @@ void ICM42688P::ConfigureSampleRate(int sample_rate)
 	// recompute FIFO empty interval (us) with actual gyro sample limit
 	_fifo_empty_interval_us = _fifo_gyro_samples * (1e6f / GYRO_RATE);
 
-	ConfigureFIFOWatermark(_fifo_gyro_samples);
+	// ConfigureFIFOWatermark(_fifo_gyro_samples);
+	ConfigureFIFOWatermark(1);
 }
 
 void ICM42688P::ConfigureFIFOWatermark(uint8_t samples)
@@ -517,7 +518,7 @@ bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 	// uint8_t valid_samples = 0;
 
     // int loop_count = math::min(samples, fifo_count_samples);
-	for (int i = 0, j = (samples - 1); i < samples; i++, j--) {
+	//for (int i = 0, j = (samples - 1); i < samples; i++, j--) {
 		// const uint8_t FIFO_HEADER = buffer.f[i].FIFO_Header;
 		// const uint8_t VALID_FIFO_HEADER = FIFO::FIFO_HEADER_BIT::HEADER_ACCEL |
         //                                   FIFO::FIFO_HEADER_BIT::HEADER_GYRO |
@@ -527,15 +528,15 @@ bool ICM42688P::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 		// 	valid_samples++;
 
             // Put valid sample into queue with appropriate timestamp.
-            hrt_abstime reported_timestamp = timestamp_sample - ((uint32_t) j * (uint32_t) FIFO_SAMPLE_DT);
-            ProcessIMU(reported_timestamp, buffer.f[i]);
+            //hrt_abstime reported_timestamp = timestamp_sample - ((uint32_t) j * (uint32_t) FIFO_SAMPLE_DT);
+            //ProcessIMU(reported_timestamp, buffer.f[i]);
             // fifo_count_samples--;
             // PX4_INFO("To IMU server: %d %d %llu %llu %u", i, j, timestamp_sample, reported_timestamp, (uint32_t) FIFO_SAMPLE_DT);
 		// } else {
 		// 	perf_count(_bad_transfer_perf);
 		// 	break;
 		// }
-	}
+	//}
 
 	return true;
 }
