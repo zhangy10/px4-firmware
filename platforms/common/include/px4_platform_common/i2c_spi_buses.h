@@ -121,7 +121,7 @@ public:
 	// driver defaults, if not specified via CLI
 	int default_spi_frequency{-1}; ///< default spi bus frequency (driver needs to set this) [Hz]
 	int default_i2c_frequency{-1}; ///< default i2c bus frequency (driver needs to set this) [Hz]
-
+	bool hitl_mode{false}; ///< true if in hitl mode
 	bool support_keep_running{false}; ///< true if keep_running (see above) is supported
 
 private:

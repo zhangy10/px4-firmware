@@ -82,6 +82,7 @@ int BusCLIArguments::getopt(int argc, char *argv[], const char *options)
 			*(p++) = 's'; // internal
 			*(p++) = 'c'; *(p++) = ':'; // chip-select
 			*(p++) = 'm'; *(p++) = ':'; // spi mode
+			*(p++) = 'h'; //hitl mode
 		}
 
 		if (support_keep_running) {

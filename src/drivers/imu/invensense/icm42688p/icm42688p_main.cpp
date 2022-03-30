@@ -50,7 +50,7 @@ I2CSPIDriverBase *ICM42688P::instantiate(const BusCLIArguments &cli, const BusIn
 		int runtime_instance)
 {
 	ICM42688P *instance = new ICM42688P(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
-					    cli.bus_frequency, cli.spi_mode, iterator.DRDYGPIO());
+					    cli.bus_frequency, cli.spi_mode, iterator.DRDYGPIO(), cli.hitl_mode);
 
 	if (!instance) {
 		PX4_ERR("alloc failed");
@@ -71,11 +71,15 @@ extern "C" int icm42688p_main(int argc, char *argv[])
 	using ThisDriver = ICM42688P;
 	BusCLIArguments cli{false, true};
 	cli.default_spi_frequency = SPI_SPEED;
+	cli.hitl_mode = false;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
 			cli.rotation = (enum Rotation)atoi(cli.optarg());
+			break;
+		case 'h':
+			cli.hitl_mode = true;
 			break;
 		}
 	}
