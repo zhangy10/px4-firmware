@@ -35,6 +35,7 @@
 
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
+#include <string>
 
 void ICM42688P::print_usage()
 {
@@ -67,12 +68,22 @@ I2CSPIDriverBase *ICM42688P::instantiate(const BusCLIArguments &cli, const BusIn
 
 extern "C" int icm42688p_main(int argc, char *argv[])
 {
+
+	for(int i=0;i<=argc-1;i++){
+		if(std::string(argv[i]) == "-h"){
+			argv[i] = 0;
+			hitl_mode = true;
+			break;
+		}
+	}
+
 	int ch;
 	using ThisDriver = ICM42688P;
 	BusCLIArguments cli{false, true};
 	cli.default_spi_frequency = SPI_SPEED;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
+		PX4_ERR("STRING VAL %s", ch);
 		switch (ch) {
 		case 'R':
 			cli.rotation = (enum Rotation)atoi(cli.optarg());

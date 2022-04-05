@@ -65,7 +65,15 @@ bool PreFlightCheck::gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 
 		device_id = gyro.get().device_id;
 
-		calibration_valid = (calibration::FindCalibrationIndex("GYRO", device_id) >= 0);
+		if (status.hil_state == vehicle_status_s::HIL_STATE_ON) {
+			calibration_valid = true;
+
+		} else {
+			calibration_valid = (calibration::FindCalibrationIndex("GYRO", device_id) >= 0);
+		}
+
+		// PX4_ERR("Status hil state?: %d", status.hil_state);
+		// PX4_ERR("CALIBRATION_GYRO_VALUE: %d", calibration_valid);
 
 		if (!calibration_valid) {
 			if (report_fail) {
