@@ -19,6 +19,10 @@
 
 # Releases
 
+## 1.4.12alpha
+
+- Added support for HITL using the Gazebo simulator
+
 ## 1.4.11alpha
 
 - Changed Mavlink configuration method. All communication now goes through voxl-mavlink-server and voxl-vision-px4
