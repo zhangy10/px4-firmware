@@ -216,7 +216,7 @@ void task_main(int argc, char *argv[])
 	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 921600);
 	int open = isOpen();
 	if(open){
-		PX4_ERR("Port is open: %d", openRetval);
+		PX4_DEBUG("Port is open: %d", openRetval);
 	}
 
 	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
@@ -385,7 +385,7 @@ int openPort(const char *dev, speed_t speed)
 
 #ifdef __PX4_QURT
 	_uart_fd = qurt_uart_open(dev, speed);
-	PX4_ERR("qurt_uart_opened");
+	PX4_DEBUG("qurt_uart_opened");
 #else
 	/* Open UART */
 	_uart_fd = open(dev, O_RDWR | O_NOCTTY | O_NONBLOCK);

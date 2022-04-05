@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR/jMAVSim"
 
-udp_port=4560
+tcp_port=4560
 extra_args=
 baudrate=921600
 device=
@@ -22,7 +22,7 @@ while getopts ":b:d:p:qsr:f:i:lo" opt; do
 			ip="$OPTARG"
 			;;
 		p)
-			udp_port=$OPTARG
+			tcp_port=$OPTARG
 			;;
 		q)
 			extra_args="$extra_args -qgc"
@@ -47,19 +47,10 @@ while getopts ":b:d:p:qsr:f:i:lo" opt; do
 done
 
 if [ "$device" == "" ]; then
-        device="-tcp $ip:$tcp_port"
+	device="-tcp $ip:$tcp_port"
 else
-        device="-serial $device $baudrate"
+	device="-serial $device $baudrate"
 fi
-
-#if [ "$device" == "" ]; then
-#	device="-udp $ip:$udp_port"
-#elif [ "$device" == "/dev/*" ]; then
-#	device="-serial $device $baudrate";
-#else
-#	device="-serialudp $device $baudrate $ip:$udp_port";
-#fi
-
 
 if [ "$HEADLESS" = "1" ]; then
     extra_args="$extra_args -no-gui"
@@ -67,4 +58,5 @@ fi
 
 ant create_run_jar copy_res
 cd out/production
+
 java -XX:GCTimeRatio=20 -Djava.ext.dirs= -jar jmavsim_run.jar $device $extra_args
