@@ -33,6 +33,8 @@
 
 #include "ICM42688P.hpp"
 
+bool hitl_mode;
+
 using namespace time_literals;
 
 static constexpr int16_t combine(uint8_t msb, uint8_t lsb)
@@ -41,16 +43,14 @@ static constexpr int16_t combine(uint8_t msb, uint8_t lsb)
 }
 
 ICM42688P::ICM42688P(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
-		     spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio, bool hitl_mode) :
+		     spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio) :
 	SPI(DRV_IMU_DEVTYPE_ICM42688P, MODULE_NAME, bus, device, spi_mode, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
-	_drdy_gpio(drdy_gpio),
-	hitl_mode(hitl_mode)
+	_drdy_gpio(drdy_gpio)
 {
 	if (drdy_gpio != 0) {
 		_drdy_missed_perf = perf_alloc(PC_COUNT, MODULE_NAME": DRDY missed");
 	}
-	PX4_ERR("IMU in HITL MODE?: %d", hitl_mode);
 	if (!hitl_mode) {
 		_px4_accel = std::make_shared<PX4Accelerometer>(get_device_id(), rotation);
 		_px4_gyro = std::make_shared<PX4Gyroscope>(get_device_id(), rotation);

@@ -57,11 +57,13 @@
 
 using namespace InvenSense_ICM42688P;
 
+extern bool hitl_mode;
+
 class ICM42688P : public device::SPI, public I2CSPIDriver<ICM42688P>
 {
 public:
 	ICM42688P(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
-		  spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio, bool hitl_mode);
+		  spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio);
 	~ICM42688P() override;
 
 	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
@@ -149,7 +151,6 @@ private:
 	bool ProcessTemperature(const FIFO::DATA fifo[], const uint8_t samples);
 
 	const spi_drdy_gpio_t _drdy_gpio;
-	bool hitl_mode{false};
 
 	std::shared_ptr<PX4Accelerometer> _px4_accel;
     	std::shared_ptr<PX4Gyroscope> _px4_gyro;
