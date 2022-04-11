@@ -99,13 +99,13 @@ static bool _is_running = false;
 volatile bool _task_should_exit = false;
 static px4_task_t _task_handle = -1;
 int _uart_fd = -1;
+bool vio = false;
 
 uORB::Publication<battery_status_s>			_battery_pub{ORB_ID(battery_status)};
 uORB::Publication<sensor_gps_s>				_gps_pub{ORB_ID(sensor_gps)};
 uORB::Publication<differential_pressure_s>		_differential_pressure_pub{ORB_ID(differential_pressure)};
-//NEW ODOMETRY CODE
 uORB::Publication<vehicle_odometry_s>			_visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
-//END ODOMETRY CODE
+uORB::Publication<vehicle_odometry_s>			_mocap_odometry_pub{ORB_ID(vehicle_mocap_odometry)};
 
 // hil_sensor and hil_state_quaternion
 enum SensorSource {
@@ -169,13 +169,12 @@ void task_main(int argc, char *argv[]);
 void handle_message_hil_sensor_dsp(mavlink_message_t *msg);
 void handle_message_hil_gps_dsp(mavlink_message_t *msg);
 void handle_message_heartbeat_dsp(mavlink_message_t *msg);
+void handle_message_odometry_dsp(mavlink_message_t *msg);
+void handle_message_vision_position_estimate_dsp(mavlink_message_t *msg);
+
 void CheckHeartbeats(const hrt_abstime &t, bool force);
 void handle_message_dsp(mavlink_message_t *msg);
 void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg);
-
-//NEW ODOMETRY CODE
-void handle_message_odometry_dsp();
-//END NEW ODOMETRY CODE
 
 void
 handle_message_dsp(mavlink_message_t *msg)
@@ -188,8 +187,18 @@ handle_message_dsp(mavlink_message_t *msg)
 		//PX4_INFO("MAVLINK HIL SENSOR");
 		break;
 	case MAVLINK_MSG_ID_HIL_GPS:
-		handle_message_hil_gps_dsp(msg);
-		//PX4_INFO("MAVLINK HIL GPS");
+		if(!vio){
+			handle_message_hil_gps_dsp(msg);
+			//PX4_INFO("MAVLINK HIL GPS");
+			break;
+		} else {
+			break;
+		}
+	case MAVLINK_MSG_ID_VISION_POSITION_ESTIMATE:
+		handle_message_vision_position_estimate_dsp(msg);
+		break;
+	case MAVLINK_MSG_ID_ODOMETRY:
+		handle_message_odometry_dsp(msg);
 		break;
 	case MAVLINK_MSG_ID_HEARTBEAT:
 	{
@@ -220,6 +229,20 @@ handle_message_dsp(mavlink_message_t *msg)
 
 void task_main(int argc, char *argv[])
 {
+	int ch;
+	int myoptind = 1;
+	const char *myoptarg = NULL;
+
+	while ((ch = px4_getopt(argc, argv, "v", &myoptind, &myoptarg)) != EOF) {
+		switch (ch) {
+		case 'v':
+			vio = true;
+			break;
+		default:
+			break;
+		}
+	}
+
 	// int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 250000);
 	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 921600);
 	int open = isOpen();
@@ -275,12 +298,9 @@ void task_main(int argc, char *argv[])
 				}
 			}
 		}
-		//NEW ODOMETRY CODE
-		handle_message_odometry_dsp();
-		//END NEW ODOMETRY CODE
 
 		bool vehicle_updated = false;
-        (void) orb_check(_vehicle_status_sub, &vehicle_updated);
+        	(void) orb_check(_vehicle_status_sub, &vehicle_updated);
 
 		if ((timestamp - last_heartbeat_timestamp) > 1000000) {
 			mavlink_heartbeat_t hb = {};
@@ -300,14 +320,14 @@ void task_main(int argc, char *argv[])
 		}
 
 		bool controls_updated = false;
-       	(void) orb_check(_vehicle_control_mode_sub_, &controls_updated);
+       		(void) orb_check(_vehicle_control_mode_sub_, &controls_updated);
 
 		if(controls_updated){
 			orb_copy(ORB_ID(vehicle_control_mode), _vehicle_control_mode_sub_, &_control_mode);
 		}
 
 		bool actuator_updated = false;
-       	(void) orb_check(_actuator_outputs_sub, &actuator_updated);
+       		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
 
 		if(actuator_updated){
 			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
@@ -335,46 +355,85 @@ void task_main(int argc, char *argv[])
 }
 
 void
-handle_message_odometry_dsp()
+handle_message_vision_position_estimate_dsp(mavlink_message_t *msg)
 {
-	//mavlink_odometry_t odom;
-	//mavlink_msg_odometry_decode(msg, &odom);
+	mavlink_vision_position_estimate_t ev;
+	mavlink_msg_vision_position_estimate_decode(msg, &ev);
+
+	vehicle_odometry_s visual_odom{};
+
+	uint64_t timestamp = hrt_absolute_time();
+
+	visual_odom.timestamp = timestamp;
+	visual_odom.timestamp_sample = timestamp;
+
+	visual_odom.x = ev.x;
+	visual_odom.y = ev.y;
+	visual_odom.z = ev.z;
+	matrix::Quatf q(matrix::Eulerf(ev.roll, ev.pitch, ev.yaw));
+	q.copyTo(visual_odom.q);
+
+	visual_odom.local_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
+
+	const size_t URT_SIZE = sizeof(visual_odom.pose_covariance) / sizeof(visual_odom.pose_covariance[0]);
+	static_assert(URT_SIZE == (sizeof(ev.covariance) / sizeof(ev.covariance[0])),
+		      "Odometry Pose Covariance matrix URT array size mismatch");
+
+	for (size_t i = 0; i < URT_SIZE; i++) {
+		visual_odom.pose_covariance[i] = ev.covariance[i];
+	}
+
+	visual_odom.velocity_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
+	visual_odom.vx = NAN;
+	visual_odom.vy = NAN;
+	visual_odom.vz = NAN;
+	visual_odom.rollspeed = NAN;
+	visual_odom.pitchspeed = NAN;
+	visual_odom.yawspeed = NAN;
+	visual_odom.velocity_covariance[0] = NAN;
+
+	_visual_odometry_pub.publish(visual_odom);
+}
+
+void
+handle_message_odometry_dsp(mavlink_message_t *msg)
+{
+	mavlink_odometry_t odom;
+	mavlink_msg_odometry_decode(msg, &odom);
 
 	vehicle_odometry_s odometry{};
 
-	odometry.timestamp = hrt_absolute_time();
-	//odometry.timestamp_sample = _mavlink_timesync.sync_stamp(odom.time_usec);
-	odometry.timestamp_sample = hrt_absolute_time();
+	uint64_t timestamp = hrt_absolute_time();
+
+	odometry.timestamp = timestamp;
+	odometry.timestamp_sample = timestamp;
 
 	/* The position is in a local FRD frame */
-	//odometry.x = odom.x;
-	//odometry.y = odom.y;
-	//odometry.z = odom.z;
-	odometry.x = 0;
-	odometry.y = 0;
-	odometry.z = 0;
+	odometry.x = odom.x;
+	odometry.y = odom.y;
+	odometry.z = odom.z;
+
 	/**
 	 * The quaternion of the ODOMETRY msg represents a rotation from body frame
 	 * to a local frame
 	 */
-	// matrix::Quatf q_body_to_local(odom.q);
-	// q_body_to_local.normalize();
-	// q_body_to_local.copyTo(odometry.q);
+	matrix::Quatf q_body_to_local(odom.q);
+	q_body_to_local.normalize();
+	q_body_to_local.copyTo(odometry.q);
 
-	// // pose_covariance
+	// pose_covariance
 	static constexpr size_t POS_URT_SIZE = sizeof(odometry.pose_covariance) / sizeof(odometry.pose_covariance[0]);
-	// static_assert(POS_URT_SIZE == (sizeof(odom.pose_covariance) / sizeof(odom.pose_covariance[0])),
-	// 	      "Odometry Pose Covariance matrix URT array size mismatch");
+	static_assert(POS_URT_SIZE == (sizeof(odom.pose_covariance) / sizeof(odom.pose_covariance[0])),
+		      "Odometry Pose Covariance matrix URT array size mismatch");
 
-	// // velocity_covariance
+	// velocity_covariance
 	static constexpr size_t VEL_URT_SIZE = sizeof(odometry.velocity_covariance) / sizeof(odometry.velocity_covariance[0]);
-	// static_assert(VEL_URT_SIZE == (sizeof(odom.velocity_covariance) / sizeof(odom.velocity_covariance[0])),
-	// 	      "Odometry Velocity Covariance matrix URT array size mismatch");
+	static_assert(VEL_URT_SIZE == (sizeof(odom.velocity_covariance) / sizeof(odom.velocity_covariance[0])),
+		      "Odometry Velocity Covariance matrix URT array size mismatch");
 
 	// TODO: create a method to simplify covariance copy
 	for (size_t i = 0; i < POS_URT_SIZE; i++) {
-		//odometry.pose_covariance[i] = odom.pose_covariance[i];
-		odometry.pose_covariance[i] = 0;
+		odometry.pose_covariance[i] = odom.pose_covariance[i];
 	}
 
 	/**
@@ -383,24 +442,24 @@ handle_message_odometry_dsp()
 	 * local NED frame. The angular velocity needs to be expressed in the
 	 * body (fcu_frd) frame.
 	 */
-	//if (odom.child_frame_id == MAV_FRAME_BODY_FRD) {
+	if (odom.child_frame_id == MAV_FRAME_BODY_FRD) {
 
-	odometry.velocity_frame = vehicle_odometry_s::BODY_FRAME_FRD;
-	odometry.vx = 0;
-	odometry.vy = 0;
-	odometry.vz = 0;
+		odometry.velocity_frame = vehicle_odometry_s::BODY_FRAME_FRD;
+		odometry.vx = odom.vx;
+		odometry.vy = odom.vy;
+		odometry.vz = odom.vz;
 
-	odometry.rollspeed = 0;
-	odometry.pitchspeed = 0;
-	odometry.yawspeed = 0;
+		odometry.rollspeed = odom.rollspeed;
+		odometry.pitchspeed = odom.pitchspeed;
+		odometry.yawspeed = odom.yawspeed;
 
-	for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-		odometry.velocity_covariance[i] = 0;
+		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
+			odometry.velocity_covariance[i] = odom.velocity_covariance[i];
+		}
+
+	} else {
+		PX4_ERR("Body frame %u not supported. Unable to publish velocity", odom.child_frame_id);
 	}
-
-	//} else {
-	//	PX4_ERR("Body frame %u not supported. Unable to publish velocity", odom.child_frame_id);
-	//}
 
 	/**
 	 * Supported local frame of reference is MAV_FRAME_LOCAL_NED or MAV_FRAME_LOCAL_FRD
@@ -411,20 +470,28 @@ handle_message_odometry_dsp()
 	 * should be set in order to match a frame aligned (NED) or not aligned (FRD)
 	 * with true North
 	 */
-	//if (odom.frame_id == MAV_FRAME_LOCAL_NED || odom.frame_id == MAV_FRAME_LOCAL_FRD) {
+	if (odom.frame_id == MAV_FRAME_LOCAL_NED || odom.frame_id == MAV_FRAME_LOCAL_FRD) {
 
-	//	if (odom.frame_id == MAV_FRAME_LOCAL_NED) {
-	//odometry.local_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
+		if (odom.frame_id == MAV_FRAME_LOCAL_NED) {
+			odometry.local_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
 
-	//	} else {
-	odometry.local_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
-		//}
+		} else {
+			odometry.local_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
+		}
 
-	_visual_odometry_pub.publish(odometry);
+		if (odom.estimator_type == MAV_ESTIMATOR_TYPE_VISION || odom.estimator_type == MAV_ESTIMATOR_TYPE_VIO) {
+			_visual_odometry_pub.publish(odometry);
 
-	//} else {
-	//	PX4_ERR("Local frame %u not supported. Unable to publish pose and velocity", odom.frame_id);
-	//}
+		} else if (odom.estimator_type == MAV_ESTIMATOR_TYPE_MOCAP) {
+			_mocap_odometry_pub.publish(odometry);
+
+		} else {
+			PX4_ERR("Estimator source %u not supported. Unable to publish pose and velocity", odom.estimator_type);
+		}
+
+	} else {
+		PX4_ERR("Local frame %u not supported. Unable to publish pose and velocity", odom.frame_id);
+	}
 }
 
 void actuator_controls_from_outputs_dsp(mavlink_hil_actuator_controls_t *msg)
@@ -681,7 +748,7 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	// uint64_t time_diff = time_now - timestamp;
 
 	// PX4_INFO("Processing HIL SENSOR message. %llu, %llu, %llu %llu",
-    //          timestamp, hil_sensor.time_usec, time_diff, (timestamp - last_sensor_report_timestamp));
+    	//          timestamp, hil_sensor.time_usec, time_diff, (timestamp - last_sensor_report_timestamp));
 
 	last_sensor_report_timestamp = timestamp;
 
@@ -721,18 +788,20 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	}
 
 	// magnetometer
-	if ((hil_sensor.fields_updated & SensorSource::MAG) == SensorSource::MAG) {
-		if (_px4_mag == nullptr) {
-			// 197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
-			_px4_mag = new PX4Magnetometer(197388);
-		}
-
-		if (_px4_mag != nullptr) {
-			if (PX4_ISFINITE(temperature)) {
-				_px4_mag->set_temperature(temperature);
+	if(!vio){
+		if ((hil_sensor.fields_updated & SensorSource::MAG) == SensorSource::MAG) {
+			if (_px4_mag == nullptr) {
+				// 197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
+				_px4_mag = new PX4Magnetometer(197388);
 			}
 
-			_px4_mag->update(timestamp, hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag);
+			if (_px4_mag != nullptr) {
+				if (PX4_ISFINITE(temperature)) {
+					_px4_mag->set_temperature(temperature);
+				}
+
+				_px4_mag->update(timestamp, hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag);
+			}
 		}
 	}
 
@@ -799,7 +868,7 @@ handle_message_hil_gps_dsp(mavlink_message_t *msg)
 	// uint64_t time_diff = time_now - timestamp;
 
 	// PX4_INFO("Processing HIL GPS message. %llu, %llu, %llu",
-    //          timestamp, gps.time_usec, time_diff);
+    	//          timestamp, gps.time_usec, time_diff);
 
 	sensor_gps_s hil_gps{};
 
