@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 #include <string.h>
+#include <pthread.h>
 
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/posix.h>
@@ -166,6 +167,9 @@ bool isOpen() { return _uart_fd >= 0; };
 void usage();
 void task_main(int argc, char *argv[]);
 
+void *send_actuator(void *);
+void send_actuator_data();
+
 void handle_message_hil_sensor_dsp(mavlink_message_t *msg);
 void handle_message_hil_gps_dsp(mavlink_message_t *msg);
 void handle_message_heartbeat_dsp(mavlink_message_t *msg);
@@ -227,12 +231,63 @@ handle_message_dsp(mavlink_message_t *msg)
 	}
 }
 
+void *send_actuator(void *){
+	send_actuator_data();
+	return nullptr;
+}
+
+void send_actuator_data(){
+
+	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
+	int _actuator_outputs_sub = orb_subscribe_multi(ORB_ID(actuator_outputs), 0);
+	PX4_ERR("Got %d from orb_subscribe", _actuator_outputs_sub);
+	int _vehicle_control_mode_sub_ = orb_subscribe(ORB_ID(vehicle_control_mode));
+	PX4_ERR("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
+
+	while (true){
+		bool controls_updated = false;
+		(void) orb_check(_vehicle_control_mode_sub_, &controls_updated);
+
+		if(controls_updated){
+			orb_copy(ORB_ID(vehicle_control_mode), _vehicle_control_mode_sub_, &_control_mode);
+		}
+
+		bool actuator_updated = false;
+		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
+
+		//PX4_ERR("Value of actuator_updated: %d", actuator_updated);
+
+		if(actuator_updated){
+			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
+			// PX4_INFO("Value of updated actuator: %d", actuator_updated);
+			px4_lockstep_wait_for_components();
+
+			if (_actuator_outputs.timestamp > 0) {
+				mavlink_hil_actuator_controls_t hil_act_control;
+				actuator_controls_from_outputs_dsp(&hil_act_control);
+
+				mavlink_message_t message{};
+				mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
+
+				uint8_t  newBuf[512];
+				uint16_t newBufLen = 0;
+				newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
+					int writeRetval = writeResponse(&newBuf, newBufLen);
+					PX4_DEBUG("Succesful write of actuator back to jMAVSim: %d at %llu", writeRetval, hrt_absolute_time());
+			}
+		}
+
+		//uint64_t elapsed_time = hrt_absolute_time() - timestamp;
+		// if (elapsed_time < 10000) usleep(10000 - elapsed_time);
+		//if (elapsed_time < 5000) usleep(5000 - elapsed_time);
+	}
+}
+
 void task_main(int argc, char *argv[])
 {
 	int ch;
 	int myoptind = 1;
 	const char *myoptarg = NULL;
-
 	while ((ch = px4_getopt(argc, argv, "v", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'v':
@@ -247,18 +302,8 @@ void task_main(int argc, char *argv[])
 	int openRetval = openPort(MODALAI_ESC_DEFAULT_PORT, 921600);
 	int open = isOpen();
 	if(open){
-		PX4_DEBUG("Port is open: %d", openRetval);
+		PX4_ERR("Port is open: %d", openRetval);
 	}
-
-	//int _act_sub = orb_subscribe(ORB_ID(actuator_outputs));
-	int _actuator_outputs_sub = orb_subscribe_multi(ORB_ID(actuator_outputs), 0);
-	PX4_INFO("Got %d from orb_subscribe", _actuator_outputs_sub);
-	int _vehicle_control_mode_sub_ = orb_subscribe(ORB_ID(vehicle_control_mode));
-	PX4_INFO("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
-	int _vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
-	PX4_INFO("Got %d from orb_subscribe", _vehicle_status_sub);
-	int _actuator_controls_sub = orb_subscribe(ORB_ID(actuator_controls));
-	PX4_INFO("Got %d from orb_subscribe", _actuator_controls_sub);
 
 	uint64_t last_heartbeat_timestamp = hrt_absolute_time();
 	uint64_t last_imu_update_timestamp = last_heartbeat_timestamp;
@@ -266,10 +311,26 @@ void task_main(int argc, char *argv[])
 	_px4_accel = new PX4Accelerometer(1310988);
 	_px4_gyro = new PX4Gyroscope(1310988);
 
+	// Create a thread for sending data to the simulator.
+	pthread_t sender_thread;
+	pthread_attr_t sender_thread_attr;
+	pthread_attr_init(&sender_thread_attr);
+	pthread_attr_setstacksize(&sender_thread_attr, PX4_STACK_ADJUSTED(8000));
+	pthread_create(&sender_thread, &sender_thread_attr, send_actuator, nullptr);
+	pthread_attr_destroy(&sender_thread_attr);
+
+	int _vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
+	PX4_ERR("Got %d from orb_subscribe", _vehicle_status_sub);
+	int _actuator_controls_sub = orb_subscribe(ORB_ID(actuator_controls));
+	PX4_ERR("Got %d from orb_subscribe", _actuator_controls_sub);
+
+	bool vehicle_updated = false;
+	(void) orb_check(_vehicle_status_sub, &vehicle_updated);
+
 	while (!_task_should_exit){
 
-		uint8_t rx_buf[512];
-		rx_buf[511] = '\0';
+		uint8_t rx_buf[1024];
+		//rx_buf[511] = '\0';
 
 		uint64_t timestamp = hrt_absolute_time();
 
@@ -298,59 +359,22 @@ void task_main(int argc, char *argv[])
 				}
 			}
 		}
-
-		bool vehicle_updated = false;
-        	(void) orb_check(_vehicle_status_sub, &vehicle_updated);
-
 		if ((timestamp - last_heartbeat_timestamp) > 1000000) {
 			mavlink_heartbeat_t hb = {};
-			mavlink_message_t message = {};
+			mavlink_message_t hb_message = {};
 			hb.autopilot = 12;
 			hb.base_mode |= (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) ? 128 : 0;
-			mavlink_msg_heartbeat_encode(1, 1, &message, &hb);
+			mavlink_msg_heartbeat_encode(1, 1, &hb_message, &hb);
 
-			uint8_t  newBuf[MAVLINK_MAX_PACKET_LEN];
-			uint16_t newBufLen = 0;
-			newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
-			(void) writeResponse(&newBuf, newBufLen);
+			uint8_t  hb_newBuf[MAVLINK_MAX_PACKET_LEN];
+			uint16_t hb_newBufLen = 0;
+			hb_newBufLen = mavlink_msg_to_send_buffer(hb_newBuf, &hb_message);
+			(void) writeResponse(&hb_newBuf, hb_newBufLen);
 			last_heartbeat_timestamp = timestamp;
 		} else if (vehicle_updated){
 			// PX4_INFO("Value of updated vehicle status: %d", vehicle_updated);
 			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
 		}
-
-		bool controls_updated = false;
-       		(void) orb_check(_vehicle_control_mode_sub_, &controls_updated);
-
-		if(controls_updated){
-			orb_copy(ORB_ID(vehicle_control_mode), _vehicle_control_mode_sub_, &_control_mode);
-		}
-
-		bool actuator_updated = false;
-       		(void) orb_check(_actuator_outputs_sub, &actuator_updated);
-
-		if(actuator_updated){
-			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub, &_actuator_outputs);
-			// PX4_INFO("Value of updated actuator: %d", actuator_updated);
-
-			if (_actuator_outputs.timestamp > 0) {
-				mavlink_hil_actuator_controls_t hil_act_control;
-				actuator_controls_from_outputs_dsp(&hil_act_control);
-
-				mavlink_message_t message{};
-				mavlink_msg_hil_actuator_controls_encode(1, 1, &message, &hil_act_control);
-
-				uint8_t  newBuf[512];
-				uint16_t newBufLen = 0;
-				newBufLen = mavlink_msg_to_send_buffer(newBuf, &message);
-					int writeRetval = writeResponse(&newBuf, newBufLen);
-					PX4_DEBUG("Succesful write of actuator back to jMAVSim: %d at %llu", writeRetval, hrt_absolute_time());
-			}
-		}
-
-		uint64_t elapsed_time = hrt_absolute_time() - timestamp;
-		// if (elapsed_time < 10000) usleep(10000 - elapsed_time);
-		if (elapsed_time < 5000) usleep(5000 - elapsed_time);
 	}
 }
 
