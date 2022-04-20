@@ -765,27 +765,6 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	mavlink_hil_sensor_t hil_sensor;
 	mavlink_msg_hil_sensor_decode(msg, &hil_sensor);
 
-	// if (first_sensor_msg_timestamp == 0) {
-	// 	first_sensor_msg_timestamp = hil_sensor.time_usec;
-	// 	first_sensor_report_timestamp = hrt_absolute_time();
-	// 	last_sensor_report_timestamp = first_sensor_report_timestamp;
-	// 	return;
-	// }
-
-	// uint64_t timestamp = first_sensor_report_timestamp + (hil_sensor.time_usec - first_sensor_msg_timestamp);
-
-	// uint64_t time_now = hrt_absolute_time();
-	// if (timestamp > time_now) {
-	// 	usleep(timestamp - time_now);
-	// }
-	// time_now = hrt_absolute_time();
-	// uint64_t time_diff = time_now - timestamp;
-
-	// PX4_INFO("Processing HIL SENSOR message. %llu, %llu, %llu %llu",
-    	//          timestamp, hil_sensor.time_usec, time_diff, (timestamp - last_sensor_report_timestamp));
-
-	//last_sensor_report_timestamp = timestamp;
-
 	// temperature only updated with baro
 	gyro_accel_time = hrt_absolute_time();
 
@@ -888,24 +867,6 @@ handle_message_hil_gps_dsp(mavlink_message_t *msg)
 {
 	mavlink_hil_gps_t gps;
 	mavlink_msg_hil_gps_decode(msg, &gps);
-
-	// if (first_gps_msg_timestamp == 0) {
-	// 	first_gps_msg_timestamp = gps.time_usec;
-	// 	first_gps_report_timestamp = hrt_absolute_time();
-	// 	return;
-	// }
-
-	// uint64_t timestamp = first_gps_report_timestamp + (gps.time_usec - first_gps_msg_timestamp);
-
-	// uint64_t time_now = hrt_absolute_time();
-	// if (timestamp > time_now) {
-	// 	usleep(timestamp - time_now);
-	// }
-	// time_now = hrt_absolute_time();
-	// uint64_t time_diff = time_now - timestamp;
-
-	// PX4_INFO("Processing HIL GPS message. %llu, %llu, %llu",
-    	//          timestamp, gps.time_usec, time_diff);
 
 	sensor_gps_s hil_gps{};
 	const uint64_t timestamp = hrt_absolute_time();
