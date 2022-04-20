@@ -147,6 +147,7 @@ float z_accel = 0;
 float x_gyro = 0;
 float y_gyro = 0;
 float z_gyro = 0;
+uint64_t gyro_accel_time = 0;
 
 vehicle_status_s _vehicle_status{};
 vehicle_control_mode_s _control_mode{};
@@ -245,6 +246,10 @@ void send_actuator_data(){
 	PX4_ERR("Got %d from orb_subscribe", _vehicle_control_mode_sub_);
 
 	while (true){
+
+		uint64_t timestamp = hrt_absolute_time();
+
+
 		bool controls_updated = false;
 		(void) orb_check(_vehicle_control_mode_sub_, &controls_updated);
 
@@ -277,9 +282,9 @@ void send_actuator_data(){
 			}
 		}
 
-		//uint64_t elapsed_time = hrt_absolute_time() - timestamp;
+		uint64_t elapsed_time = hrt_absolute_time() - timestamp;
 		// if (elapsed_time < 10000) usleep(10000 - elapsed_time);
-		//if (elapsed_time < 5000) usleep(5000 - elapsed_time);
+		if (elapsed_time < 5000) usleep(5000 - elapsed_time);
 	}
 }
 
@@ -340,8 +345,9 @@ void task_main(int argc, char *argv[])
 			if (delta_time > 15000) {
 				PX4_ERR("Sending updates at %llu, delta %llu", timestamp, delta_time);
 			}
-			_px4_gyro->update(timestamp, x_gyro, y_gyro, z_gyro);
-			_px4_accel->update(timestamp, x_accel, y_accel, z_accel);
+			uint64_t _px4_gyro_accle_timestamp = hrt_absolute_time();
+			_px4_gyro->update(_px4_gyro_accle_timestamp, x_gyro, y_gyro, z_gyro);
+			_px4_accel->update(_px4_gyro_accle_timestamp, x_accel, y_accel, z_accel);
 			last_imu_update_timestamp = timestamp;
 		}
 
@@ -375,6 +381,10 @@ void task_main(int argc, char *argv[])
 			// PX4_INFO("Value of updated vehicle status: %d", vehicle_updated);
 			orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
 		}
+
+		uint64_t elapsed_time = hrt_absolute_time() - timestamp;
+		// if (elapsed_time < 10000) usleep(10000 - elapsed_time);
+		if (elapsed_time < 5000) usleep(5000 - elapsed_time);
 	}
 }
 
@@ -755,26 +765,29 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	mavlink_hil_sensor_t hil_sensor;
 	mavlink_msg_hil_sensor_decode(msg, &hil_sensor);
 
-	if (first_sensor_msg_timestamp == 0) {
-		first_sensor_msg_timestamp = hil_sensor.time_usec;
-		first_sensor_report_timestamp = hrt_absolute_time();
-		last_sensor_report_timestamp = first_sensor_report_timestamp;
-		return;
-	}
+	// if (first_sensor_msg_timestamp == 0) {
+	// 	first_sensor_msg_timestamp = hil_sensor.time_usec;
+	// 	first_sensor_report_timestamp = hrt_absolute_time();
+	// 	last_sensor_report_timestamp = first_sensor_report_timestamp;
+	// 	return;
+	// }
 
-	uint64_t timestamp = first_sensor_report_timestamp + (hil_sensor.time_usec - first_sensor_msg_timestamp);
+	// uint64_t timestamp = first_sensor_report_timestamp + (hil_sensor.time_usec - first_sensor_msg_timestamp);
 
-	uint64_t time_now = hrt_absolute_time();
-	if (timestamp > time_now) {
-		usleep(timestamp - time_now);
-	}
-	time_now = hrt_absolute_time();
+	// uint64_t time_now = hrt_absolute_time();
+	// if (timestamp > time_now) {
+	// 	usleep(timestamp - time_now);
+	// }
+	// time_now = hrt_absolute_time();
 	// uint64_t time_diff = time_now - timestamp;
 
 	// PX4_INFO("Processing HIL SENSOR message. %llu, %llu, %llu %llu",
     	//          timestamp, hil_sensor.time_usec, time_diff, (timestamp - last_sensor_report_timestamp));
 
-	last_sensor_report_timestamp = timestamp;
+	//last_sensor_report_timestamp = timestamp;
+
+	// temperature only updated with baro
+	gyro_accel_time = hrt_absolute_time();
 
 	// temperature only updated with baro
 	float temperature = NAN;
@@ -824,7 +837,7 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 					_px4_mag->set_temperature(temperature);
 				}
 
-				_px4_mag->update(timestamp, hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag);
+				_px4_mag->update(gyro_accel_time, hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag);
 			}
 		}
 	}
@@ -838,14 +851,14 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 
 		if (_px4_baro != nullptr) {
 			_px4_baro->set_temperature(hil_sensor.temperature);
-			_px4_baro->update(timestamp, hil_sensor.abs_pressure);
+			_px4_baro->update(gyro_accel_time, hil_sensor.abs_pressure);
 		}
 	}
 
 	// differential pressure
 	if ((hil_sensor.fields_updated & SensorSource::DIFF_PRESS) == SensorSource::DIFF_PRESS) {
 		differential_pressure_s report{};
-		report.timestamp = timestamp;
+		report.timestamp = gyro_accel_time;
 		report.temperature = hil_sensor.temperature;
 		report.differential_pressure_filtered_pa = hil_sensor.diff_pressure * 100.0f; // convert from millibar to bar;
 		report.differential_pressure_raw_pa = hil_sensor.diff_pressure * 100.0f; // convert from millibar to bar;
@@ -857,7 +870,7 @@ handle_message_hil_sensor_dsp(mavlink_message_t *msg)
 	{
 		battery_status_s hil_battery_status{};
 
-		hil_battery_status.timestamp = timestamp;
+		hil_battery_status.timestamp = gyro_accel_time;
 		hil_battery_status.voltage_v = 11.5f;
 		hil_battery_status.voltage_filtered_v = 11.5f;
 		hil_battery_status.current_a = 10.0f;
@@ -876,25 +889,26 @@ handle_message_hil_gps_dsp(mavlink_message_t *msg)
 	mavlink_hil_gps_t gps;
 	mavlink_msg_hil_gps_decode(msg, &gps);
 
-	if (first_gps_msg_timestamp == 0) {
-		first_gps_msg_timestamp = gps.time_usec;
-		first_gps_report_timestamp = hrt_absolute_time();
-		return;
-	}
+	// if (first_gps_msg_timestamp == 0) {
+	// 	first_gps_msg_timestamp = gps.time_usec;
+	// 	first_gps_report_timestamp = hrt_absolute_time();
+	// 	return;
+	// }
 
-	uint64_t timestamp = first_gps_report_timestamp + (gps.time_usec - first_gps_msg_timestamp);
+	// uint64_t timestamp = first_gps_report_timestamp + (gps.time_usec - first_gps_msg_timestamp);
 
-	uint64_t time_now = hrt_absolute_time();
-	if (timestamp > time_now) {
-		usleep(timestamp - time_now);
-	}
-	time_now = hrt_absolute_time();
+	// uint64_t time_now = hrt_absolute_time();
+	// if (timestamp > time_now) {
+	// 	usleep(timestamp - time_now);
+	// }
+	// time_now = hrt_absolute_time();
 	// uint64_t time_diff = time_now - timestamp;
 
 	// PX4_INFO("Processing HIL GPS message. %llu, %llu, %llu",
     	//          timestamp, gps.time_usec, time_diff);
 
 	sensor_gps_s hil_gps{};
+	const uint64_t timestamp = hrt_absolute_time();
 
 	hil_gps.timestamp_time_relative = 0;
 	hil_gps.time_utc_usec = gps.time_usec;
