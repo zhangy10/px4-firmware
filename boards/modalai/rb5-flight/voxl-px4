@@ -20,8 +20,8 @@ done
 
 if [ ! -f /home/linaro/eeprom/parameters ]; then
    echo "Setting default parameters for PX4 on voxl"
-   px4 $DAEMON -s /etc/modalai/voxl-set-default-parameters.config
+   px4 $DAEMON -s /etc/modalai/voxl-px4-set-default-parameters.config
    /bin/sync
 fi
 
-px4 $DAEMON -s /etc/modalai/voxl.config
+px4 $DAEMON -s /etc/modalai/voxl-px4.config
