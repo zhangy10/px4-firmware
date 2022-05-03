@@ -200,11 +200,15 @@ handle_message_dsp(mavlink_message_t *msg)
 			break;
 		}
 	case MAVLINK_MSG_ID_VISION_POSITION_ESTIMATE:
-		handle_message_vision_position_estimate_dsp(msg);
-		break;
+		if(vio){
+			handle_message_vision_position_estimate_dsp(msg);
+			break;
+		}
 	case MAVLINK_MSG_ID_ODOMETRY:
-		handle_message_odometry_dsp(msg);
-		break;
+		if(vio){
+			handle_message_odometry_dsp(msg);
+			break;
+		}
 	case MAVLINK_MSG_ID_HEARTBEAT:
 	{
 		// handle_message_heartbeat_dsp(msg);
