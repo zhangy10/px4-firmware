@@ -335,7 +335,6 @@ void FlightModeManager::start_flight_task()
 			_task_failure_count++;
 
 		} else {
-			PX4_ERR("check_failure1");
 			check_failure(task_failure, vehicle_status_s::NAVIGATION_STATE_POSCTL);
 			task_failure = false;
 		}

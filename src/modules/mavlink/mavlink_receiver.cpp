@@ -111,7 +111,6 @@ MavlinkReceiver::acknowledge(uint8_t sysid, uint8_t compid, uint16_t command, ui
 void
 MavlinkReceiver::handle_message(mavlink_message_t *msg)
 {
-
 	switch (msg->msgid) {
 	case MAVLINK_MSG_ID_COMMAND_LONG:
 		handle_message_command_long(msg);
@@ -530,7 +529,6 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 		}
 
 		if (!send_ack) {
-			PX4_ERR("handle_message_command_both");
 			_cmd_pub.publish(vehicle_command);
 		}
 	}
@@ -732,8 +730,6 @@ MavlinkReceiver::handle_message_set_mode(mavlink_message_t *msg)
 	vcmd.confirmation = true;
 	vcmd.from_external = true;
 
-	PX4_ERR("MavlinkReceiver::handle_message_set_mode)");
-
 	_cmd_pub.publish(vcmd);
 }
 
@@ -818,8 +814,6 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 	mavlink_set_position_target_local_ned_t set_position_target_local_ned;
 	mavlink_msg_set_position_target_local_ned_decode(msg, &set_position_target_local_ned);
 
-	//PX4_ERR("handle_message_set_position_target_local_ned %f %f", (double) set_position_target_local_ned.x, (double)set_position_target_local_ned.y);
-
 	const bool values_finite =
 		PX4_ISFINITE(set_position_target_local_ned.x) &&
 		PX4_ISFINITE(set_position_target_local_ned.y) &&
@@ -881,8 +875,6 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 		offboard_control_mode.timestamp = hrt_absolute_time();
 		_offboard_control_mode_pub.publish(offboard_control_mode);
 
-		//PX4_ERR("_offboard_control_mode_pub");
-
 		/* If we are in offboard control mode and offboard control loop through is enabled
 		 * also publish the setpoint topic which is read by the controller */
 		if (_mavlink->get_forward_externalsp()) {
@@ -894,7 +886,7 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 				if (is_force_sp && offboard_control_mode.ignore_position &&
 				    offboard_control_mode.ignore_velocity) {
 
-					PX4_ERR("force setpoint not supported");
+					PX4_WARN("force setpoint not supported");
 
 				} else {
 					/* It's not a pure force setpoint: publish to setpoint triplet  topic */
@@ -997,14 +989,10 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 					}
 
 					//XXX handle global pos setpoints (different MAV frames)
-					//PX4_ERR("_pos_sp_triplet_pub.publish");
-
 					_pos_sp_triplet_pub.publish(pos_sp_triplet);
 				}
 			}
 		}
-		//PX4_ERR("mav done");
-
 	}
 }
 

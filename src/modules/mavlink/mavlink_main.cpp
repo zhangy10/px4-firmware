@@ -1596,13 +1596,13 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		configure_stream_local("POSITION_TARGET_LOCAL_NED", 1.5f);
 		configure_stream_local("RAW_RPM", 2.0f);
 		configure_stream_local("RC_CHANNELS", 5.0f);
+		configure_stream_local("SERVO_OUTPUT_RAW_0", 1.0f);
 		configure_stream_local("SYS_STATUS", 1.0f);
 		configure_stream_local("UTM_GLOBAL_POSITION", 0.5f);
 		configure_stream_local("VFR_HUD", 4.0f);
 		configure_stream_local("VIBRATION", 0.1f);
 		configure_stream_local("WIND_COV", 0.5f);
 
-		configure_stream_local("SERVO_OUTPUT_RAW_0", 5.0f);
 		configure_stream_local("ACTUATOR_CONTROL_TARGET0", 5.0f);
 
 
@@ -1761,7 +1761,7 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		configure_stream_local("MOUNT_ORIENTATION", 10.0f);
 		configure_stream_local("ODOMETRY", 30.0f);
 
-		configure_stream_local("ACTUATOR_CONTROL_TARGET0", 5.0f);
+		configure_stream_local("ACTUATOR_CONTROL_TARGET0", 30.0f);
 		configure_stream_local("ADSB_VEHICLE", unlimited_rate);
 		configure_stream_local("ALTITUDE", 10.0f);
 		configure_stream_local("ATTITUDE", 50.0f);

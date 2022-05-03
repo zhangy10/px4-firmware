@@ -135,6 +135,7 @@ private:
 	/* Pid controller for the speed. Here we assume we can control airspeed but the control variable is actually on
 	 the throttle. For now just assuming a proportional scaler between controlled airspeed and throttle output.*/
 	PID_t _speed_ctrl{};
+	PID_t _yawrate_ctrl{};
 
 	// estimator reset counters
 	uint8_t _pos_reset_counter{0};		// captures the number of times the estimator has reset the horizontal position
@@ -163,6 +164,7 @@ private:
 
 		(ParamFloat<px4::params::GND_SPEED_TRIM>) _param_gndspeed_trim,
 		(ParamFloat<px4::params::GND_SPEED_MAX>) _param_gndspeed_max,
+		(ParamFloat<px4::params::GND_SPD_TRIMYAW>) _param_gndspeed_trim_yaw,
 
 		(ParamInt<px4::params::GND_SP_CTRL_MODE>) _param_speed_control_mode,
 		(ParamFloat<px4::params::GND_SPEED_P>) _param_speed_p,
@@ -172,6 +174,7 @@ private:
 		(ParamFloat<px4::params::GND_SPEED_THR_SC>) _param_throttle_speed_scaler,
 		(ParamFloat<px4::params::GND_NAV_RAD>) _param_gnd_nav_rad,	/**< REAL loiter radius for Rover */
 		(ParamFloat<px4::params::GND_TURN_SPD>) _param_gnd_turn_spd,
+		(ParamFloat<px4::params::GND_YAW_RATEP>) _param_gnd_yawrate_p,
 		(ParamFloat<px4::params::GND_YAWP>) _param_gnd_yaw_p,
 		(ParamFloat<px4::params::GND_YAWD>) _param_gnd_yaw_d,
 		(ParamFloat<px4::params::GND_YAWI>) _param_gnd_yaw_i,
@@ -191,7 +194,8 @@ private:
 	bool _skid_steer_turn_request = false;
 	bool _skid_steer_turn_complete = false;
 	//bool _new_waypoint = false;
-	int pause_turn = 0;
+	int nav_yaw_direction = 0;
+	float _last_yaw_cmd = 0.0f;
 
 	////
 	double _last_derivative = 0.;

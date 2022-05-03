@@ -1738,7 +1738,6 @@ Commander::run()
 						}
 					}
 				}
-
 			}
 		}
 
@@ -1918,7 +1917,6 @@ Commander::run()
 		const auto prev_mission_instance_count = _mission_result_sub.get().instance_count;
 
 		if (_mission_result_sub.update()) {
-
 			const mission_result_s &mission_result = _mission_result_sub.get();
 
 			// if mission_result is valid for the current mission
@@ -3567,9 +3565,11 @@ Commander::update_control_mode()
 
 			control_mode.flag_control_acceleration_enabled = !offboard_control_mode.ignore_acceleration_force &&
 					!_status.in_transition_mode;
+
 			control_mode.flag_control_velocity_enabled = (!offboard_control_mode.ignore_velocity ||
 					!offboard_control_mode.ignore_position) && !_status.in_transition_mode &&
 					!control_mode.flag_control_acceleration_enabled;
+
 			control_mode.flag_control_climb_rate_enabled = (!offboard_control_mode.ignore_velocity ||
 					!offboard_control_mode.ignore_position);
 

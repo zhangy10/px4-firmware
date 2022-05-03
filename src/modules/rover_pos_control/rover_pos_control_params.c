@@ -246,7 +246,21 @@ PARAM_DEFINE_FLOAT(GND_SPEED_THR_SC, 1.0f);
  * @increment 0.5
  * @group Rover Position Control
  */
-PARAM_DEFINE_FLOAT(GND_SPEED_TRIM, 3.0f);
+PARAM_DEFINE_FLOAT(GND_SPEED_TRIM, 1.0f);
+
+
+/**
+ * Trim ground speed
+ *
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 40
+ * @decimal 1
+ * @increment 0.5
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_SPD_TRIMYAW, 0.15f);
 
 /**
  * Maximum ground speed
@@ -311,6 +325,19 @@ PARAM_DEFINE_FLOAT(GND_NAV_RAD, 0.1f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_TURN_SPD, 0.9f);
+
+
+/**
+ * YAW P.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 5.0
+ * @decimal 4
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_YAW_RATEP, 0.01f);
 
 /**
  * YAW P.
