@@ -44,7 +44,7 @@ px4_add_board(
 		pwm_out_sim
 		pwm_out
 		px4io
-		#rc_input
+		rc_input
 		roboclaw
 		safety_button
 		tap_esc

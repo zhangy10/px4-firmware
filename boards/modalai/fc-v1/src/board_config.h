@@ -196,7 +196,7 @@
 
 /* RC Serial port */
 
-//#define RC_SERIAL_PORT                     "/dev/ttyS5"
+#define RC_SERIAL_PORT                     "/dev/ttyS5"
 /* Safety Switch: Enable the FMU to control it as there is no px4io in ModalAI FC-v1 */
 #define GPIO_SAFETY_SWITCH_IN              /* PF3 */ (GPIO_INPUT|GPIO_PULLDOWN|GPIO_PORTF|GPIO_PIN3)
 #define GPIO_BTN_SAFETY GPIO_SAFETY_SWITCH_IN /* Enable the FMU to control it if there is no px4io */
