@@ -19,9 +19,9 @@
 	url = https://github.com/PX4/PX4-Matrix.git
 	branch = master
 [submodule "src/lib/ecl"]
-        path = src/lib/ecl
-        url = https://github.com/modalai/ecl.git
-        branch = modalai-ecl-1.11
+	path = src/lib/ecl
+	url = https://github.com/PX4/ecl.git
+	branch = master
 [submodule "boards/atlflight/cmake_hexagon"]
 	path = boards/atlflight/cmake_hexagon
 	url = https://github.com/PX4/cmake_hexagon.git
