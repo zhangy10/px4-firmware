@@ -68,7 +68,7 @@
 #define PX4IO_SERIAL_RCC_REG           STM32_RCC_APB2ENR
 #define PX4IO_SERIAL_RCC_EN            RCC_APB2ENR_USART6EN
 #define PX4IO_SERIAL_CLOCK             STM32_PCLK2_FREQUENCY
-#define PX4IO_SERIAL_BITRATE           1000000               /* 1.5Mbps -> max rate for IO */
+#define PX4IO_SERIAL_BITRATE           921600               /* 1.5Mbps -> max rate for IO */
 
 /* PX4FMU GPIOs ***********************************************************************************/
 
