@@ -25,3 +25,5 @@ param set-default MAV_1_MODE 2
 param set-default SER_TEL2_BAUD 921600
 
 safety_button start
+
+set IOFW "/etc/extras/modalai_fcio-v2_default.bin"
