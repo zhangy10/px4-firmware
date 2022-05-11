@@ -35,20 +35,13 @@
 
 ModalaiGPSTimer::ModalaiGPSTimer() :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers)
+	_loop_perf(perf_alloc(PC_ELAPSED, "modalai_gps_timer control")) // TODO : do we even need these perf counters
 {
-	_perf_elapsed = perf_alloc(PC_ELAPSED, MODULE_NAME": elapsed");
 }
 
 ModalaiGPSTimer::~ModalaiGPSTimer()
 {
-	perf_free(_perf_elapsed);
-}
-
-void
-ModalaiGPSTimer::init()
-{
-	PX4_INFO("GPS Timer initialized");
+	perf_free(_loop_perf);
 }
 
 int ModalaiGPSTimer::custom_command(int argc, char *argv[])
@@ -80,7 +73,42 @@ This module resets the system time from the GPS provided there is a large diff b
 	return 0;
 }
 
-void ModalaiGPSTimer::Run()
+ModalaiGPSTimer *ModalaiGPSTimer::instantiate(int argc, char *argv[])
+{
+
+	if (argc > 0) {
+		PX4_WARN("Command 'start' takes no arguments.");
+		return nullptr;
+	}
+
+	ModalaiGPSTimer *instance = new ModalaiGPSTimer();
+
+	if (instance == nullptr) {
+		PX4_ERR("Failed to instantiate ModalaiGPSTimer object");
+	}
+
+	return instance;
+}
+
+int ModalaiGPSTimer::task_spawn(int argc, char *argv[])
+{
+	/* start the task */
+	_task_id = px4_task_spawn_cmd("modalai_gps_timer",
+				      SCHED_DEFAULT,
+				      SCHED_PRIORITY_POSITION_CONTROL,
+				      1700,
+				      (px4_main_t)&ModalaiGPSTimer::run_trampoline,
+				      nullptr);
+
+	if (_task_id < 0) {
+		warn("task start failed");
+		return -errno;
+	}
+
+	return OK;
+}
+
+void ModalaiGPSTimer::run()
 {
 	/* Get the latest GPS publication */
 	vehicle_gps_position_s gps_pos;
@@ -109,28 +137,11 @@ void ModalaiGPSTimer::Run()
 					break;
 				}
 			} else {
-				PX4_WARN("GPS fix not above 2 yet.");
+				PX4_DEBUG("GPS fix not above 2 yet.");
 			}
 		}
 		usleep(5000000);
 	}
-}
-
-int ModalaiGPSTimer::task_spawn(int argc, char *argv[])
-{
-	ModalaiGPSTimer *dev = new ModalaiGPSTimer();
-
-	// check if the trampoline is called for the first time
-	if (!dev) {
-		PX4_ERR("alloc failed for GPS_TIMER");
-		return PX4_ERROR;
-	}
-
-	_object.store(dev);
-
-	dev->Run();
-	//dev->ScheduleOnInterval(SCHEDULE_INTERVAL, 10000);
-	return PX4_OK;
 }
 
 extern "C" __EXPORT int modalai_gps_timer_main(int argc, char *argv[])
