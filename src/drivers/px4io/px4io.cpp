@@ -595,6 +595,8 @@ PX4IO::init()
 	param_t sys_restart_param;
 	int32_t sys_restart_val = DM_INIT_REASON_VOLATILE;
 
+	PX4_INFO("PX4IO init start");
+
 	sys_restart_param = param_find("SYS_RESTART_TYPE");
 
 	if (sys_restart_param != PARAM_INVALID) {
@@ -618,6 +620,8 @@ PX4IO::init()
 	unsigned protocol;
 	hrt_abstime start_try_time = hrt_absolute_time();
 
+	PX4_INFO("PX4IO init checking version");
+
 	do {
 		px4_usleep(2000);
 		protocol = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_PROTOCOL_VERSION);
@@ -633,6 +637,8 @@ PX4IO::init()
 		mavlink_log_emergency(&_mavlink_log_pub, "IO protocol/firmware mismatch, abort.");
 		return -1;
 	}
+
+	PX4_INFO("PX4IO init checking hardware configuration");
 
 	_hardware      = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_HARDWARE_VERSION);
 	_max_actuators = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_ACTUATOR_COUNT);
@@ -680,12 +686,17 @@ PX4IO::init()
 
 	uint16_t reg;
 
+	PX4_INFO("PX4IO init checking flight state");
+
 	/* get IO's last seen FMU state */
 	ret = io_reg_get(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_ARMING, &reg, sizeof(reg));
 
 	if (ret != OK) {
+		PX4_ERR("flight state read error");
 		return ret;
 	}
+
+	PX4_INFO("PX4IO init analyzing flight state");
 
 	/*
 	 * in-air restart is only tried if the IO board reports it is
@@ -693,6 +704,8 @@ PX4IO::init()
 	 */
 	if ((reg & PX4IO_P_SETUP_ARMING_INAIR_RESTART_OK) &&
 	    (reg & PX4IO_P_SETUP_ARMING_FMU_ARMED)) {
+
+		PX4_INFO("PX4IO init in-air restart");
 
 		/* get a status update from IO */
 		io_get_status();
@@ -831,6 +844,8 @@ PX4IO::init()
 
 	} else {
 
+		PX4_INFO("PX4IO init when not armed");
+
 		/* dis-arm IO before touching anything */
 		io_reg_modify(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_ARMING,
 			      PX4IO_P_SETUP_ARMING_FMU_ARMED |
@@ -868,6 +883,8 @@ PX4IO::init()
 
 	}
 
+	PX4_INFO("PX4IO init checking circuit breaker");
+
 	/* set safety to off if circuit breaker enabled */
 	if (circuit_breaker_enabled("CBRK_IO_SAFETY", CBRK_IO_SAFETY_KEY)) {
 		(void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_FORCE_SAFETY_OFF, PX4IO_FORCE_SAFETY_MAGIC);
@@ -894,6 +911,8 @@ PX4IO::init()
 		return -errno;
 	}
 
+	PX4_INFO("PX4IO init end");
+
 	return OK;
 }
 
@@ -909,6 +928,8 @@ PX4IO::task_main()
 {
 	hrt_abstime poll_last = 0;
 	hrt_abstime orb_check_last = 0;
+
+	PX4_INFO("PX4IO task_main start");
 
 	/*
 	 * Subscribe to the appropriate PWM output topic based on whether we are the
@@ -1542,7 +1563,7 @@ PX4IO::handle_motor_test()
 					    io_reg_get(PX4IO_PAGE_CONTROL_MAX_PWM, 0, pwm_max.values, _max_actuators) == 0) {
 
 #ifndef __PX4_QURT
-						uint16_t value = CONSTRAIN<uint16_t>(pwm_min.values[idx] +
+						uint16_t value = math::constrain<uint16_t>(pwm_min.values[idx] +
 #else
 						uint16_t value = CONSTRAIN(pwm_min.values[idx] +
 #endif

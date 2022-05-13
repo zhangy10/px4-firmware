@@ -117,7 +117,7 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 	int ret = qurt_uart_write(uart_fd, (const char*) _packet, sizeof(IOPacket));
 
 	if (ret > 0) {
-			PX4_INFO("Write %d bytes", ret);
+			// PX4_INFO("Write %d bytes", ret);
 
 			usleep(20000);
 
@@ -127,7 +127,7 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 		    ret = qurt_uart_read(uart_fd, (char*) _packet, sizeof(IOPacket), ASYNC_UART_READ_WAIT_US);
 
 			if (ret > 0){
-				PX4_INFO("Read %d bytes", ret);
+				// PX4_INFO("Read %d bytes", ret);
 
 				/* Check CRC */
 				uint8_t crc = _packet->crc;
