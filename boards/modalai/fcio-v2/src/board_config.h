@@ -100,7 +100,9 @@
 
 /* Safety switch button *******************************************************/
 
-#define GPIO_BTN_SAFETY (GPIO_INPUT|GPIO_CNF_INFLOAT|GPIO_MODE_INPUT|GPIO_PORTB|GPIO_PIN5)
+/* CONNECTED TO TP8 - pulled down via SW */
+
+#define GPIO_BTN_SAFETY (GPIO_INPUT|GPIO_CNF_INPULLDWN|GPIO_MODE_INPUT|GPIO_PORTB|GPIO_PIN5)
 
 /* Power switch controls ******************************************************/
 
