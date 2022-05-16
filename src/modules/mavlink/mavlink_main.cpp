@@ -1062,7 +1062,7 @@ void Mavlink::find_broadcast_address()
 }
 #endif // MAVLINK_UDP
 
-#ifdef __PX4_POSIX
+#if defined(__PX4_POSIX) && !defined(__PX4_QURT)
 const in_addr
 Mavlink::query_netmask_addr(const int socket_fd, const ifreq &ifreq)
 {
@@ -1861,7 +1861,7 @@ Mavlink::task_main(int argc, char *argv[])
 	bool err_flag = false;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
-#if defined(CONFIG_NET) || defined(__PX4_POSIX)
+#if defined(CONFIG_NET) || defined(__PX4_POSIX) && !defined(__PX4_QURT)
 	char *eptr;
 	int temp_int_arg;
 #endif
@@ -1897,14 +1897,14 @@ Mavlink::task_main(int argc, char *argv[])
 		case 'd':
 			_device_name = myoptarg;
 			set_protocol(Protocol::SERIAL);
-
+#if !defined(__PX4_QURT)
 			if (access(_device_name, F_OK) == -1) {
 				PX4_ERR("Device %s does not exist", _device_name);
 				err_flag = true;
 			}
 
 			break;
-
+#endif
 		case 'n':
 			_interface_name = myoptarg;
 			break;
@@ -2639,7 +2639,11 @@ void Mavlink::configure_sik_radio()
 
 			if (_param_sik_radio_id.get() > 0) {
 				/* set channel */
-				fprintf(fs, "ATS3=%u\n", _param_sik_radio_id.get());
+#ifndef __PX4_QURT
+				fprintf(fs, "ATS3=%d\n", _param_sik_radio_id.get());
+#else
+				fprintf(fs, "ATS3=%ld\n", _param_sik_radio_id.get());
+#endif
 				px4_usleep(200000);
 
 			} else {
@@ -2809,7 +2813,7 @@ Mavlink::display_status()
 	       _ftp_on ? "YES" : "NO",
 	       _transmitting_enabled ? "YES" : "NO");
 	printf("\tmode: %s\n", mavlink_mode_str(_mode));
-	printf("\tMAVLink version: %i\n", _protocol_version);
+	printf("\tMAVLink version: %li\n", _protocol_version);
 
 	printf("\ttransport protocol: ");
 
@@ -2839,7 +2843,7 @@ Mavlink::display_status()
 		printf("\t  mean: %0.2f ms\n", (double)_ping_stats.mean_rtt);
 		printf("\t  max: %0.2f ms\n", (double)_ping_stats.max_rtt);
 		printf("\t  min: %0.2f ms\n", (double)_ping_stats.min_rtt);
-		printf("\t  dropped packets: %u\n", _ping_stats.dropped_packets);
+		printf("\t  dropped packets: %lu\n", _ping_stats.dropped_packets);
 	}
 }
 

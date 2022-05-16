@@ -5,7 +5,6 @@
 # the DSP side.
 
 message(STATUS "*** Entering qurt.cmake ***")
-
 set(QC_SOC_TARGET "QRB5165")
 
 include(px4_git)
@@ -26,8 +25,8 @@ message(STATUS "in qurt.make: CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 set(HEXAGON_SDK_INCLUDES ${HEXAGON_SDK_INCLUDES}
     ${HEXAGON_SDK_ROOT}/tools/HEXAGON_Tools/8.4.05/Tools/target/hexagon/include
+    ${PX4_SOURCE_DIR}/platforms/nuttx/Nuttx/nuttx/include
        )
-
 include_directories(${HEXAGON_SDK_INCLUDES})
 
 set(CONFIG_SHMEM "0")
@@ -45,7 +44,8 @@ set(CONFIG_PARAM_CLIENT "1")
 set(DISABLE_PARAMS_MODULE_SCOPING TRUE)
 
 # This definition allows to differentiate the specific board.
-add_definitions(-D__PX4_QURT_EXCELSIOR)
+add_definitions(-D__PX4_QURT_EXCELSIOR
+)
 
 px4_add_board(
 	PLATFORM qurt
@@ -58,7 +58,7 @@ px4_add_board(
         #magnetometer/hmc5883
         magnetometer/isentek/ist8310
         uart_esc/modalai_esc
-	uart_dsp/modalai_dsp
+	#uart_dsp/modalai_dsp
         power_monitor/voxlpm
         imu/invensense/icm42688p
 				lights/rgbled_ncp5623c
@@ -83,6 +83,7 @@ px4_add_board(
 		#rc_update
 		#rover_pos_control
 		sensors
+		mavlink
 		# temperature_compensation
 		# vmount
 	SYSTEMCMDS

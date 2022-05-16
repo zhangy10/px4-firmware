@@ -48,7 +48,14 @@
 #include <systemlib/px4_macros.h>
 
 #include <math.h>
+
+#ifdef __PX4_QURT
+#include <drivers/device/qurt/uart.h>
+#endif
+
+#ifndef __PX4_QURT
 #include <poll.h>
+#endif
 
 #ifdef CONFIG_NET
 #include <net/if.h>
@@ -71,6 +78,7 @@
 #else
 #define MAVLINK_RECEIVER_NET_ADDED_STACK 0
 #endif
+#define ASYNC_UART_READ_WAIT_US 2000
 
 using matrix::wrap_2pi;
 
@@ -2973,13 +2981,20 @@ MavlinkReceiver::Run()
 #endif
 	mavlink_message_t msg;
 
+#ifndef __PX4_QURT
 	struct pollfd fds[1] = {};
 
 	if (_mavlink->get_protocol() == Protocol::SERIAL) {
 		fds[0].fd = _mavlink->get_uart_fd();
 		fds[0].events = POLLIN;
 	}
+#else
+	if (_mavlink->get_protocol() == Protocol::SERIAL) {
+		_mavlink->get_uart_fd();
+	}
+#endif
 
+#ifndef __PX4_QURT
 #if defined(MAVLINK_UDP)
 	struct sockaddr_in srcaddr = {};
 	socklen_t addrlen = sizeof(srcaddr);
@@ -2990,10 +3005,10 @@ MavlinkReceiver::Run()
 	}
 
 #endif // MAVLINK_UDP
-
+#endif
 	ssize_t nread = 0;
 	hrt_abstime last_send_update = 0;
-
+	int ret;
 	while (!_mavlink->_task_should_exit) {
 
 		// check for parameter updates
@@ -3006,7 +3021,8 @@ MavlinkReceiver::Run()
 			updateParams();
 		}
 
-		int ret = poll(&fds[0], 1, timeout);
+#ifndef __PX4_QURT
+		ret = poll(&fds[0], 1, timeout);
 
 		if (ret > 0) {
 			if (_mavlink->get_protocol() == Protocol::SERIAL) {
@@ -3017,7 +3033,24 @@ MavlinkReceiver::Run()
 					usleep(100000);
 				}
 			}
+#else
+		//int ret = poll(&fds[0], 1, timeout);
+		int _uart_fd = -1;
+		//if (ret > 0) {
+		if (_mavlink->get_protocol() == Protocol::SERIAL) {
+			/* non-blocking read. read may return negative values */
+			const char *dev = "2";
+			speed_t speed = 921600;
+			_uart_fd = qurt_uart_open(dev, speed);
+			nread = qurt_uart_read(_uart_fd, (char*) buf, sizeof(buf), ASYNC_UART_READ_WAIT_US);
+			//nread = ::read(fds[0].fd, buf, sizeof(buf));
+			ret = 1;
+			if (nread == -1 && errno == ENOTCONN) { // Not connected (can happen for USB)
+				usleep(100000);
+			}
+#endif
 
+#ifndef __PX4_QURT
 #if defined(MAVLINK_UDP)
 
 			else if (_mavlink->get_protocol() == Protocol::UDP) {
@@ -3052,7 +3085,7 @@ MavlinkReceiver::Run()
 			// only start accepting messages on UDP once we're sure who we talk to
 			if (_mavlink->get_protocol() != Protocol::UDP || _mavlink->get_client_source_initialized()) {
 #endif // MAVLINK_UDP
-
+#endif
 				/* if read failed, this loop won't execute */
 				for (ssize_t i = 0; i < nread; i++) {
 					if (mavlink_parse_char(_mavlink->get_channel(), buf[i], &msg, &_status)) {
@@ -3208,12 +3241,12 @@ MavlinkReceiver::Run()
 						_mavlink_status_last_packet_rx_drop_count = _status.packet_rx_drop_count;
 					}
 				}
-
+#ifndef __PX4_QURT
 #if defined(MAVLINK_UDP)
 			}
 
 #endif // MAVLINK_UDP
-
+#endif
 		} else if (ret == -1) {
 			usleep(10000);
 		}
