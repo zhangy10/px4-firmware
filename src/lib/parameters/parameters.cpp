@@ -78,7 +78,7 @@ inline static int flash_param_save(bool only_unsaved, param_filter_func filter) 
 inline static int flash_param_load() { return -1; }
 inline static int flash_param_import() { return -1; }
 #endif
-static const char *param_default_file = PX4_ROOTFSDIR"/eeprom/parameters";
+static const char *param_default_file = PX4_ROOTFSDIR"/param/parameters";
 #endif
 
 // PARAM_SERVER is defined when PX4 is split between two processors

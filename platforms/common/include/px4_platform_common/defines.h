@@ -106,7 +106,7 @@ extern long PX4_TICKS_PER_SEC;
 __END_DECLS
 
 #  if defined(__PX4_POSIX_RB5)
-#    define PX4_ROOTFSDIR "/home/linaro"
+#    define PX4_ROOTFSDIR "/data/px4"
 #  else
 #    define PX4_ROOTFSDIR "."
 #  endif
