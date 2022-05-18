@@ -59,6 +59,7 @@ px4_add_board(
         magnetometer/isentek/ist8310
         uart_esc/modalai_esc
 	uart_dsp/modalai_dsp
+		px4io
         power_monitor/voxlpm
         imu/invensense/icm42688p
 				lights/rgbled_ncp5623c
