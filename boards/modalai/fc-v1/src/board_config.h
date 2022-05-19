@@ -58,7 +58,7 @@
 // NA on ModalAI FC-v1
 /* PX4IO connection configuration */
 
-#define BOARD_PX4IO_FW_SEARCH_PATHS    {"/etc/extras/modalai_fcio-v2.bin", "/etc/extras/modalai_fcio-v2_default.bin", nullptr }
+#define BOARD_PX4IO_FW_SEARCH_PATHS    {"/etc/extras/modalai_voxl2-io.bin", "/etc/extras/modalai_voxl2-io_default.bin", nullptr }
 #define BOARD_USES_PX4IO_VERSION       2
 #define PX4IO_SERIAL_DEVICE            "/dev/ttyS5"
 #define PX4IO_SERIAL_TX_GPIO           GPIO_USART6_TX
@@ -70,7 +70,7 @@
 #define PX4IO_SERIAL_RCC_REG           STM32_RCC_APB2ENR
 #define PX4IO_SERIAL_RCC_EN            RCC_APB2ENR_USART6EN
 #define PX4IO_SERIAL_CLOCK             STM32_PCLK2_FREQUENCY
-#define PX4IO_SERIAL_BITRATE           1000000               /* 1.5Mbps -> max rate for IO */
+#define PX4IO_SERIAL_BITRATE           921600                /* for compatibility with Snapdragon 865 */
 
 /* PX4FMU GPIOs ***********************************************************************************/
 
@@ -197,7 +197,7 @@
 
 /* RC Serial port */
 
-//#define RC_SERIAL_PORT                     "/dev/ttyS5"
+#define RC_SERIAL_PORT                     "/dev/ttyS5"
 #define BOARD_SUPPORTS_RC_SERIAL_PORT_OUTPUT
 
 /* Safety Switch: Enable the FMU to control it as there is no px4io in ModalAI FC-v1 */

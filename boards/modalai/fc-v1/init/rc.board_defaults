@@ -26,4 +26,4 @@ param set-default SER_TEL2_BAUD 921600
 
 safety_button start
 
-set IOFW "/etc/extras/modalai_fcio-v2_default.bin"
+set IOFW "/etc/extras/modalai_voxl2-io_default.bin"
