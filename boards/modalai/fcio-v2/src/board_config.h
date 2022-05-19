@@ -64,7 +64,7 @@
 #define PX4FMU_SERIAL_TX_DMA	DMACHAN_USART2_TX
 #define PX4FMU_SERIAL_RX_DMA	DMACHAN_USART2_RX
 #define PX4FMU_SERIAL_CLOCK	STM32_PCLK1_FREQUENCY
-#define PX4FMU_SERIAL_BITRATE	1000000
+#define PX4FMU_SERIAL_BITRATE	921600
 
 /******************************************************************************
  * GPIOS
