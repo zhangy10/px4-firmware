@@ -156,4 +156,4 @@ set LOGGER_BUF 64
 
 safety_button start
 
-set IOFW "/etc/extras/modalai_fcio-v2_default.bin"
+set IOFW "/etc/extras/modalai_voxl2-io_default.bin"

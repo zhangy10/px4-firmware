@@ -1,10 +1,10 @@
 {
     "board_id": 41777,
     "magic": "PX4FWv2",
-    "description": "Firmware for the FCIOv2 board",
+    "description": "Firmware for the voxl2-io board",
     "image": "",
     "build_time": 0,
-    "summary": "FCIOv2",
+    "summary": "voxl2io",
     "version": "2.0",
     "image_size": 0,
     "image_maxsize": 61440,

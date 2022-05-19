@@ -56,7 +56,7 @@
 /* Configuration ************************************************************************************/
 
 /* PX4IO connection configuration */
-#define BOARD_PX4IO_FW_SEARCH_PATHS    {"/etc/extras/modalai_fcio-v2.bin", "/etc/extras/modalai_fcio-v2_default.bin", nullptr }
+#define BOARD_PX4IO_FW_SEARCH_PATHS    {"/etc/extras/modalai_voxl2-io.bin", "/etc/extras/modalai_voxl2-io_default.bin", nullptr }
 #define BOARD_USES_PX4IO_VERSION       2
 #define PX4IO_SERIAL_DEVICE            "/dev/ttyS5"
 #define PX4IO_SERIAL_TX_GPIO           GPIO_USART6_TX

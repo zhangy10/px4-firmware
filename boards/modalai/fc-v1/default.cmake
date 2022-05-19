@@ -7,7 +7,7 @@ px4_add_board(
 	TOOLCHAIN arm-none-eabi
 	ARCHITECTURE cortex-m7
 	ROMFSROOT px4fmu_common
-	IO modalai_fcio-v2_default
+	IO modalai_voxl2-io_default
 	TESTING
 	UAVCAN_INTERFACES 1
 	SERIAL_PORTS

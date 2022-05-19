@@ -2,7 +2,7 @@
 px4_add_board(
 	PLATFORM nuttx
 	VENDOR modalai
-	MODEL fcio-v2
+	MODEL voxl2-io
 	TOOLCHAIN arm-none-eabi
 	CONSTRAINED_FLASH
 	ARCHITECTURE cortex-m3
