@@ -119,9 +119,14 @@ void LoggedTopics::add_default_topics()
 	add_topic_multi("sensor_baro", 1000);
 	add_topic_multi("sensor_gyro", 1000);
 	add_topic_multi("sensor_mag", 1000);
-	add_topic_multi("vehicle_gps_position", 1000);
-	add_topic_multi("vehicle_imu", 500);
-	add_topic_multi("vehicle_imu_status", 1000);
+//	add_topic_multi("vehicle_gps_position", 1000);
+//	add_topic_multi("vehicle_imu", 500);
+//	add_topic_multi("vehicle_imu_status", 1000);
+    
+    // Yu: set F9P gps log to 10Hz
+        add_topic_multi("vehicle_gps_position", 100);
+        add_topic_multi("vehicle_imu", 100);
+        add_topic_multi("vehicle_imu_status", 500);
 
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 	add_topic("actuator_controls_virtual_fw");
