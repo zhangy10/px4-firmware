@@ -7,6 +7,7 @@ build:
   image: px4io/px4-dev-nuttx-bionic:2021-12-11
   script:
     - make modalai_voxl2io-v2
+    - make modalai_fc-v1
   only:
     - voxl2-io-1.11
   artifacts:
@@ -25,7 +26,8 @@ deploy:
     - GCLOUD_BUCKET=gs://modalai_public/voxl2io-builds/$PX4_VER_BASE/$BUILD_DIR
     - gcloud auth activate-service-account --key-file=$GCLOUD_SERVICE_KEY
     - gsutil cp build/modalai_voxl2io-v2_default/modalai_voxl2io-v2.bin $GCLOUD_BUCKET/voxl2io-v2/
-    - gsutil cp build/modalai_voxl2io-v2_default/modalai_voxl2io-v2_default.elf $GCLOUD_BUCKET/voxl2io-v2/
     - gsutil cp build/modalai_voxl2io-v2_default/modalai_voxl2io-v2_default.px4 $GCLOUD_BUCKET/voxl2io-v2/
+    - gsutil cp build/modalai_fc-v1_default/modalai_fc-v1.bin $GCLOUD_BUCKET/fc-v1/
+    - gsutil cp build/modalai_fc-v1_default/modalai_fc-v1_default.px4 $GCLOUD_BUCKET/fc-v1/
   only:
     - voxl2-io-1.11
