@@ -101,11 +101,11 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: modalai_fc-v2_default
-    modalai_voxl2-io_default:
-      short: modalai_voxl2-io
+    modalai_voxl2io-v2_default:
+      short: modalai_voxl2io-v2
       buildType: MinSizeRel
       settings:
-        CONFIG: modalai_voxl2-io_default
+        CONFIG: modalai_voxl2io-v2_default
     mro_ctrl-zero-f7_default:
       short: mro_ctrl-zero-f7
       buildType: MinSizeRel
